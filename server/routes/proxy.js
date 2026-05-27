@@ -1,0 +1,72 @@
+// Generic proxy for /api/bots/:bot/* → bot's own /api/* endpoint. Streams
+// request bodies for uploads and pipes back the response without buffering.
+
+import { Router } from 'express';
+import { hasBot, botBaseUrl, botAuthHeader } from '../botClient.js';
+
+const PROXY_PASS_HEADERS = ['content-type', 'content-disposition', 'cache-control'];
+
+export default function proxyRoutes() {
+  const router = Router({ mergeParams: true });
+
+  router.use('/:bot/*', async (req, res) => {
+    const { bot } = req.params;
+    if (!hasBot(bot)) return res.status(404).json({ error: 'unknown bot' });
+
+    const subPath = req.params[0];
+    const url = `${botBaseUrl(bot)}/api/${subPath}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
+
+    try {
+      const headers = { ...req.headers };
+      delete headers.host;
+      delete headers['content-length'];
+      const auth = botAuthHeader();
+      if (auth) headers.authorization = auth;
+      if (req.session?.user?.id) headers['x-dashboard-user-id'] = req.session.user.id;
+
+      const mayHaveBody = !['GET', 'HEAD'].includes(req.method);
+      const isJson = req.is('application/json');
+      const body = !mayHaveBody
+        ? undefined
+        : isJson
+          ? JSON.stringify(req.body || {})
+          : req;
+      const options = {
+        method: req.method,
+        headers,
+        body,
+      };
+      if (body === req) options.duplex = 'half';
+
+      const upstream = await fetch(url, options);
+      res.status(upstream.status);
+      for (const h of PROXY_PASS_HEADERS) {
+        const v = upstream.headers.get(h);
+        if (v) res.setHeader(h, v);
+      }
+      if (upstream.body) {
+        const reader = upstream.body.getReader();
+        const pump = async () => {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            res.write(value);
+          }
+          res.end();
+        };
+        pump().catch(() => res.end());
+      } else {
+        res.end();
+      }
+    } catch (err) {
+      const refused = err.cause?.code === 'ECONNREFUSED'
+        || err.cause?.errors?.some((cause) => cause.code === 'ECONNREFUSED');
+      if (!refused) console.error('[proxy]', err);
+      res.status(refused ? 503 : 502).json({
+        error: refused ? `${bot} bot is offline or its API is not running` : err.message,
+      });
+    }
+  });
+
+  return router;
+}

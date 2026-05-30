@@ -42,3 +42,51 @@ export function useSSE(connect, onMessage) {
     return disconnect;
   }, [connect]);
 }
+
+// Route lives in the URL hash (#/sb/board) so a browser refresh keeps the
+// current page and back/forward navigate within the app instead of jumping
+// back out to the OAuth screen.
+export function useHashRoute(defaultRoute = 'overview') {
+  const parse = () => window.location.hash.replace(/^#\/?/, '') || defaultRoute;
+  const [route, setRouteState] = useState(parse);
+
+  useEffect(() => {
+    const sync = () => setRouteState(parse());
+    window.addEventListener('hashchange', sync);
+    window.addEventListener('popstate', sync);
+    return () => {
+      window.removeEventListener('hashchange', sync);
+      window.removeEventListener('popstate', sync);
+    };
+  }, []);
+
+  const setRoute = useCallback((next) => {
+    if (next === parse()) return;
+    window.location.hash = '/' + next;
+  }, []);
+
+  return [route, setRoute];
+}
+
+export function useCloseOnOutside(ref, open, onClose) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOutside = (event) => {
+      if (!ref.current?.contains(event.target)) onCloseRef.current(event);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onCloseRef.current(event);
+    };
+
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [ref, open]);
+}

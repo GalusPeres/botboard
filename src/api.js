@@ -38,8 +38,21 @@ export const auth = {
 
 export const bots = {
   status: () => api('/api/bots'),
+  modules: () => api('/api/bots/modules'),
+  registry: () => api('/api/bots/registry'),
+  testRegistry: (bot) => api('/api/bots/registry/test', { method: 'POST', body: bot }),
+  addRegistry: (bot) => api('/api/bots/registry', { method: 'POST', body: bot }),
+  updateRegistry: (bot, patch) => api(`/api/bots/registry/${encodeURIComponent(bot)}`, { method: 'PUT', body: patch }),
+  deleteRegistry: (bot) => api(`/api/bots/registry/${encodeURIComponent(bot)}`, { method: 'DELETE' }),
   restart: (bot) => api(`/api/bots/${bot}/restart`, { method: 'POST' }),
   servers: () => api('/api/bots/servers'),
+};
+
+export const moduleApi = {
+  stats: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/stats`),
+  settings: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/settings`),
+  settingsSchema: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/settings/schema`),
+  saveSettings: (bot, patch) => api(`/api/bots/${encodeURIComponent(bot)}/settings`, { method: 'PUT', body: patch }),
 };
 
 export const music = {

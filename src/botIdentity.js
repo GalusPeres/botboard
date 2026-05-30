@@ -1,0 +1,26 @@
+export function botDisplayName(bot, fallback = 'Bot') {
+  const raw = bot?.displayName || bot?.username || bot?.globalName || bot?.applicationName || bot?.tag || fallback;
+  const clean = String(raw || '').replace(/#\d+$/, '').trim();
+  return clean || fallback;
+}
+
+export function dashboardBotName(botKey, botInfo = {}) {
+  if (botKey === 'soundbot') return botDisplayName(botInfo.soundbot, 'Sound Bot');
+  if (botKey === 'newibot') return botDisplayName(botInfo.newibot, 'Music Bot');
+  return botDisplayName(botInfo[botKey], 'Bot');
+}
+
+export function moduleDisplayName(module, fallback = 'Bot') {
+  return botDisplayName(
+    module?.manifest?.bot || {
+      displayName: module?.manifest?.displayName,
+      username: module?.manifest?.name,
+      tag: module?.status?.bot?.tag,
+    },
+    module?.manifest?.displayName || module?.status?.name || fallback,
+  );
+}
+
+export function moduleAvatar(module) {
+  return module?.manifest?.bot?.avatar || module?.status?.bot?.avatar || null;
+}

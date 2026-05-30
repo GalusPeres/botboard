@@ -1,13 +1,14 @@
 // Soundboard + Music Player + Library screens
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, Waveform, Tag, fmtDur } from './components.jsx';
+import { useCloseOnOutside } from './hooks.js';
 
-export const SoundboardScreen = ({ playSound, previewSound, onConnect, onStop, onDisconnect, currentSound, currentPreview, sounds, tileSize, userChannel, voiceJoined, channel }) => {
+export const SoundboardScreen = ({ playSound, previewSound, currentSound, currentPreview, sounds, tileSize, targetChannel }) => {
   const [search, setSearch] = useState('');
 
   const filtered = sounds.filter(s => !search || s.name.includes(search.toLowerCase()));
 
-  const targetChannel = voiceJoined ? channel.name : (userChannel ? userChannel.name : null);
+  const targetName = targetChannel?.name || null;
 
   return (
     <div className="content-narrow">
@@ -15,15 +16,12 @@ export const SoundboardScreen = ({ playSound, previewSound, onConnect, onStop, o
         <div>
           <div className="page-title">Soundboard</div>
           <div className="page-sub">
-            {targetChannel
-              ? <>Tile-Klick spielt in <strong style={{ color: 'var(--text)' }}>{targetChannel}</strong> ab. Headphones-Icon = lokale Vorschau.</>
-              : <>Tritt einem Voice-Channel bei oder wähle oben einen Zielkanal. Headphones spielt nur lokal vor.</>}
+            {targetName
+              ? <>Clicking a tile plays in <strong style={{ color: 'var(--text)' }}>{targetName}</strong>. Headphones icon = local preview only.</>
+              : <>Join a voice channel or pick a target at the top right. Headphones previews locally only.</>}
           </div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-sm" onClick={onConnect}><Icon name="speaker" size={12}/> Join</button>
-          <button className="btn btn-sm" onClick={onStop}><Icon name="stop" size={12}/> Stop</button>
-          <button className="btn btn-sm" onClick={onDisconnect}><Icon name="x" size={12}/> Disconnect</button>
           <div className="lib-search" style={{ width: 240, minWidth: 0 }}>
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
             <input placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}/>
@@ -112,6 +110,10 @@ const AddTrack = ({ addTrack, searchTracks }) => {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useCloseOnOutside(wrapRef, open, () => setOpen(false));
 
   useEffect(() => {
     const term = query.trim();
@@ -138,37 +140,34 @@ const AddTrack = ({ addTrack, searchTracks }) => {
   const selectTrack = async (track) => {
     setAdding(true);
     const added = await addTrack(track.uri || track.title);
-    if (added) {
-      setQuery('');
-      setResults([]);
-    }
+    if (added) { setQuery(''); setResults([]); setOpen(false); }
     setAdding(false);
   };
 
-  const submit = async (event) => {
-    event.preventDefault();
+  const submit = async () => {
     if (!query.trim() || adding) return;
     setAdding(true);
     const added = await addTrack(query.trim());
-    if (added) setQuery('');
+    if (added) { setQuery(''); setResults([]); setOpen(false); }
     setAdding(false);
   };
+
+  const showPop = open && (searching || !!searchError || results.length > 0);
+
   return (
-    <form className="card track-search" onSubmit={submit}>
-      <div className="track-search-row">
-        <div className="lib-search" style={{ flex: 1 }}>
-          <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
-          <input value={query} onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search track or paste a URL..."/>
-        </div>
-        <button className="btn btn-primary btn-sm" type="submit" disabled={!query.trim() || adding}>
-          <Icon name="play" size={12}/> {adding ? 'Adding...' : 'Add to queue'}
-        </button>
+    <div className="track-search-inline" ref={wrapRef}>
+      <div className="lib-search" style={{ width: 260, minWidth: 0 }}>
+        <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
+        <input value={query}
+          onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(event) => { if (event.key === 'Enter') submit(); }}
+          placeholder="Search track or paste a URL…"/>
       </div>
-      {searching && <div className="track-search-hint">Searching...</div>}
-      {searchError && <div className="track-search-hint error">Search failed: {searchError}</div>}
-      {results.length > 0 && (
-        <div className="track-results">
+      {showPop && (
+        <div className="track-results-pop">
+          {searching && <div className="track-search-hint">Searching…</div>}
+          {searchError && <div className="track-search-hint error">Search failed: {searchError}</div>}
           {results.map((track) => (
             <button key={track.id || track.uri} type="button" className="track-result" onClick={() => selectTrack(track)} disabled={adding}>
               <div className="track-result-cover">
@@ -183,19 +182,11 @@ const AddTrack = ({ addTrack, searchTracks }) => {
           ))}
         </div>
       )}
-    </form>
+    </div>
   );
 };
 
-const VoiceControls = ({ onConnect, onStop, onDisconnect }) => (
-  <div className="player-voice-actions">
-    <button className="btn btn-sm" onClick={onConnect}><Icon name="speaker" size={12}/> Join</button>
-    <button className="btn btn-sm" onClick={onStop}><Icon name="stop" size={12}/> Stop</button>
-    <button className="btn btn-sm" onClick={onDisconnect}><Icon name="x" size={12}/> Disconnect</button>
-  </div>
-);
-
-export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, onConnect, onStop, onDisconnect, playerStyle }) => {
+export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, playerStyle, playerError }) => {
   const { queue, currentIdx, isPlaying, position, volume, shuffle, repeat } = playerState;
   const cur = queue[currentIdx];
   const [dur, durFmt] = useMemo(() => {
@@ -207,8 +198,15 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, onC
   if (!cur) {
     return (
       <div className="content-narrow">
-        <VoiceControls onConnect={onConnect} onStop={onStop} onDisconnect={onDisconnect}/>
-        <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
+        <div className="page-head">
+          <div>
+            <div className="page-title">Music Player</div>
+          </div>
+          <div className="page-actions">
+            <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
+          </div>
+        </div>
+        {playerError && <div className="settings-notice registry-error" style={{ marginBottom: 16 }}>Player refresh failed: {playerError.message}</div>}
         <div className="empty" style={{ padding: 80 }}>
           <div className="empty-icon">♪</div>
           <div style={{ fontSize: 15, marginBottom: 8 }}>Queue is empty</div>
@@ -220,13 +218,20 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, onC
 
   const progress = dur ? position / dur : 0;
 
-  if (playerStyle === 'compact') return <MusicCompact playerState={playerState} dispatch={dispatch} addTrack={addTrack} searchTracks={searchTracks} onConnect={onConnect} onStop={onStop} onDisconnect={onDisconnect}/>;
+  if (playerStyle === 'compact') return <MusicCompact playerState={playerState} dispatch={dispatch} addTrack={addTrack} searchTracks={searchTracks} playerError={playerError}/>;
 
   return (
     <>
     <div className="content-narrow">
-      <VoiceControls onConnect={onConnect} onStop={onStop} onDisconnect={onDisconnect}/>
-      <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
+      <div className="page-head">
+        <div>
+          <div className="page-title">Music Player</div>
+        </div>
+        <div className="page-actions">
+          <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
+        </div>
+      </div>
+      {playerError && <div className="settings-notice registry-error" style={{ marginBottom: 16 }}>Player refresh failed: {playerError.message}</div>}
     </div>
     <div className="player">
       <div className="now-playing">
@@ -333,7 +338,7 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, onC
   );
 };
 
-const MusicCompact = ({ playerState, dispatch, addTrack, searchTracks, onConnect, onStop, onDisconnect }) => {
+const MusicCompact = ({ playerState, dispatch, addTrack, searchTracks, playerError }) => {
   const { queue, currentIdx, isPlaying, position, volume, previous = [] } = playerState;
   const cur = queue[currentIdx];
   const [m, s] = cur.duration.split(':').map(Number);
@@ -341,8 +346,15 @@ const MusicCompact = ({ playerState, dispatch, addTrack, searchTracks, onConnect
   const progress = position / dur;
   return (
     <div className="content-narrow">
-      <VoiceControls onConnect={onConnect} onStop={onStop} onDisconnect={onDisconnect}/>
-      <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
+      <div className="page-head">
+        <div>
+          <div className="page-title">Music Player</div>
+        </div>
+        <div className="page-actions">
+          <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
+        </div>
+      </div>
+      {playerError && <div className="settings-notice registry-error" style={{ marginBottom: 16 }}>Player refresh failed: {playerError.message}</div>}
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ width: 60, height: 60, borderRadius: 10, background: 'var(--bg-deeper)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, overflow: 'hidden' }}>
@@ -475,7 +487,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
       <div className="page-head">
         <div>
           <div className="page-title">Sound Library</div>
-          <div className="page-sub">Manage your MP3 files. Configured upload limits are enforced by SoundBot.</div>
+          <div className="page-sub">Manage your MP3 files. Configured upload limits are enforced by the connected bot.</div>
         </div>
         <div className="page-actions">
           <button className="btn btn-sm" onClick={() => playSound && playSound(sorted[0])}>
@@ -492,11 +504,11 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <Icon name="upload" size={18}/>
             <input type="file" accept="audio/mpeg,.mp3" onChange={e => setUploadFile(e.target.files?.[0] || null)}/>
-            <input className="input" placeholder="custom name (optional)" value={uploadName} onChange={e => setUploadName(e.target.value)} style={{ width: 180 }}/>
+            <input className="input" placeholder="custom name" value={uploadName} onChange={e => setUploadName(e.target.value)} style={{ width: 180 }}/>
             <button className="btn btn-sm btn-primary" onClick={doUpload} disabled={!uploadFile}>Upload</button>
             <button className="btn btn-sm btn-ghost" onClick={() => { setShowUpload(false); setUploadFile(null); }}>Cancel</button>
           </div>
-          <div className="upload-hint">MP3 only - lowercase a-z and 0-9; configured SoundBot limits apply</div>
+          <div className="upload-hint">MP3 only - lowercase a-z and 0-9; configured bot limits apply</div>
         </div>
       )}
 

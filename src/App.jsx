@@ -2,14 +2,19 @@
 // All mutating actions go through src/api.js; reads are either one-shot
 // (useFetch) or periodic (usePoll). Logs come in via SSE.
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Sidebar, Topbar, MobileMoreSheet } from './sidebar.jsx';
+import { Sidebar, Topbar, MobileMoreSheet, routeMeta } from './sidebar.jsx';
 import { Icon } from './components.jsx';
 import { LoginScreen, ServerSelectScreen, OverviewScreen } from './screens-1.jsx';
 import { SoundboardScreen, MusicScreen, LibraryScreen } from './screens-2.jsx';
-import { StatsScreen, SoundbotSettingsScreen, NewibotSettingsScreen, LogsScreen } from './screens-3.jsx';
+import { StatsScreen, SoundbotSettingsScreen, NewibotSettingsScreen, LogsScreen, GenericStatsScreen, GenericSettingsScreen } from './screens-3.jsx';
+import { BotRegistryScreen } from './registry-screen.jsx';
+import { dashboardBotName, moduleDisplayName } from './botIdentity.js';
 import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './tweaks-panel.jsx';
 import * as API from './api.js';
-import { useFetch, usePoll, useSSE } from './hooks.js';
+import { useFetch, usePoll, useSSE, useHashRoute } from './hooks.js';
+import { adaptTrack, adaptSound, normalizeLog, msToClock, formatBytes, relativeTime } from './format.js';
+import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets } from './storage.js';
+import { SETTING_MAP_MUSIC, SETTING_MAP_SOUND, mapSettingsPatch, mergeSettings } from './settings-map.js';
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   accent: 'lime',
@@ -34,99 +39,20 @@ function applyAccent(key) {
   root.style.setProperty('--accent-fg', a.l > 0.7 ? 'oklch(0.18 0.05 ' + a.h + ')' : 'oklch(0.98 0.01 ' + a.h + ')');
 }
 
-const POLL_STATUS_MS = 5000;
+const POLL_STATUS_MS = 2000;
 const POLL_PLAYER_MS = 2000;
-const SELECTED_SERVER_KEY = 'botboard:selected-server-id';
-
-function savedServer() {
-  try {
-    const raw = window.localStorage.getItem(SELECTED_SERVER_KEY);
-    if (!raw) return null;
-    if (raw.startsWith('{')) return JSON.parse(raw);
-    if (/^\d+$/.test(raw)) {
-      return { id: raw, name: 'Selected server', members: null };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function saveServer(server) {
-  window.localStorage.setItem(SELECTED_SERVER_KEY, JSON.stringify(server));
-}
-
-// API track shape to the compact view model used by the dashboard.
-function adaptTrack(t) {
-  if (!t) return null;
-  return {
-    id: t.id,
-    title: t.title || 'Unknown',
-    artist: t.author || 'Unknown',
-    duration: msToClock(t.duration),
-    durationMs: t.duration,
-    source: t.source === 'spotify' ? 'Spotify' : 'YouTube',
-    cover: (t.title || '??').slice(0, 2).toUpperCase(),
-    artwork: t.artwork || null,
-    uri: t.uri,
-    requestedBy: t.requestedBy?.username || null,
-  };
-}
-
-function adaptSound(s) {
-  return {
-    id: s.name,
-    name: s.name,
-    duration: s.duration,
-    size: formatBytes(s.size),
-    plays: s.plays,
-    added: relativeTime(s.added),
-  };
-}
-
-function msToClock(ms) {
-  if (!ms || ms < 0) return '0:00';
-  const sec = Math.round(ms / 1000);
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-}
-
-function formatBytes(n) {
-  if (!n) return '0 B';
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function relativeTime(ms) {
-  if (!ms) return 'unknown';
-  const diff = Date.now() - ms;
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-  if (days < 1) return 'today';
-  if (days < 30) return `${days}d`;
-  return `${Math.floor(days / 30)} mo`;
-}
-
-function normalizeLog(entry) {
-  const timestamp = entry.time ? new Date(entry.time).getTime() : Date.now();
-  return {
-    ...entry,
-    src: entry.bot || entry.src || 'core',
-    timestamp,
-    time: new Date(timestamp).toTimeString().slice(0, 8),
-  };
-}
 
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [stage, setStage] = useState('boot');
-  const [user, setUser] = useState(null);
-  const [server, setServer] = useState(null);
-  const [route, setRoute] = useState('overview');
+  // Render the app shell immediately for returning users (cached login + server)
+  // and revalidate auth in the background, so a refresh doesn't flash the boot screen.
+  const initialUser = savedUser();
+  const initialServer = savedServer();
+  const [stage, setStage] = useState(initialUser && initialServer?.id ? 'app' : 'boot');
+  const [user, setUser] = useState(initialUser);
+  const [server, setServer] = useState(initialServer);
+  const [route, setRoute] = useHashRoute('overview');
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-
-  const [voiceJoined, setVoiceJoined] = useState(false);
-  const [channel, setChannel] = useState(null);
-  const [userChannel, setUserChannel] = useState(null);
 
   const [currentSound, setCurrentSound] = useState(null);
   const [currentPreview, setCurrentPreview] = useState(null);
@@ -147,6 +73,7 @@ export default function App() {
       setRestartEnabled(!!me.restartEnabled);
       if (me.user) {
         setUser(me.user);
+        saveUser(me.user);
         const previousServer = savedServer();
         if (previousServer?.id) {
           setServer(previousServer);
@@ -155,14 +82,17 @@ export default function App() {
           setStage('server');
         }
       } else {
+        saveUser(null);
+        clearVoiceTargets();
+        setUser(null);
         setStage('login');
       }
-    }).catch(() => setStage('login'));
+    }).catch(() => { saveUser(null); clearVoiceTargets(); setUser(null); setStage('login'); });
   }, []);
 
   const onLogin = () => {
     if (authConfigured) {
-      window.location.href = API.auth.loginUrl;
+      window.location.replace(API.auth.loginUrl);
     } else {
       setUser({ id: 'dev', username: 'dev', avatar: null, dev: true });
       setStage('server');
@@ -171,6 +101,8 @@ export default function App() {
 
   const onLogout = async () => {
     try { await API.auth.logout(); } catch {}
+    saveUser(null);
+    clearVoiceTargets();
     setUser(null);
     setServer(null);
     setStage('login');
@@ -214,12 +146,6 @@ export default function App() {
       setServer={setServer}
       route={route}
       setRoute={setRoute}
-      voiceJoined={voiceJoined}
-      setVoiceJoined={setVoiceJoined}
-      channel={channel}
-      setChannel={setChannel}
-      userChannel={userChannel}
-      setUserChannel={setUserChannel}
       currentSound={currentSound}
       setCurrentSound={setCurrentSound}
       currentPreview={currentPreview}
@@ -259,8 +185,6 @@ const ServerSelect = ({ onPick, onLogout }) => {
 function DashboardApp(props) {
   const {
     user, server, setServer, route, setRoute,
-    voiceJoined, setVoiceJoined, channel, setChannel,
-    userChannel, setUserChannel,
     currentSound, setCurrentSound, currentPreview, setCurrentPreview,
     moreSheetOpen, setMoreSheetOpen,
     restartConfirm, setRestartConfirm, restartEnabled,
@@ -272,6 +196,9 @@ function DashboardApp(props) {
   const guildId = server.id;
   const previewAudioRef = useRef(null);
   const { data: serverOptions } = useFetch(API.bots.servers, [guildId]);
+  const { data: modulesData, reload: reloadModules } = usePoll(API.bots.modules, POLL_STATUS_MS, [guildId]);
+  const modules = modulesData || [];
+  const moduleById = new Map(modules.map((module) => [module.id, module]));
 
   useEffect(() => {
     const freshServer = serverOptions?.find((option) => option.id === guildId);
@@ -296,11 +223,16 @@ function DashboardApp(props) {
     newibot: statusData?.music?.online ? 'online' : 'offline',
   };
   const botInfo = {
-    soundbot: statusData?.sound?.bot || null,
-    newibot: statusData?.music?.bot || null,
+    soundbot: statusData?.sound?.bot || moduleById.get('sound')?.manifest?.bot || null,
+    newibot: statusData?.music?.bot || moduleById.get('music')?.manifest?.bot || null,
   };
+  const displayNames = {
+    soundbot: moduleDisplayName(moduleById.get('sound'), dashboardBotName('soundbot', botInfo)),
+    newibot: moduleDisplayName(moduleById.get('music'), dashboardBotName('newibot', botInfo)),
+  };
+  const moduleLabels = Object.fromEntries(modules.map((module) => [module.id, moduleDisplayName(module, module.id)]));
 
-  const { data: guildDetail } = useFetch(async () => {
+  const { data: guildDetail, reload: reloadGuildDetail } = usePoll(async () => {
     const [musicGuilds, soundGuilds] = await Promise.all([
       API.music.guilds().catch(() => []),
       API.sound.guilds().catch(() => []),
@@ -308,38 +240,64 @@ function DashboardApp(props) {
     return musicGuilds.find((guild) => guild.id === guildId)
       || soundGuilds.find((guild) => guild.id === guildId)
       || null;
-  }, [guildId]);
+  }, POLL_STATUS_MS, [guildId]);
   const voiceChannels = guildDetail?.voiceChannels || [];
 
+  // Per-bot voice target. Default 'auto' = follow the channel the user is in.
+  // A pinned channel id is kept until the user changes it (never overwritten by
+  // the auto-detect below).
+  const [userVoiceChannel, setUserVoiceChannel] = useState(null);
+  const [voiceTargets, setVoiceTargets] = useState(() => savedVoiceTargets(guildId));
+
   useEffect(() => {
-    setChannel(null);
-    setUserChannel(null);
-    setVoiceJoined(false);
+    setVoiceTargets(savedVoiceTargets(guildId));
+    setUserVoiceChannel(null);
   }, [guildId]);
 
   useEffect(() => {
-    const actualUserChannel = voiceChannels.find((voiceChannel) => voiceChannel.id === guildDetail?.userVoiceChannelId) || null;
-    setUserChannel(actualUserChannel);
-    setVoiceJoined(!!actualUserChannel);
-    if (actualUserChannel) {
-      setChannel(actualUserChannel);
-    } else if (channel && !voiceChannels.some((voiceChannel) => voiceChannel.id === channel.id)) {
-      setChannel(null);
-    }
-  }, [guildDetail?.userVoiceChannelId, voiceChannels, channel, setChannel, setUserChannel, setVoiceJoined]);
+    setUserVoiceChannel(voiceChannels.find((vc) => vc.id === guildDetail?.userVoiceChannelId) || null);
+  }, [guildDetail?.userVoiceChannelId, voiceChannels]);
 
-  const { data: rawPlayer, reload: reloadPlayer } = usePoll(
-    () => API.music.player(guildId).catch(() => null),
+  const { data: rawPlayer, error: playerError, reload: reloadPlayer } = usePoll(
+    () => API.music.player(guildId),
     POLL_PLAYER_MS,
+    [guildId],
+  );
+  const { data: soundStats } = usePoll(
+    () => API.moduleApi.stats('sound').catch(() => null),
+    5000,
+    [guildId],
+  );
+  const { data: musicStats } = usePoll(
+    () => API.moduleApi.stats('music').catch(() => null),
+    5000,
     [guildId],
   );
 
   useEffect(() => {
-    if (rawPlayer?.voiceChannelId) {
-      const ch = voiceChannels.find((c) => c.id === rawPlayer.voiceChannelId);
-      if (ch && !channel) setChannel(ch);
-    }
-  }, [rawPlayer?.voiceChannelId, voiceChannels, channel, setChannel]);
+    reloadStatus();
+    reloadGuildDetail();
+    reloadPlayer();
+  }, [route, reloadStatus, reloadGuildDetail, reloadPlayer]);
+
+  const resolveTarget = useCallback((botKey) => {
+    const sel = voiceTargets[botKey] || 'auto';
+    if (sel === 'auto') return userVoiceChannel;
+    return voiceChannels.find((vc) => vc.id === sel) || null;
+  }, [voiceTargets, userVoiceChannel, voiceChannels]);
+
+  const setVoiceTarget = useCallback((botKey, value) => {
+    setVoiceTargets((prev) => {
+      const next = { ...prev, [botKey]: value };
+      saveVoiceTargets(guildId, next);
+      return next;
+    });
+  }, [guildId]);
+
+  const botVoiceChannelId = {
+    soundbot: statusData?.sound?.voiceChannelId || null,
+    newibot: rawPlayer?.voiceChannelId || null,
+  };
 
   const playerState = rawPlayer ? {
     queue: [rawPlayer.current, ...rawPlayer.queue].filter(Boolean).map(adaptTrack),
@@ -374,7 +332,7 @@ function DashboardApp(props) {
     }
   }, [guildId, playerState.repeat, reloadPlayer, setToast]);
 
-  const { data: rawSounds, reload: reloadSounds } = useFetch(API.sound.list, [guildId]);
+  const { data: rawSounds, reload: reloadSounds } = usePoll(API.sound.list, POLL_STATUS_MS, [guildId]);
   const sounds = (rawSounds || []).map(adaptSound);
 
   const { data: musicSettings, reload: reloadMusicSettings } = useFetch(API.music.settings, []);
@@ -439,17 +397,24 @@ function DashboardApp(props) {
       }));
   }, [appendLogs, setLogConnection]);
 
+  // Resolve the channel a bot should use; null means "auto but user is in no
+  // channel and nothing pinned" — caller should surface the hint.
+  const requireTarget = (botKey) => {
+    const target = resolveTarget(botKey);
+    if (!target) {
+      setToast({ msg: `${displayNames[botKey]}: join a voice channel, or pick one in the top-right selector`, id: Date.now() });
+    }
+    return target;
+  };
+
   const playSound = async (sound) => {
     if (!sound) return;
     if (botStatus.soundbot !== 'online') {
-      setToast({ msg: 'SoundBot is offline', id: Date.now() });
+      setToast({ msg: `${displayNames.soundbot} is offline`, id: Date.now() });
       return;
     }
-    const targetChannel = userChannel || channel;
-    if (!targetChannel) {
-      setToast({ msg: 'No voice channel selected', id: Date.now() });
-      return;
-    }
+    const targetChannel = requireTarget('soundbot');
+    if (!targetChannel) return;
     setCurrentSound(sound);
     setToast({ msg: `▶ ${sound.name}.mp3 → ${targetChannel.name}`, id: Date.now() });
     try {
@@ -461,38 +426,35 @@ function DashboardApp(props) {
       setToast({ msg: `Play failed: ${err.message}`, id: Date.now() });
     }
   };
-  const voiceTarget = () => userChannel || channel;
-  const requireVoiceTarget = () => {
-    const target = voiceTarget();
-    if (!target) setToast({ msg: 'Join a voice channel or choose a target channel first', id: Date.now() });
-    return target;
-  };
   const connectSound = async () => {
-    const target = requireVoiceTarget();
+    const target = requireTarget('soundbot');
     if (!target) return;
     try {
       await API.sound.connect({ guildId, channelId: target.id });
-      setToast({ msg: `SoundBot joined ${target.name}`, id: Date.now() });
+      await Promise.all([reloadStatus(), reloadGuildDetail()]);
+      setToast({ msg: `${displayNames.soundbot} joined ${target.name}`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `SoundBot join failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.soundbot} join failed: ${err.message}`, id: Date.now() });
     }
   };
   const stopSound = async () => {
     try {
       await API.sound.stop();
       setCurrentSound(null);
-      setToast({ msg: 'SoundBot playback stopped', id: Date.now() });
+      await reloadStatus();
+      setToast({ msg: `${displayNames.soundbot} playback stopped`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `SoundBot stop failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.soundbot} stop failed: ${err.message}`, id: Date.now() });
     }
   };
   const disconnectSound = async () => {
     try {
       await API.sound.disconnect();
       setCurrentSound(null);
-      setToast({ msg: 'SoundBot disconnected', id: Date.now() });
+      await Promise.all([reloadStatus(), reloadGuildDetail()]);
+      setToast({ msg: `${displayNames.soundbot} disconnected`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `SoundBot disconnect failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.soundbot} disconnect failed: ${err.message}`, id: Date.now() });
     }
   };
 
@@ -537,12 +499,13 @@ function DashboardApp(props) {
   }, []);
 
   const restartBot = async (bot) => {
-    const apiKey = bot === 'newibot' ? 'music' : bot === 'soundbot' ? 'sound' : null;
+    const apiKey = bot === 'newibot' ? 'music' : bot === 'soundbot' ? 'sound' : bot;
     if (!apiKey) return;
-    setToast({ msg: `Restarting ${bot}…`, id: Date.now() });
+    const label = displayNames[bot] || moduleLabels[apiKey] || bot;
+    setToast({ msg: `Restarting ${label}...`, id: Date.now() });
     try {
       await API.bots.restart(apiKey);
-      setTimeout(() => { reloadStatus(); setToast({ msg: `✓ ${bot} restart requested`, id: Date.now() }); }, 1500);
+      setTimeout(() => { reloadStatus(); reloadModules(); setToast({ msg: `${label} restart requested`, id: Date.now() }); }, 1500);
     } catch (err) {
       setToast({ msg: `Restart failed: ${err.message}`, id: Date.now() });
     }
@@ -581,11 +544,8 @@ function DashboardApp(props) {
     }
   };
   const addMusic = async (query) => {
-    const targetChannel = userChannel || channel;
-    if (!targetChannel) {
-      setToast({ msg: 'Join or select a voice channel first', id: Date.now() });
-      return false;
-    }
+    const targetChannel = requireTarget('newibot');
+    if (!targetChannel) return false;
     try {
       await API.music.play(guildId, { query, channelId: targetChannel.id });
       reloadPlayer();
@@ -597,20 +557,20 @@ function DashboardApp(props) {
     }
   };
   const connectMusic = async () => {
-    const target = requireVoiceTarget();
+    const target = requireTarget('newibot');
     if (!target) return;
     try {
       await API.music.connect(guildId, target.id);
-      reloadPlayer();
-      setToast({ msg: `NewiMusicBot joined ${target.name}`, id: Date.now() });
+      await Promise.all([reloadPlayer(), reloadStatus(), reloadGuildDetail()]);
+      setToast({ msg: `${displayNames.newibot} joined ${target.name}`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `MusicBot join failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.newibot} join failed: ${err.message}`, id: Date.now() });
     }
   };
   const stopMusic = async () => {
     try {
       await API.music.stop(guildId);
-      reloadPlayer();
+      await Promise.all([reloadPlayer(), reloadStatus()]);
       setToast({ msg: 'Music playback stopped', id: Date.now() });
     } catch (err) {
       setToast({ msg: `Music stop failed: ${err.message}`, id: Date.now() });
@@ -619,13 +579,29 @@ function DashboardApp(props) {
   const disconnectMusic = async () => {
     try {
       await API.music.disconnect(guildId);
-      reloadPlayer();
-      setToast({ msg: 'NewiMusicBot disconnected', id: Date.now() });
+      await Promise.all([reloadPlayer(), reloadStatus(), reloadGuildDetail()]);
+      setToast({ msg: `${displayNames.newibot} disconnected`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `Music disconnect failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.newibot} disconnect failed: ${err.message}`, id: Date.now() });
     }
   };
   const searchMusic = useCallback((query) => API.music.search(guildId, query), [guildId]);
+  const soundTarget = resolveTarget('soundbot');
+  const voiceControls = {
+    soundbot: {
+      onJoin: connectSound,
+      onStop: stopSound,
+      onDisconnect: disconnectSound,
+    },
+    newibot: {
+      onJoin: connectMusic,
+      onStop: stopMusic,
+      onDisconnect: disconnectMusic,
+    },
+  };
+  const activeMeta = routeMeta(route, modules);
+  const activeGenericKind = activeMeta.module ? (activeMeta.page?.kind || activeMeta.page?.id) : '';
+  const activeGenericName = activeMeta.module ? moduleDisplayName(activeMeta.module, activeMeta.parentBot) : '';
   return (
     <div className="app">
       <Sidebar route={route} setRoute={setRoute}
@@ -637,28 +613,31 @@ function DashboardApp(props) {
                onLogout={onLogout}
                botStatus={botStatus}
                botInfo={botInfo}
+               modules={modules}
                restartEnabled={restartEnabled}
                onRestart={(bot) => setRestartConfirm(bot)}/>
       <div className="main">
-        <Topbar route={route} server={server} channel={channel || { name: '—' }} setChannel={setChannel}
-                voiceJoined={voiceJoined} setVoiceJoined={setVoiceJoined}
-                userChannel={userChannel} setUserChannel={setUserChannel}
+        <Topbar route={route} server={server}
                 voiceChannels={voiceChannels}
-                onOpenMenu={() => setMoreSheetOpen(true)}/>
+                voiceTargets={voiceTargets} setVoiceTarget={setVoiceTarget}
+                userVoiceChannel={userVoiceChannel} botVoiceChannelId={botVoiceChannelId}
+                voiceControls={voiceControls}
+                onOpenMenu={() => setMoreSheetOpen(true)}
+                botInfo={botInfo}
+                modules={modules}/>
         <div className="content">
           {route === 'overview' && <OverviewScreen server={server} openRoute={setRoute}
             currentTrack={playerState.queue[playerState.currentIdx]}
-            voiceJoined={voiceJoined} channel={channel || { name: '—' }}
+            voiceJoined={!!soundTarget} channel={soundTarget || { name: 'voice' }}
             botStatus={botStatus} currentSound={currentSound}
             botInfo={botInfo} statusData={statusData} liveLogs={liveLogs}
             sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}/>}
+          {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}/>}
           {route === 'sb/board' && (
             <>
               <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
                 playSound={playSound} previewSound={previewSound}
-                onConnect={connectSound} onStop={stopSound} onDisconnect={disconnectSound}
-                tileSize={tweaks.tileSize} userChannel={userChannel}
-                voiceJoined={voiceJoined} channel={channel || { name: '—' }}/>
+                tileSize={tweaks.tileSize} targetChannel={soundTarget}/>
               {(currentSound || currentPreview) && (
                 <div className="mini-player">
                   <div className="mini-player-cover"
@@ -669,7 +648,7 @@ function DashboardApp(props) {
                     <div className="mini-player-name">{(currentSound || currentPreview).name}.mp3</div>
                     <div className="mini-player-meta">
                       {currentSound
-                        ? <>Playing in Discord · {voiceJoined ? channel?.name : 'joining voice'}</>
+                        ? <>Playing in Discord · {soundTarget ? soundTarget.name : 'joining voice'}</>
                         : <>Local preview · not sent to Discord</>}
                     </div>
                   </div>
@@ -690,24 +669,43 @@ function DashboardApp(props) {
           {route === 'sb/library' && <LibraryScreen sounds={sounds}
             addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} playSound={playSound}/>}
           {route === 'sb/stats' && <StatsScreen bot="sound" sounds={sounds}
-            botStatus={botStatus} botInfo={botInfo} statusData={statusData}/>}
+            botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>}
           {route === 'sb/logs' && <LogsScreen bot="sound"
-            botName={botInfo?.soundbot?.tag || 'SoundBot'} liveLogs={liveLogs} connection={logConnection}/>}
+            botName={displayNames.soundbot} liveLogs={liveLogs} connection={logConnection}/>}
           {route === 'sb/settings' && <SoundbotSettingsScreen
             settings={settings} onSave={(patch) => saveSettings('sound', patch)}
             settingsLoaded={!!soundSettings}
-            botStatus={botStatus.soundbot} restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>}
+            botStatus={botStatus.soundbot} botName={displayNames.soundbot} restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>}
 
           {route === 'mb/player' && <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
-            onConnect={connectMusic} onStop={stopMusic} onDisconnect={disconnectMusic} playerStyle={tweaks.playerStyle}/>}
+            playerStyle={tweaks.playerStyle} playerError={playerError}/>}
           {route === 'mb/stats' && <StatsScreen bot="music" sounds={sounds}
-            botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length}/>}
+            botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>}
           {route === 'mb/logs' && <LogsScreen bot="music"
-            botName={botInfo?.newibot?.tag || 'NewiMusicBot'} liveLogs={liveLogs} connection={logConnection}/>}
+            botName={displayNames.newibot} liveLogs={liveLogs} connection={logConnection}/>}
           {route === 'mb/settings' && <NewibotSettingsScreen
             settings={settings} onSave={(patch) => saveSettings('music', patch)}
             settingsLoaded={!!musicSettings}
-            botStatus={botStatus.newibot} restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>}
+            botStatus={botStatus.newibot} botName={displayNames.newibot} restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>}
+
+          {activeMeta.module && activeGenericKind === 'stats' && (
+            <GenericStatsScreen botId={activeMeta.parentBot} botName={activeGenericName}/>
+          )}
+          {activeMeta.module && activeGenericKind === 'logs' && (
+            <LogsScreen bot={activeMeta.parentBot}
+              botName={activeGenericName} liveLogs={liveLogs} connection={logConnection}/>
+          )}
+          {activeMeta.module && activeGenericKind === 'settings' && (
+            <GenericSettingsScreen botId={activeMeta.parentBot}
+              botName={activeGenericName} setToast={setToast}/>
+          )}
+          {activeMeta.module && !['stats', 'logs', 'settings'].includes(activeGenericKind) && (
+            <div className="content-narrow">
+              <div className="empty">
+                <div>No renderer is available yet for module page "{activeGenericKind}".</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -724,6 +722,7 @@ function DashboardApp(props) {
           user={user}
           botStatus={botStatus}
           botInfo={botInfo}
+          modules={modules}
           soundsCount={sounds.length}
           restartEnabled={restartEnabled}
           onRestart={(bot) => { setRestartConfirm(bot); setMoreSheetOpen(false); }}
@@ -733,6 +732,7 @@ function DashboardApp(props) {
 
       {restartConfirm && (
         <RestartModal which={restartConfirm}
+                      names={{ ...moduleLabels, ...displayNames }}
                       onCancel={() => setRestartConfirm(null)}
                       onConfirm={() => { restartBot(restartConfirm); setRestartConfirm(null); }}/>
       )}
@@ -744,105 +744,14 @@ function DashboardApp(props) {
 
 // Mapping between the UI's flat settings keys (sbPrefix, mbVol, …) and the
 // per-bot API config. Keep this in one place so the screens stay dumb.
-const SETTING_MAP_MUSIC = {
-  mbPrefix: 'prefix',
-  mbUsername: 'username',
-  mbLogLevel: 'logLevel',
-  mbSearch: 'defaultSearchPlatform',
-  mbVol: 'defaultVolume',
-  mbMaxQueue: 'maxQueueSize',
-  mbAutoDc: { key: 'autoDisconnectDelay', toApi: (v) => Number(v) * 60 * 1000, fromApi: (v) => Math.round((v || 0) / 60_000) },
-  mbConnTimeout: 'connectionTimeout',
-  mbCooldown: 'commandCooldown',
-  mbRetryDelay: 'lavalinkRetryDelay',
-  mbRetryCount: 'lavalinkRetryCount',
-  mbMaxPlaylist: 'maxPlaylistSize',
-  mbMaxResults: 'maxSearchResults',
-  mbFast: 'fastModeEnabled',
-  mbUiInterval: 'uiUpdateInterval',
-  mbFastUi: 'fastUIUpdates',
-  mbProgressLength: 'progressBarLength',
-  mbMaxDisplay: 'maxDisplayTracks',
-  mbAutoCleanup: 'autoUICleanup',
-  mbPauseTimeout: { key: 'pauseTimeout', toApi: (v) => Number(v) * 60 * 1000, fromApi: (v) => Math.round((v || 0) / 60_000) },
-  mbVolumeStep: 'volumeStep',
-  mbPrebuffer: 'preBufferNext',
-  mbSmartVolume: 'smartVolumeControl',
-  mbCache: 'cacheEnabled',
-  mbCacheResults: 'cacheSearchResults',
-  mbCacheTtl: 'cacheTTL',
-  mbCacheSize: 'maxCacheSize',
-  mbQualityCache: 'trackQualityCache',
-  mbConcurrent: 'maxConcurrentSearches',
-  mbPrevious: 'maxPreviousTracks',
-  llHost: 'lavalinkHost',
-  llPort: 'lavalinkPort',
-  llPass: 'lavalinkPassword',
-  llTimeout: 'lavalinkTimeout',
-  emojiPrevious: 'emojiPrevious',
-  emojiPlaypause: 'emojiPlaypause',
-  emojiSkip: 'emojiSkip',
-  emojiShuffle: 'emojiShuffle',
-  emojiStop: 'emojiStop',
-  emojiYt: 'emojiYt',
-  emojiYtm: 'emojiYtm',
-};
-const SETTING_MAP_SOUND = {
-  sbPrefix: 'prefix',
-  sbMaxMb: 'maxUploadSizeMb',
-  sbMaxName: 'maxFilenameLength',
-  sbAutoLeave: { key: 'autoLeaveDelayMs', toApi: (v) => Number(v) * 1000, fromApi: (v) => Math.round((v || 0) / 1000) },
-};
 
-function mapSettingsPatch(uiPatch, map) {
-  const out = {};
-  for (const [uiKey, value] of Object.entries(uiPatch)) {
-    const spec = map[uiKey];
-    if (!spec) continue;
-    const apiKey = typeof spec === 'string' ? spec : spec.key;
-    out[apiKey] = typeof spec === 'object' && spec.toApi ? spec.toApi(value) : value;
-  }
-  return out;
-}
-
-function mergeSettings(music, sound) {
-  const out = {
-    sbPrefix: '8', sbMaxMb: 10, sbMaxName: 10, sbAutoLeave: 30,
-    mbPrefix: '.', mbUsername: 'NewiMusicBot', mbLogLevel: 'info', mbSearch: 'ytsearch', mbVol: 40, mbMaxQueue: 1000,
-    mbAutoDc: 5, mbConnTimeout: 7000, mbCooldown: 2000, mbRetryDelay: 5000, mbRetryCount: 3,
-    mbMaxPlaylist: 50, mbMaxResults: 10, mbFast: true, mbUiInterval: 3000, mbFastUi: true,
-    mbProgressLength: 18, mbMaxDisplay: 10, mbAutoCleanup: true, mbPauseTimeout: 20, mbVolumeStep: 5,
-    mbPrebuffer: true, mbSmartVolume: true, mbCache: true, mbCacheResults: true, mbCacheTtl: 300,
-    mbCacheSize: 500, mbQualityCache: true, mbConcurrent: 3, mbPrevious: 50,
-    llHost: 'localhost', llPort: 2333, llPass: '******', llTimeout: 15000,
-    emojiPrevious: '', emojiPlaypause: '', emojiSkip: '', emojiShuffle: '', emojiStop: '', emojiYt: '', emojiYtm: '',
-  };
-  if (music) {
-    for (const [uiKey, spec] of Object.entries(SETTING_MAP_MUSIC)) {
-      const apiKey = typeof spec === 'string' ? spec : spec.key;
-      let val = music[apiKey];
-      if (typeof spec === 'object' && spec.fromApi) val = spec.fromApi(val);
-      if (val !== undefined) out[uiKey] = val;
-    }
-    if (music.lavalinkPassword) out.llPass = music.lavalinkPassword;
-  }
-  if (sound) {
-    for (const [uiKey, spec] of Object.entries(SETTING_MAP_SOUND)) {
-      const apiKey = typeof spec === 'string' ? spec : spec.key;
-      let val = sound[apiKey];
-      if (typeof spec === 'object' && spec.fromApi) val = spec.fromApi(val);
-      if (val !== undefined) out[uiKey] = val;
-    }
-  }
-  return out;
-}
-
-const RestartModal = ({ which, onCancel, onConfirm }) => {
-  const names = { soundbot: 'SoundBot', newibot: 'NewiMusicBot', all: 'both bots' };
+const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) => {
+  const names = { soundbot: dynamicNames.soundbot || 'Sound Bot', newibot: dynamicNames.newibot || 'Music Bot', all: 'both bots' };
+  const label = names[which] || dynamicNames[which] || which;
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Restart {names[which]}?</h3>
+        <h3>Restart {label}?</h3>
         <p>
           {which === 'newibot'
             ? 'The current track will stop. Queue will be preserved. Estimated downtime ~3s.'

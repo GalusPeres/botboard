@@ -2,18 +2,24 @@
 // short timeouts, and normalises errors so route handlers can use try/catch.
 
 import { config } from './config.js';
+import {
+  botConfig,
+  botIds as registryBotIds,
+  hasBot as registryHasBot,
+} from './botRegistry.js';
 
 export function botIds() {
-  return Object.keys(config.bots);
+  return registryBotIds();
 }
 
 export function hasBot(bot) {
-  return Object.prototype.hasOwnProperty.call(config.bots, bot);
+  return registryHasBot(bot);
 }
 
 function baseUrl(bot) {
-  if (!hasBot(bot)) throw new Error(`unknown bot: ${bot}`);
-  return config.bots[bot].url.replace(/\/$/, '');
+  const target = botConfig(bot);
+  if (!target) throw new Error(`unknown bot: ${bot}`);
+  return target.url.replace(/\/$/, '');
 }
 
 function headers(extra = {}) {

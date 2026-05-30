@@ -3,6 +3,7 @@
 
 import Docker from 'dockerode';
 import { config } from './config.js';
+import { botConfigs, botContainer } from './botRegistry.js';
 
 let docker = null;
 function client() {
@@ -16,7 +17,7 @@ export async function restartContainer(bot) {
     error.status = 503;
     throw error;
   }
-  const name = config.bots[bot]?.container;
+  const name = botContainer(bot);
   if (!name) throw new Error(`no container configured for bot: ${bot}`);
   const container = client().getContainer(name);
   await container.restart({ t: 5 });
@@ -26,7 +27,7 @@ export async function restartContainer(bot) {
 export async function listMatchingContainers() {
   try {
     const all = await client().listContainers({ all: true });
-    const names = new Set(Object.values(config.bots).map((bot) => bot.container));
+    const names = new Set(Object.values(botConfigs()).map((bot) => bot.container).filter(Boolean));
     return all
       .filter((c) => c.Names.some((n) => names.has(n.replace(/^\//, ''))))
       .map((c) => ({ name: c.Names[0].replace(/^\//, ''), state: c.State, status: c.Status }));

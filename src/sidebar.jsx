@@ -1,24 +1,27 @@
 // Sidebar + topbar + mobile navigation. Bot identity per route ('sb', 'mb', 'gen')
 // drives the accent stripe and crumb color.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Icon } from './components.jsx';
+import { dashboardBotName, moduleAvatar, moduleDisplayName } from './botIdentity.js';
+import { useCloseOnOutside } from './hooks.js';
 
 export const ROUTES = {
   overview:     { title: 'Overview',              group: 'gen' },
-  'sb/board':   { title: 'Soundboard',            group: 'sb',  parent: 'SoundBot' },
-  'sb/library': { title: 'Sound Library',         group: 'sb',  parent: 'SoundBot' },
-  'sb/stats':   { title: 'Statistics',            group: 'sb',  parent: 'SoundBot' },
-  'sb/logs':    { title: 'Live Logs',             group: 'sb',  parent: 'SoundBot' },
-  'sb/settings':{ title: 'SoundBot Settings',     group: 'sb',  parent: 'SoundBot' },
-  'mb/player':  { title: 'Music Player',          group: 'mb',  parent: 'NewiMusicBot' },
-  'mb/stats':   { title: 'Statistics',            group: 'mb',  parent: 'NewiMusicBot' },
-  'mb/logs':    { title: 'Live Logs',             group: 'mb',  parent: 'NewiMusicBot' },
-  'mb/settings':{ title: 'NewiMusicBot Settings', group: 'mb',  parent: 'NewiMusicBot' },
+  'bot-modules':{ title: 'Bot Modules',           group: 'gen' },
+  'sb/board':   { title: 'Soundboard',            group: 'sb',  parentBot: 'soundbot' },
+  'sb/library': { title: 'Sound Library',         group: 'sb',  parentBot: 'soundbot' },
+  'sb/stats':   { title: 'Statistics',            group: 'sb',  parentBot: 'soundbot' },
+  'sb/logs':    { title: 'Live Logs',             group: 'sb',  parentBot: 'soundbot' },
+  'sb/settings':{ title: 'Settings',              group: 'sb',  parentBot: 'soundbot' },
+  'mb/player':  { title: 'Music Player',          group: 'mb',  parentBot: 'newibot' },
+  'mb/stats':   { title: 'Statistics',            group: 'mb',  parentBot: 'newibot' },
+  'mb/logs':    { title: 'Live Logs',             group: 'mb',  parentBot: 'newibot' },
+  'mb/settings':{ title: 'Settings',              group: 'mb',  parentBot: 'newibot' },
 };
 
 const BOT_MODULES = [
   {
-    key: 'soundbot', group: 'sb', icon: 'soundboard', fallbackName: 'SoundBot',
+    key: 'soundbot', group: 'sb', icon: 'soundboard', fallbackName: 'Sound Bot',
     pages: [
       { id: 'sb/board', icon: 'soundboard', label: 'Soundboard', badge: 'sounds' },
       { id: 'sb/library', icon: 'library', label: 'Sound Library' },
@@ -28,7 +31,7 @@ const BOT_MODULES = [
     ],
   },
   {
-    key: 'newibot', group: 'mb', icon: 'music', fallbackName: 'NewiMusicBot',
+    key: 'newibot', group: 'mb', icon: 'music', fallbackName: 'Music Bot',
     pages: [
       { id: 'mb/player', icon: 'music', label: 'Music Player' },
       { id: 'mb/stats', icon: 'stats', label: 'Statistics' },
@@ -37,6 +40,37 @@ const BOT_MODULES = [
     ],
   },
 ];
+
+const FIXED_MODULE_BY_ID = {
+  sound: 'soundbot',
+  music: 'newibot',
+};
+
+const FIXED_ID_BY_KEY = {
+  soundbot: 'sound',
+  newibot: 'music',
+};
+
+function supportedGenericPages(module) {
+  const pages = module?.manifest?.pages || [];
+  return pages.filter((page) => ['stats', 'logs', 'settings'].includes(page.kind || page.id));
+}
+
+export function routeMeta(route, modules = []) {
+  if (ROUTES[route]) return ROUTES[route];
+  const match = String(route || '').match(/^bot\/([^/]+)\/([^/]+)$/);
+  if (!match) return { title: 'Overview', group: 'gen' };
+  const [, botId, pageId] = match;
+  const module = modules.find((item) => item.id === botId);
+  const page = module?.manifest?.pages?.find((item) => item.id === pageId);
+  return {
+    title: page?.label || pageId,
+    group: 'mod',
+    parentBot: botId,
+    module,
+    page,
+  };
+}
 
 function guildInitials(name) {
   return (name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -51,21 +85,7 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
   const wrapRef = useRef(null);
   const options = (servers.length ? servers : [server]).filter(Boolean);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const closeOutside = (event) => {
-      if (!wrapRef.current?.contains(event.target)) setOpen(false);
-    };
-    const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOutside);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOutside);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [open]);
+  useCloseOnOutside(wrapRef, open, () => setOpen(false));
 
   return (
     <div className="server-selector-wrap" ref={wrapRef}>
@@ -99,10 +119,12 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
   );
 };
 
-export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, restartEnabled, onRestart }) => {
+export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, modules = [], restartEnabled, onRestart }) => {
   const displayName = user?.global_name || user?.username || 'Discord user';
   const userHandle = user?.username ? `@${user.username}` : '';
   const userInitial = displayName.charAt(0).toUpperCase();
+  const moduleById = new Map((modules || []).map((item) => [item.id, item]));
+  const extraModules = (modules || []).filter((module) => !FIXED_MODULE_BY_ID[module.id] && supportedGenericPages(module).length);
 
   return (
     <aside className="sidebar">
@@ -116,6 +138,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
       <div className="nav-section">
         <div className="nav-label">General</div>
         <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
+        <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>
       </div>
 
       {BOT_MODULES.map((bot) => (
@@ -124,8 +147,8 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
           botKey={bot.key}
           groupCls={bot.group}
           botIcon={bot.icon}
-          name={botInfo?.[bot.key]?.tag || bot.fallbackName}
-          avatar={botInfo?.[bot.key]?.avatar}
+          name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
+          avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
           status={botStatus[bot.key]}
           restartEnabled={restartEnabled}
           onRestart={() => onRestart(bot.key)}
@@ -134,6 +157,25 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
             <NavItem key={page.id} id={page.id} route={route} setRoute={setRoute}
               icon={page.icon} label={page.label}
               badge={page.badge === 'sounds' ? soundsCount : undefined}/>
+          ))}
+        </BotGroup>
+      ))}
+
+      {extraModules.map((module) => (
+        <BotGroup
+          key={module.id}
+          botKey={module.id}
+          groupCls="mod"
+          botIcon={module.manifest?.icon || 'grid'}
+          name={moduleDisplayName(module, module.id)}
+          avatar={moduleAvatar(module)}
+          status={module.online ? 'online' : 'offline'}
+          restartEnabled={restartEnabled}
+          onRestart={() => onRestart(module.id)}
+        >
+          {supportedGenericPages(module).map((page) => (
+            <NavItem key={page.id} id={`bot/${module.id}/${page.id}`} route={route} setRoute={setRoute}
+              icon={page.icon || 'grid'} label={page.label || page.id} group="mod"/>
           ))}
         </BotGroup>
       ))}
@@ -156,9 +198,9 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
   );
 };
 
-export const NavItem = ({ id, route, setRoute, icon, label, badge }) => {
+export const NavItem = ({ id, route, setRoute, icon, label, badge, group }) => {
   const active = route === id;
-  const cat = ROUTES[id]?.group || 'gen';
+  const cat = group || ROUTES[id]?.group || 'gen';
   return (
     <div className={'nav-item nav-' + cat + (active ? ' active' : '')}
          onClick={() => setRoute(id)}>
@@ -202,59 +244,96 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, rest
   );
 };
 
-export const Topbar = ({ route, server, channel, setChannel, voiceJoined, setVoiceJoined, userChannel, setUserChannel, voiceChannels = [], onOpenMenu }) => {
-  const meta = ROUTES[route] || { title: '—' };
+export const Topbar = ({ route, server, voiceChannels = [], voiceTargets = {}, setVoiceTarget, userVoiceChannel, botVoiceChannelId = {}, voiceControls = {}, onOpenMenu, botInfo, modules = [] }) => {
+  const meta = routeMeta(route, modules);
   const [chanOpen, setChanOpen] = useState(false);
+  const channelRef = useRef(null);
+  const sectionTitle = meta.module
+    ? moduleDisplayName(meta.module, meta.parentBot)
+    : meta.parentBot
+      ? dashboardBotName(meta.parentBot, botInfo)
+      : 'General';
+  useCloseOnOutside(channelRef, chanOpen, () => setChanOpen(false));
+
+  const botKey = meta.parentBot;
+  const hasVoiceControls = !!(botKey && voiceControls[botKey]);
+  const selection = botKey ? (voiceTargets[botKey] || 'auto') : 'auto';
+  const isAuto = selection === 'auto';
+  const pinned = isAuto ? null : voiceChannels.find((c) => c.id === selection);
+  const connected = !!(botKey && botVoiceChannelId[botKey]);
+  const chipLabel = isAuto
+    ? (userVoiceChannel ? `Auto · ${userVoiceChannel.name}` : 'Auto · no channel')
+    : (pinned?.name || 'Pick channel');
 
   return (
     <header className="topbar">
       <button className="mobile-menu-button" type="button" aria-label="Open navigation" onClick={onOpenMenu}>
         <Icon name="menu" size={20}/>
       </button>
-      {meta.parent && (
-        <>
-          <span className={'topbar-crumb crumb-' + meta.group}>{meta.parent}</span>
-          <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
-        </>
-      )}
-      <span className="topbar-title">{meta.title}</span>
+      <span className="topbar-title">{sectionTitle}</span>
 
       <div className="topbar-spacer"/>
 
+      {botKey && hasVoiceControls && (
       <div className="topbar-actions">
-        <div style={{ position: 'relative' }} className="voice-chip-bot">
-          <button className={'voice-chip' + (voiceJoined ? ' connected' : '')}
+        <div className="topbar-voice-actions">
+          <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onJoin}>
+            <Icon name="speaker" size={12}/> <span>Join</span>
+          </button>
+          <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onStop}>
+            <Icon name="stop" size={12}/> <span>Stop</span>
+          </button>
+          <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onDisconnect}>
+            <Icon name="x" size={12}/> <span>Disconnect</span>
+          </button>
+        </div>
+        <div style={{ position: 'relative' }} className="voice-chip-bot" ref={channelRef}>
+          <button className={'voice-chip' + (connected ? ' connected' : '')}
+                  type="button"
                   onClick={() => setChanOpen(o => !o)}>
             <span className="voice-actor">Channel</span>
             <span className="voice-dot"/>
-            <Icon name="speaker" size={13} style={{ color: voiceJoined ? 'var(--green)' : 'var(--text-muted)' }}/>
-            <span>{channel?.name || 'Pick channel'}</span>
+            <Icon name="speaker" size={13} style={{ color: connected ? 'var(--green)' : 'var(--text-muted)' }}/>
+            <span>{chipLabel}</span>
             <Icon name="chevron-down" size={11} style={{ color: 'var(--text-dim)' }}/>
           </button>
           {chanOpen && (
-            <div className="menu" style={{ top: '110%', right: 0, minWidth: 220 }}>
-              <div style={{ padding: '6px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Target Voice Channel</div>
+            <div className="menu" style={{ top: '110%', right: 0, minWidth: 240 }}>
+              <div style={{ padding: '6px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Target channel for {sectionTitle}</div>
+              <div className="menu-item"
+                   onClick={() => { setVoiceTarget(botKey, 'auto'); setChanOpen(false); }}
+                   style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="headphones" size={12} style={{ color: 'var(--text-dim)' }}/>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div>Where I am (Auto)</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{userVoiceChannel ? userVoiceChannel.name : "you're not in a channel"}</div>
+                </div>
+                {isAuto && <Icon name="check" size={12}/>}
+              </div>
               {voiceChannels.length === 0 && (
                 <div style={{ padding: '8px 10px', color: 'var(--text-dim)', fontSize: 12 }}>No voice channels found.</div>
               )}
               {voiceChannels.map(c => (
                 <div key={c.id} className="menu-item"
-                     onClick={() => { setChannel(c); setUserChannel(c); setChanOpen(false); }}
+                     onClick={() => { setVoiceTarget(botKey, c.id); setChanOpen(false); }}
                      style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Icon name="speaker" size={12} style={{ color: 'var(--text-dim)' }}/>
                   <span style={{ flex: 1 }}>{c.name}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{c.users}</span>
+                  {selection === c.id
+                    ? <Icon name="check" size={12}/>
+                    : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{c.users}</span>}
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
+      )}
     </header>
   );
 };
 
-export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, soundsCount = 0, restartEnabled, onRestart, onLogout }) => {
+export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, modules = [], soundsCount = 0, restartEnabled, onRestart, onLogout }) => {
   const go = (nextRoute) => { setRoute(nextRoute); onClose(); };
   return (
     <div className="mobile-sidebar-backdrop" onClick={onClose}>
@@ -270,6 +349,7 @@ export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onC
           onLogout={onLogout}
           botStatus={botStatus}
           botInfo={botInfo}
+          modules={modules}
           restartEnabled={restartEnabled}
           onRestart={onRestart}
         />

@@ -19,7 +19,15 @@ const FileStore = FileStoreFactory(session);
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(compression());
+// Skip gzip for server-sent event streams so log/status events flush to the
+// browser immediately instead of being buffered by the compressor.
+app.use(compression({
+  filter: (req, res) => {
+    const type = String(res.getHeader('Content-Type') || '');
+    if (type.includes('text/event-stream')) return false;
+    return compression.filter(req, res);
+  },
+}));
 app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
 app.use(

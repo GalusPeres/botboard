@@ -22,7 +22,10 @@ export default function proxyRoutes() {
       delete headers['content-length'];
       const auth = botAuthHeader();
       if (auth) headers.authorization = auth;
-      if (req.session?.user?.id) headers['x-dashboard-user-id'] = req.session.user.id;
+      if (req.session?.user?.id) {
+        headers['x-dashboard-user-id'] = req.session.user.id;
+        headers['x-dashboard-user-name'] = encodeURIComponent(req.session.user.global_name || req.session.user.username || 'dashboard');
+      }
 
       const mayHaveBody = !['GET', 'HEAD'].includes(req.method);
       const isJson = req.is('application/json');

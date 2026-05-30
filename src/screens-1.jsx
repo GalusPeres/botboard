@@ -1,6 +1,7 @@
 // Login + Server-Auswahl + Overview screens
 import React from 'react';
 import { Icon } from './components.jsx';
+import { dashboardBotName } from './botIdentity.js';
 
 function guildColor(id) {
   const h = (id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
@@ -73,15 +74,22 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
   const totalPlays = sounds.reduce((sum, sound) => sum + (sound.plays || 0), 0);
   const topSounds = [...sounds].sort((a, b) => b.plays - a.plays).slice(0, 5);
   const mostPlays = topSounds[0]?.plays || 1;
-  const recentLogs = liveLogs.slice(-6).reverse();
+  const soundLogs = liveLogs.filter((entry) => entry.src === 'sound').slice(-6).reverse();
+  const musicLogs = liveLogs.filter((entry) => entry.src === 'music').slice(-6).reverse();
 
   return (
     <div className="content-narrow">
+      <div className="page-head">
+        <div>
+          <div className="page-title">Overview</div>
+        </div>
+      </div>
+
       <div className="grid grid-2" style={{ marginBottom: 18 }}>
         <BotFocusCard
           color="sb"
           icon="soundboard"
-          name={botInfo?.soundbot?.tag || 'SoundBot'}
+          name={dashboardBotName('soundbot', botInfo)}
           avatar={botInfo?.soundbot?.avatar}
           status={botStatus?.soundbot || 'offline'}
           activity={currentSound ? `${currentSound.name}.mp3` : 'Idle'}
@@ -100,7 +108,7 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
         <BotFocusCard
           color="mb"
           icon="music"
-          name={botInfo?.newibot?.tag || 'NewiMusicBot'}
+          name={dashboardBotName('newibot', botInfo)}
           avatar={botInfo?.newibot?.avatar}
           status={botStatus?.newibot || 'offline'}
           activity={currentTrack ? currentTrack.title : 'Queue empty'}
@@ -117,21 +125,7 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
         />
       </div>
 
-      <div className="chart-card" style={{ marginBottom: 18 }}>
-        <div className="card-header">
-          <div className="card-title">Activity history</div>
-          <div className="page-actions">
-            <button className="btn btn-ghost btn-sm" onClick={() => openRoute('sb/stats')}>Sound stats <Icon name="chevron-right" size={12}/></button>
-            <button className="btn btn-ghost btn-sm" onClick={() => openRoute('mb/stats')}>Music stats <Icon name="chevron-right" size={12}/></button>
-          </div>
-        </div>
-        <div className="empty" style={{ padding: '42px 20px' }}>
-          <div>No historical analytics endpoint is available yet.</div>
-          <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 6 }}>Live events from the connected bots appear below.</div>
-        </div>
-      </div>
-
-      <div className="grid grid-2">
+      <div className="grid grid-2" style={{ marginBottom: 18 }}>
         <div className="card">
           <div className="card-header">
             <div className="card-title">Top sounds - recorded plays</div>
@@ -154,30 +148,56 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
 
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Recent activity</div>
+            <div className="card-title">Activity history</div>
             <div className="page-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('sb/logs')}>Sound logs</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('mb/logs')}>Music logs</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('sb/stats')}>{dashboardBotName('soundbot', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
+              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('mb/stats')}>{dashboardBotName('newibot', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
             </div>
           </div>
-          <div className="activity-list">
-            {recentLogs.map((entry, i) => (
-              <div key={i} className="activity-item">
-                <div className="activity-icon">{(entry.src || '?').charAt(0).toUpperCase()}</div>
-                <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                  <span style={{ fontWeight: 600 }}>{entry.src || 'bot'}</span>{' '}
-                  <span style={{ color: 'var(--text-muted)' }}>{entry.text}</span>
-                </div>
-                <span className="activity-time">{entry.time}</span>
-              </div>
-            ))}
-            {recentLogs.length === 0 && <div style={{ color: 'var(--text-muted)', padding: '10px 0' }}>No live events received in this dashboard session.</div>}
+          <div className="empty" style={{ padding: '42px 20px' }}>
+            <div>No historical analytics endpoint is available yet.</div>
+            <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 6 }}>Live events from the connected bots appear below.</div>
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-2">
+        <ActivityCard
+          title={`${dashboardBotName('soundbot', botInfo)} activity`}
+          logs={soundLogs}
+          openLabel="Logs"
+          onOpen={() => openRoute('sb/logs')}
+        />
+        <ActivityCard
+          title={`${dashboardBotName('newibot', botInfo)} activity`}
+          logs={musicLogs}
+          openLabel="Logs"
+          onOpen={() => openRoute('mb/logs')}
+        />
       </div>
     </div>
   );
 };
+
+const ActivityCard = ({ title, logs, openLabel, onOpen }) => (
+  <div className="card">
+    <div className="card-header">
+      <div className="card-title">{title}</div>
+      <button className="btn btn-ghost btn-sm" onClick={onOpen}>{openLabel} <Icon name="chevron-right" size={12}/></button>
+    </div>
+    <div className="activity-list">
+      {logs.map((entry, i) => (
+        <div key={i} className="activity-item">
+          <div style={{ minWidth: 0, overflow: 'hidden' }}>
+            <span style={{ color: 'var(--text-muted)' }}>{entry.text}</span>
+          </div>
+          <span className="activity-time">{entry.time}</span>
+        </div>
+      ))}
+      {logs.length === 0 && <div style={{ color: 'var(--text-muted)', padding: '10px 0' }}>No live events received in this dashboard session.</div>}
+    </div>
+  </div>
+);
 
 const BotFocusCard = ({ color, icon, name, avatar, status, activity, activityMeta, primary, secondary, stats }) => (
   <div className={'bot-focus-card focus-' + color}>

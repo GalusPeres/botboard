@@ -1,6 +1,45 @@
 // Statistics, editable environment settings and live logs.
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon, Tag } from './components.jsx';
+import { dashboardBotName } from './botIdentity.js';
+import { useCloseOnOutside, useFetch, usePoll } from './hooks.js';
+import * as API from './api.js';
+
+const LOG_LEVELS = [
+  { value: 'all', label: 'All levels' },
+  { value: 'info', label: 'Info' },
+  { value: 'warn', label: 'Warnings' },
+  { value: 'error', label: 'Errors' },
+  { value: 'debug', label: 'Debug' },
+];
+
+const LevelDropdown = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useCloseOnOutside(ref, open, () => setOpen(false));
+  const current = LOG_LEVELS.find((l) => l.value === value) || LOG_LEVELS[0];
+  return (
+    <div style={{ position: 'relative' }} ref={ref}>
+      <button className="btn" type="button" onClick={() => setOpen((o) => !o)}
+        style={{ width: 150, justifyContent: 'space-between' }} aria-haspopup="menu" aria-expanded={open}>
+        <span>{current.label}</span>
+        <Icon name="chevron-down" size={13} style={{ color: 'var(--text-dim)' }}/>
+      </button>
+      {open && (
+        <div className="menu" style={{ top: 'calc(100% + 6px)', right: 0, minWidth: 160 }} role="menu">
+          {LOG_LEVELS.map((l) => (
+            <div key={l.value} className="menu-item" role="menuitemradio" aria-checked={l.value === value}
+              onClick={() => { onChange(l.value); setOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ flex: 1 }}>{l.label}</span>
+              {l.value === value && <Icon name="check" size={12} style={{ color: 'var(--accent)' }}/>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 function uptime(ms) {
   if (!Number.isFinite(ms)) return 'not available';
@@ -10,38 +49,51 @@ function uptime(ms) {
   return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-export const StatsScreen = ({ bot, sounds = [], botStatus, botInfo, statusData, queueLength = 0 }) => {
+export const StatsScreen = ({ bot, sounds = [], botStatus, botInfo, statusData, queueLength = 0, apiStats = null }) => {
   const isSound = bot === 'sound';
   const totalPlays = sounds.reduce((sum, sound) => sum + (sound.plays || 0), 0);
   const topSounds = [...sounds].filter((sound) => sound.plays > 0).sort((a, b) => b.plays - a.plays).slice(0, 8);
   const lavalink = statusData?.music?.lavalink;
   const status = isSound ? botStatus?.soundbot : botStatus?.newibot;
-  const name = isSound ? (botInfo?.soundbot?.tag || 'SoundBot') : (botInfo?.newibot?.tag || 'NewiMusicBot');
+  const name = isSound ? dashboardBotName('soundbot', botInfo) : dashboardBotName('newibot', botInfo);
   const botData = isSound ? statusData?.sound : statusData?.music;
+  const fallbackCards = isSound
+    ? [
+        { key: 'sounds', label: 'Sound files', value: sounds.length },
+        { key: 'plays', label: 'Recorded plays', value: totalPlays.toLocaleString() },
+        { key: 'uptime', label: 'Uptime', value: uptime(botData?.uptimeMs) },
+        { key: 'status', label: 'Status', value: status || 'offline' },
+      ]
+    : [
+        { key: 'players', label: 'Active players', value: statusData?.music?.playerCount ?? '-' },
+        { key: 'queue', label: 'Current queue', value: queueLength },
+        { key: 'uptime', label: 'Uptime', value: uptime(botData?.uptimeMs) },
+        { key: 'status', label: 'Status', value: status || 'offline' },
+      ];
+  const cards = apiStats?.cards?.length ? apiStats.cards : fallbackCards;
+  const health = apiStats?.health?.length
+    ? apiStats.health
+    : [
+        { key: 'discord', label: name, status: status === 'online' ? 'ok' : 'warn', detail: uptime(botData?.uptimeMs) },
+        ...(!isSound ? [{ key: 'lavalink', label: 'Lavalink', status: lavalink?.connected ? 'ok' : 'warn', detail: lavalink?.ping == null ? '' : `${lavalink.ping} ms` }] : []),
+      ];
 
   return (
     <div className="content-narrow">
       <div className="page-head">
         <div>
-          <div className="page-title">{name} Statistics</div>
+          <div className="page-title">Statistics</div>
           <div className="page-sub">Live data from this bot API. Historical analytics are not recorded yet.</div>
         </div>
       </div>
 
       <div className="grid grid-4" style={{ marginBottom: 16 }}>
-        {isSound ? (
-          <>
-            <div className="stat-card"><div className="stat-label">Sound files</div><div className="stat-value">{sounds.length}</div></div>
-            <div className="stat-card"><div className="stat-label">Recorded plays</div><div className="stat-value">{totalPlays.toLocaleString()}</div></div>
-          </>
-        ) : (
-          <>
-            <div className="stat-card"><div className="stat-label">Active players</div><div className="stat-value">{statusData?.music?.playerCount ?? '-'}</div></div>
-            <div className="stat-card"><div className="stat-label">Current queue</div><div className="stat-value">{queueLength}</div></div>
-          </>
-        )}
-        <div className="stat-card"><div className="stat-label">Uptime</div><div className="stat-value">{uptime(botData?.uptimeMs)}</div></div>
-        <div className="stat-card"><div className="stat-label">Status</div><div className="stat-value">{status || 'offline'}</div></div>
+        {cards.slice(0, 8).map((card) => (
+          <div className="stat-card" key={card.key || card.label}>
+            <div className="stat-label">{card.label}</div>
+            <div className="stat-value">{String(card.value ?? '-')}</div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-2">
@@ -68,19 +120,33 @@ export const StatsScreen = ({ bot, sounds = [], botStatus, botInfo, statusData, 
 
         <div className="card">
           <div className="card-header"><div className="card-title">Health</div></div>
-          {[
-            [name, status, uptime(botData?.uptimeMs)],
-            ...(!isSound ? [['Lavalink', lavalink?.connected ? 'connected' : 'offline', lavalink?.ping == null ? '' : `${lavalink.ping} ms`]] : []),
-          ].map(([rowName, state, detail]) => (
-            <div key={rowName} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{rowName}</span>
-              <Tag kind={state === 'online' || state === 'connected' ? 'success' : 'error'}>
-                {state}{detail ? ` - ${detail}` : ''}
+          {health.map((item) => (
+            <div key={item.key || item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{item.label}</span>
+              <Tag kind={item.status === 'ok' || item.status === 'online' || item.status === 'connected' ? 'success' : item.status === 'neutral' ? 'info' : 'error'}>
+                {item.status}{item.detail ? ` - ${item.detail}` : ''}
               </Tag>
             </div>
           ))}
         </div>
       </div>
+      {apiStats?.tables?.filter((table) => table.rows?.length).map((table) => (
+        <div className="card" style={{ marginTop: 16 }} key={table.key || table.label}>
+          <div className="card-header"><div className="card-title">{table.label}</div></div>
+          <div className="generic-table">
+            {table.rows.slice(0, 20).map((row, index) => (
+              <div className="generic-table-row" key={index}>
+                {Object.entries(row).slice(0, 5).map(([key, value]) => (
+                  <div key={key}>
+                    <span>{key}</span>
+                    <strong>{String(value ?? '-')}</strong>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
@@ -195,19 +261,16 @@ const AutoBoolean = ({ field, value, setField, commit, pending }) => (
   </div>
 );
 
-export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, restartEnabled, onRestart }) => {
+export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Sound Bot', restartEnabled, onRestart }) => {
   const fields = ['sbPrefix', 'sbMaxMb', 'sbMaxName', 'sbAutoLeave'];
   const { draft, setField, pending, feedback, commit, reset } = useEditableSettings(settings, fields, onSave, settingsLoaded);
 
   return (
     <div className="content-narrow">
-      <SettingsHeader title="SoundBot Settings" subtitle="Environment configuration for the connected SoundBot."
+      <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
         botStatus={botStatus} restartEnabled={restartEnabled} botKey="soundbot" onRestart={onRestart}
         onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
-      <div className="settings-notice">
-        Changes save automatically when you leave a field and apply immediately.
-        {feedback && <div style={{ marginTop: 6 }}>{feedback}</div>}
-      </div>
+      {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">
         <Row label="Command prefix" help="COMMAND_PREFIX">
           <AutoField field="sbPrefix" value={draft.sbPrefix} setField={setField} commit={commit} pending={pending}/>
@@ -226,7 +289,7 @@ export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botSt
   );
 };
 
-export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, restartEnabled, onRestart }) => {
+export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Music Bot', restartEnabled, onRestart }) => {
   const fields = [
     'mbPrefix', 'mbUsername', 'mbLogLevel', 'mbSearch', 'mbVol', 'mbMaxQueue', 'mbAutoDc',
     'mbConnTimeout', 'mbCooldown', 'mbRetryDelay', 'mbRetryCount', 'mbMaxPlaylist', 'mbMaxResults',
@@ -247,13 +310,10 @@ export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botSta
 
   return (
     <div className="content-narrow">
-      <SettingsHeader title="NewiMusicBot Settings" subtitle="Environment configuration for the connected MusicBot and external Lavalink."
+      <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName} and external Lavalink.`}
         botStatus={botStatus} restartEnabled={restartEnabled} botKey="newibot" onRestart={onRestart}
         onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
-      <div className="settings-notice">
-        Most changes apply immediately when you leave a field. Lavalink/client connection values require a bot restart.
-        {feedback && <div style={{ marginTop: 6 }}>{feedback}</div>}
-      </div>
+      {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">
         <div className="settings-group-head"><div className="settings-group-title">General and playback</div></div>
         <Row label="Command prefix" help="COMMAND_PREFIX"><AutoField field="mbPrefix" value={draft.mbPrefix} setField={setField} commit={commit} pending={pending}/></Row>
@@ -336,19 +396,13 @@ export const LogsScreen = ({ bot, botName, liveLogs, connection }) => {
     <div className="content-narrow">
       <div className="page-head">
         <div>
-          <div className="page-title">{botName} Live Logs</div>
+          <div className="page-title">Live Logs</div>
           <div className="page-sub">Streaming from this bot. <span className="dot" style={{ background: paused || connection?.state === 'error' ? 'var(--amber)' : 'var(--green)' }}/> {paused ? 'paused' : connection?.state || 'connecting'} - {botLogs.length} lines</div>
         </div>
         <div className="page-actions">
-          <select className="select" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: 140 }}>
-            <option value="all">All levels</option>
-            <option value="info">Info</option>
-            <option value="warn">Warnings</option>
-            <option value="error">Errors</option>
-            <option value="debug">Debug</option>
-          </select>
-          <button className="btn btn-sm" onClick={() => setPaused((value) => !value)}>
-            {paused ? <><Icon name="play" size={12}/> Resume</> : <><Icon name="pause" size={12}/> Pause</>}
+          <LevelDropdown value={filter} onChange={setFilter}/>
+          <button className="btn" onClick={() => setPaused((value) => !value)}>
+            {paused ? <><Icon name="play" size={13}/> Resume</> : <><Icon name="pause" size={13}/> Pause</>}
           </button>
         </div>
       </div>
@@ -360,12 +414,169 @@ export const LogsScreen = ({ bot, botName, liveLogs, connection }) => {
             <span className="log-time">{line.time}</span>
             <span className={'log-level ' + line.level}>{line.level.toUpperCase()}</span>
             <span className="log-msg">
-              <span style={{ color: line.src === 'music' ? 'oklch(0.72 0.15 240)' : line.src === 'sound' ? 'oklch(0.7 0.16 25)' : 'var(--text-dim)', fontWeight: 600 }}>[{line.src}]</span> {line.text}
+              {line.text}
             </span>
           </div>
         ))}
         {filtered.length === 0 && <div style={{ color: 'var(--text-muted)', padding: 14 }}>No log events received yet.</div>}
       </div>
+    </div>
+  );
+};
+
+export const GenericStatsScreen = ({ botId, botName }) => {
+  const { data: stats, loading, error, reload } = usePoll(
+    () => API.moduleApi.stats(botId),
+    5000,
+    [botId],
+  );
+
+  return (
+    <div className="content-narrow">
+      <div className="page-head">
+        <div>
+          <div className="page-title">Statistics</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-sm" type="button" onClick={reload}>
+            <Icon name="refresh" size={13}/> Refresh
+          </button>
+        </div>
+      </div>
+      {loading && <div className="empty">Loading statistics...</div>}
+      {error && <div className="settings-notice registry-error">Stats failed: {error.message}</div>}
+      {stats && (
+        <>
+          <div className="grid grid-4" style={{ marginBottom: 16 }}>
+            {(stats.cards || []).map((card) => (
+              <div className="stat-card" key={card.key || card.label}>
+                <div className="stat-label">{card.label}</div>
+                <div className="stat-value">{String(card.value ?? '-')}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="card-header"><div className="card-title">{botName} health</div></div>
+            {(stats.health || []).map((item) => (
+              <div key={item.key || item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{item.label}</span>
+                <Tag kind={item.status === 'ok' ? 'success' : item.status === 'neutral' ? 'info' : 'error'}>
+                  {item.status}{item.detail ? ` - ${item.detail}` : ''}
+                </Tag>
+              </div>
+            ))}
+            {(!stats.health || stats.health.length === 0) && <div style={{ color: 'var(--text-muted)' }}>No health entries reported.</div>}
+          </div>
+          {(stats.tables || []).filter((table) => table.rows?.length).map((table) => (
+            <div className="card" style={{ marginTop: 16 }} key={table.key || table.label}>
+              <div className="card-header"><div className="card-title">{table.label}</div></div>
+              <div className="generic-table">
+                {table.rows.slice(0, 20).map((row, index) => (
+                  <div className="generic-table-row" key={index}>
+                    {Object.entries(row).slice(0, 5).map(([key, value]) => (
+                      <div key={key}>
+                        <span>{key}</span>
+                        <strong>{String(value ?? '-')}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+};
+
+export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
+  const { data: schema, loading: schemaLoading, error: schemaError } = useFetch(
+    () => API.moduleApi.settingsSchema(botId),
+    [botId],
+  );
+  const { data: settings, loading: settingsLoading, error: settingsError, reload } = useFetch(
+    () => API.moduleApi.settings(botId),
+    [botId],
+  );
+  const [draft, setDraft] = useState({});
+  const [pending, setPending] = useState('');
+
+  useEffect(() => {
+    if (settings) setDraft(settings);
+  }, [settings]);
+
+  const saveField = async (field) => {
+    if (!field.editable || field.secret) return;
+    const value = draft[field.key];
+    if (String(value ?? '') === String(settings?.[field.key] ?? '')) return;
+    setPending(field.key);
+    try {
+      const result = await API.moduleApi.saveSettings(botId, { [field.key]: value });
+      await reload();
+      setToast?.({
+        id: Date.now(),
+        msg: result?.restartRequired ? `${botName}: saved, restart required` : `${botName}: setting saved`,
+      });
+    } catch (err) {
+      setDraft(settings || {});
+      setToast?.({ id: Date.now(), msg: `${botName}: save failed: ${err.message}` });
+    } finally {
+      setPending('');
+    }
+  };
+
+  const renderField = (field) => {
+    const disabled = !field.editable || field.secret || pending === field.key;
+    const value = draft[field.key] ?? '';
+    if (field.type === 'boolean') {
+      return (
+        <select className="select" value={value ? 'true' : 'false'} disabled={disabled}
+          onChange={(event) => setDraft((prev) => ({ ...prev, [field.key]: event.target.value === 'true' }))}
+          onBlur={() => saveField(field)}>
+          <option value="true">Enabled</option>
+          <option value="false">Disabled</option>
+        </select>
+      );
+    }
+    return (
+      <input className="input" type={field.type === 'number' ? 'number' : field.secret ? 'password' : 'text'}
+        value={field.secret ? '' : value}
+        placeholder={field.secret ? 'hidden' : ''}
+        disabled={disabled}
+        onChange={(event) => setDraft((prev) => ({ ...prev, [field.key]: field.type === 'number' ? Number(event.target.value) : event.target.value }))}
+        onBlur={() => saveField(field)}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}/>
+    );
+  };
+
+  return (
+    <div className="content-narrow">
+      <div className="page-head">
+        <div>
+          <div className="page-title">Settings</div>
+        </div>
+      </div>
+      {(schemaLoading || settingsLoading) && <div className="empty">Loading settings...</div>}
+      {(schemaError || settingsError) && (
+        <div className="settings-notice registry-error">
+          Settings failed: {(schemaError || settingsError).message}
+        </div>
+      )}
+      {schema?.sections?.map((section) => (
+        <div className="settings-group" key={section.id}>
+          <div className="settings-group-head"><div className="settings-group-title">{section.label}</div></div>
+          {section.fields.map((field) => (
+            <Row key={field.key} label={field.label || field.key} help={field.env}>
+              <div className="generic-setting-control">
+                {renderField(field)}
+                {field.restartRequired && <Tag kind="warn">restart</Tag>}
+                {pending === field.key && <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>saving...</span>}
+              </div>
+            </Row>
+          ))}
+        </div>
+      ))}
     </div>
   );
 };

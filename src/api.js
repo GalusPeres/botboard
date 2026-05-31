@@ -100,6 +100,12 @@ export const sound = {
   previewUrl: (name) => `/api/bots/sound/sounds/${encodeURIComponent(name)}/file`,
 };
 
+export const users = {
+  list: () => api('/api/users'),
+  setAdmin: (id, isAdmin) => api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: { isAdmin } }),
+  remove: (id) => api(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
 export function logsSSE(onMessage, onError, onOpen) {
   const es = new EventSource('/api/logs/stream', { withCredentials: true });
   es.onmessage = (ev) => {

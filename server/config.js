@@ -27,6 +27,7 @@ export const config = {
   sessionSecret: required('SESSION_SECRET'),
   sessionDir: optional('SESSION_DIR', './.sessions'),
   botRegistryPath: optional('BOTS_CONFIG_PATH', './data/bots.json'),
+  usersConfigPath: optional('USERS_CONFIG_PATH', './data/users.json'),
   cookieSecure: boolean('COOKIE_SECURE'),
   devAuthBypass: boolean('DEV_AUTH_BYPASS'),
   dockerRestartEnabled: boolean('DOCKER_RESTART_ENABLED'),

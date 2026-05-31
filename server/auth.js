@@ -3,6 +3,7 @@
 // requireAuth guards every /api/* route except auth + healthcheck.
 
 import { config, discordOAuthEnabled } from './config.js';
+import { getAdminOverride } from './userRegistry.js';
 
 const OAUTH_BASE = 'https://discord.com/api/oauth2/authorize';
 const TOKEN_URL = 'https://discord.com/api/oauth2/token';
@@ -60,10 +61,15 @@ export function isAllowed(userId) {
 }
 
 export function isAdmin(userId) {
-  const admins = config.discord.adminUserIds;
-  // If no admin list is configured, everyone who can log in is an admin (backwards compat).
-  if (admins.length === 0) return true;
-  return admins.includes(userId);
+  const envAdmins = config.discord.adminUserIds;
+  // ENV list always grants admin — highest priority.
+  if (envAdmins.includes(userId)) return true;
+  // Check file-based override (set via dashboard UI).
+  const override = getAdminOverride(userId);
+  if (override === true) return true;
+  if (override === false) return false;
+  // No explicit override: if no ADMIN_USER_IDS configured at all, everyone is admin (backwards compat).
+  return envAdmins.length === 0;
 }
 
 export function requireAuth(req, res, next) {

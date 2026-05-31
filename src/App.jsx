@@ -8,6 +8,7 @@ import { LoginScreen, ServerSelectScreen, OverviewScreen } from './screens-1.jsx
 import { SoundboardScreen, MusicScreen, LibraryScreen } from './screens-2.jsx';
 import { StatsScreen, SoundbotSettingsScreen, NewibotSettingsScreen, LogsScreen, GenericStatsScreen, GenericSettingsScreen } from './screens-3.jsx';
 import { BotRegistryScreen } from './registry-screen.jsx';
+import { AdminScreen } from './admin-screen.jsx';
 import { dashboardBotName, moduleDisplayName } from './botIdentity.js';
 import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './tweaks-panel.jsx';
 import * as API from './api.js';
@@ -55,7 +56,7 @@ export default function App() {
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
   // Wrap setRoute so non-admins are silently redirected away from restricted pages.
-  const ADMIN_ROUTES = new Set(['bot-modules', 'sb/settings', 'mb/settings']);
+  const ADMIN_ROUTES = new Set(['bot-modules', 'admin', 'sb/settings', 'mb/settings']);
   const setRoute = (next) => {
     const adminOnly = ADMIN_ROUTES.has(next) || String(next).includes('/settings');
     if (adminOnly && !user?.isAdmin) return;
@@ -642,6 +643,7 @@ function DashboardApp(props) {
             botInfo={botInfo} statusData={statusData} liveLogs={liveLogs}
             sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}/>}
           {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}/>}
+          {route === 'admin' && <AdminScreen currentUserId={user?.id}/>}
           {route === 'sb/board' && (
             <>
               <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}

@@ -4,54 +4,32 @@ import { useFetch } from './hooks.js';
 import * as API from './api.js';
 import { relativeTime } from './format.js';
 
-const PERMISSION_LABELS = {
+const PERMISSIONS = ['controlBot', 'soundLibrary', 'settings', 'botModules', 'userManagement'];
+const PERM_LABELS = {
   controlBot:     'Control Bot',
-  soundLibrary:   'Edit Sound Library',
-  settings:       'Change Settings',
-  botModules:     'Edit Bot Modules',
-  userManagement: 'User Management',
+  soundLibrary:   'Sound Library',
+  settings:       'Settings',
+  botModules:     'Bot Modules',
+  userManagement: 'User Mgmt',
 };
 
 function UserAvatar({ user, size = 36 }) {
   const initial = (user.global_name || user.username || '?').charAt(0).toUpperCase();
   if (user.avatar) {
-    return (
-      <img
-        src={user.avatar}
-        alt=""
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-      />
-    );
+    return <img src={user.avatar} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}/>;
   }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', background: 'var(--surface-3)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontWeight: 700, fontSize: size * 0.42, color: 'var(--text-dim)', flexShrink: 0,
-    }}>
-      {initial}
-    </div>
+    }}>{initial}</div>
   );
 }
 
-function AdminBadge({ fixed }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 8px', borderRadius: 99,
-      background: fixed ? 'color-mix(in oklch, var(--accent) 18%, transparent)' : 'color-mix(in oklch, var(--green) 18%, transparent)',
-      color: fixed ? 'var(--accent)' : 'var(--green)',
-      fontSize: 11, fontWeight: 600,
-    }}>
-      {fixed ? <Icon name="settings" size={10}/> : <Icon name="check" size={10}/>}
-      {fixed ? 'Admin (ENV)' : 'Admin'}
-    </span>
-  );
-}
-
-// Modal to add users — either from server member list or by entering a user ID.
+// Add User modal — server member list or manual ID.
 function AddUserModal({ guildId, existingIds, onAdd, onClose }) {
-  const [tab, setTab] = useState('server'); // 'server' | 'id'
+  const [tab, setTab] = useState('server');
   const [search, setSearch] = useState('');
   const [manualId, setManualId] = useState('');
   const [members, setMembers] = useState(null);
@@ -64,10 +42,7 @@ function AddUserModal({ guildId, existingIds, onAdd, onClose }) {
     if (tab === 'server' && guildId && members === null) {
       setLoadingMembers(true);
       setMembersError(null);
-      API.users.guildMembers(guildId)
-        .then(setMembers)
-        .catch((err) => setMembersError(err.message))
-        .finally(() => setLoadingMembers(false));
+      API.users.guildMembers(guildId).then(setMembers).catch((err) => setMembersError(err.message)).finally(() => setLoadingMembers(false));
     }
   }, [tab, guildId, members]);
 
@@ -84,23 +59,16 @@ function AddUserModal({ guildId, existingIds, onAdd, onClose }) {
 
   const addMember = async (member) => {
     setBusy(true);
-    try {
-      await onAdd({ id: member.id, username: member.username, global_name: member.global_name, avatar: member.avatar });
-    } finally {
-      setBusy(false);
-    }
+    try { await onAdd({ id: member.id, username: member.username, global_name: member.global_name, avatar: member.avatar }); }
+    finally { setBusy(false); }
   };
 
   const addById = async () => {
     const id = manualId.trim();
     if (!id) return;
     setBusy(true);
-    try {
-      await onAdd({ id });
-      setManualId('');
-    } finally {
-      setBusy(false);
-    }
+    try { await onAdd({ id }); setManualId(''); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -110,74 +78,144 @@ function AddUserModal({ guildId, existingIds, onAdd, onClose }) {
           <span className="modal-title">Add User</span>
           <button className="btn-icon btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={14}/></button>
         </div>
-
-        {/* Tabs */}
         <div style={{ display: 'flex', gap: 2, padding: '0 20px 12px', borderBottom: '1px solid var(--border)' }}>
           {[['server', 'Server Members'], ['id', 'By User ID']].map(([key, label]) => (
-            <button key={key} className={'btn btn-sm ' + (tab === key ? '' : 'btn-ghost')}
-              onClick={() => setTab(key)} style={{ flex: 1 }}>
-              {label}
-            </button>
+            <button key={key} className={'btn btn-sm ' + (tab === key ? '' : 'btn-ghost')} onClick={() => setTab(key)} style={{ flex: 1 }}>{label}</button>
           ))}
         </div>
-
         {tab === 'server' && (
           <>
             <div style={{ padding: '12px 20px 8px' }}>
-              <input
-                className="input"
-                placeholder="Search members..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ width: '100%' }}
-              />
+              <input className="input" placeholder="Search members..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%' }}/>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 16px' }}>
               {loadingMembers && <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>Loading members...</div>}
               {membersError && <div style={{ color: 'var(--red, #f87171)', fontSize: 13, padding: '8px 0' }}>{membersError}</div>}
               {!loadingMembers && !membersError && filtered.length === 0 && (
-                <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>
-                  {search ? 'No matches.' : 'All server members are already added.'}
-                </div>
+                <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>{search ? 'No matches.' : 'All server members are already added.'}</div>
               )}
               {filtered.map((m) => (
-                <div key={m.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
-                  borderBottom: '1px solid var(--border)',
-                }}>
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                   <UserAvatar user={m} size={32}/>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{m.global_name || m.username}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>@{m.username}</div>
                   </div>
-                  <button className="btn btn-sm" onClick={() => addMember(m)} disabled={busy}>
-                    Add
-                  </button>
+                  <button className="btn btn-sm" onClick={() => addMember(m)} disabled={busy}>Add</button>
                 </div>
               ))}
             </div>
           </>
         )}
-
         {tab === 'id' && (
           <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              Enter a Discord User ID. Right-click any user in Discord → Copy User ID (enable Developer Mode first).
-            </div>
-            <input
-              ref={inputRef}
-              className="input"
-              placeholder="e.g. 123456789012345678"
-              value={manualId}
-              onChange={(e) => setManualId(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addById()}
-            />
-            <button className="btn" onClick={addById} disabled={busy || !manualId.trim()}>
-              Add User
-            </button>
+            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Enter a Discord User ID (right-click user → Copy User ID).</div>
+            <input ref={inputRef} className="input" placeholder="e.g. 123456789012345678" value={manualId}
+              onChange={(e) => setManualId(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addById()}/>
+            <button className="btn" onClick={addById} disabled={busy || !manualId.trim()}>Add User</button>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Table row for a single user.
+function UserRow({ user, currentUserId, onToggle, busy }) {
+  const isYou = user.id === currentUserId;
+  const locked = user.isEnvAdmin;
+  return (
+    <div style={{ display: 'contents' }}>
+      {/* User info cell */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', minWidth: 0 }}>
+        <UserAvatar user={user} size={32}/>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {user.global_name || user.username}
+            {isYou && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>(you)</span>}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+            @{user.username}
+            {user.lastSeen && <> · {relativeTime(new Date(user.lastSeen).getTime())}</>}
+            {!user.lastSeen && <> · not logged in yet</>}
+          </div>
+        </div>
+      </div>
+      {/* One cell per permission */}
+      {PERMISSIONS.map((key) => {
+        const checked = user.permissions?.[key] === true;
+        const isBusy = busy === user.id + key;
+        return (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+            {(locked || isYou) ? (
+              <input type="checkbox" checked={checked} disabled style={{ accentColor: 'var(--accent)', width: 15, height: 15, opacity: locked ? 0.4 : 1 }}/>
+            ) : (
+              <input type="checkbox" checked={checked} disabled={isBusy}
+                onChange={() => onToggle(user, key)}
+                style={{ accentColor: 'var(--accent)', width: 15, height: 15, cursor: 'pointer' }}/>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Grid wrapper: user info column + 5 permission columns.
+function RolesTable({ users, currentUserId, onToggle, busy }) {
+  if (users.length === 0) return (
+    <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '12px 0' }}>None yet.</div>
+  );
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '1fr ' + PERMISSIONS.map(() => '100px').join(' '),
+      borderRadius: 10, overflow: 'hidden',
+      background: 'var(--surface-2)',
+    }}>
+      {/* Header row */}
+      <div style={{ padding: '8px 0 8px 12px', fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>User</div>
+      {PERMISSIONS.map((key) => (
+        <div key={key} style={{ padding: '8px 0', fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {PERM_LABELS[key]}
+        </div>
+      ))}
+      {/* User rows */}
+      {users.map((user, i) => (
+        <div key={user.id} style={{ display: 'contents' }}>
+          <div style={{
+            gridColumn: '1 / -1', height: 1,
+            background: i === 0 ? 'var(--border)' : 'var(--border)',
+            opacity: 0.5,
+          }}/>
+          <div style={{ paddingLeft: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <UserAvatar user={user} size={30}/>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {user.global_name || user.username}
+                {user.id === currentUserId && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>(you)</span>}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                @{user.username}
+                {user.lastSeen && <> · {relativeTime(new Date(user.lastSeen).getTime())}</>}
+                {!user.lastSeen && <> · not logged in yet</>}
+              </div>
+            </div>
+          </div>
+          {PERMISSIONS.map((key) => {
+            const checked = user.permissions?.[key] === true;
+            const isLocked = user.isEnvAdmin || user.id === currentUserId;
+            const isBusy = busy === user.id + key;
+            return (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <input type="checkbox" checked={checked} disabled={isLocked || isBusy}
+                  onChange={() => !isLocked && onToggle(user, key)}
+                  style={{ accentColor: 'var(--accent)', width: 15, height: 15, cursor: isLocked ? 'default' : 'pointer', opacity: isLocked ? 0.4 : 1 }}/>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
@@ -192,10 +230,10 @@ export function AdminScreen({ currentUserId, server }) {
   const displayed = users ?? fetchedUsers ?? [];
   const existingIds = new Set(displayed.map((u) => u.id));
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
+  const admins = displayed.filter((u) => u.isEnvAdmin || u.permissions?.userManagement === true);
+  const regularUsers = displayed.filter((u) => !u.isEnvAdmin && !u.permissions?.userManagement);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const togglePermission = useCallback(async (user, permission) => {
     setBusy(user.id + permission);
@@ -220,10 +258,9 @@ export function AdminScreen({ currentUserId, server }) {
     }
   }, [fetchedUsers]);
 
-
   return (
     <div className="content-narrow">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Roles</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
@@ -235,76 +272,17 @@ export function AdminScreen({ currentUserId, server }) {
         </div>
       </div>
 
-      {displayed.length === 0 && (
-        <div className="empty" style={{ padding: '48px 0' }}>
-          <div>No users yet. Click "Add User" to add someone.</div>
-        </div>
-      )}
+      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin</div>
+      <RolesTable users={admins} currentUserId={currentUserId} onToggle={togglePermission} busy={busy}/>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {displayed.map((user) => {
-          const isYou = user.id === currentUserId;
-          const isBusy = busy === user.id;
-          return (
-            <div key={user.id} style={{
-              display: 'flex', alignItems: 'center', gap: 14,
-              background: 'var(--surface-2)', borderRadius: 10,
-              padding: '12px 16px',
-              border: isYou ? '1px solid color-mix(in oklch, var(--accent) 30%, transparent)' : '1px solid transparent',
-            }}>
-              <UserAvatar user={user}/>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{user.global_name || user.username}</span>
-                  {user.isEnvAdmin && <AdminBadge fixed={true}/>}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
-                  {user.username && <>@{user.username}</>}
-                  {user.lastSeen && <> · Last seen {relativeTime(new Date(user.lastSeen).getTime())}</>}
-                  {!user.lastSeen && <> · Not logged in yet</>}
-                </div>
-              </div>
-
-              {!isYou && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  {Object.entries(PERMISSION_LABELS).map(([key, label]) => {
-                    const checked = user.permissions?.[key] === true;
-                    const disabled = user.isEnvAdmin || busy === user.id + key;
-                    return (
-                      <label key={key} style={{
-                        display: 'flex', alignItems: 'center', gap: 5, cursor: disabled ? 'default' : 'pointer',
-                        fontSize: 12, color: disabled ? 'var(--text-dim)' : 'var(--text)',
-                        userSelect: 'none',
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={disabled}
-                          onChange={() => !disabled && togglePermission(user, key)}
-                          style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
-                        />
-                        {label}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-              {isYou && <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>(you)</span>}
-            </div>
-          );
-        })}
-      </div>
+      <div style={{ marginBottom: 8, marginTop: 24, fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>User</div>
+      <RolesTable users={regularUsers} currentUserId={currentUserId} onToggle={togglePermission} busy={busy}/>
 
       {showAddModal && (
-        <AddUserModal
-          guildId={server?.id}
-          existingIds={existingIds}
-          onAdd={async (userData) => { await addUser(userData); }}
-          onClose={() => setShowAddModal(false)}
-        />
+        <AddUserModal guildId={server?.id} existingIds={existingIds} onAdd={async (u) => { await addUser(u); }} onClose={() => setShowAddModal(false)}/>
       )}
 
-{toast && <div className="toast">{toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

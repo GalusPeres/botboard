@@ -140,7 +140,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
         <div className="nav-label">General</div>
         <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
         {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>}
-        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="settings" label="Roles"/>}
+        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
       </div>
 
       {BOT_MODULES.map((bot) => {

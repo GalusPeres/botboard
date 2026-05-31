@@ -185,6 +185,14 @@ ul, ol { list-style: none; }
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
   position: relative;
+  overflow: hidden;
+}
+.nav-item > span:not(.nav-badge) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 .nav-item:hover { background: var(--surface); color: var(--text); }
 .nav-item.active {

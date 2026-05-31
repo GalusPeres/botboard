@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Icon } from './components.jsx';
 import { useFetch } from './hooks.js';
 import * as API from './api.js';
@@ -43,56 +43,106 @@ function UserAvatar({ user, size = 36 }) {
   );
 }
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setMobile(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return mobile;
+}
+
 function RolesTable({ users, currentUserId, onToggle, busy }) {
+  const isMobile = useIsMobile();
   if (users.length === 0) return (
     <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '12px 0' }}>None yet.</div>
   );
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr ' + PERMISSIONS.map(() => '100px').join(' '),
-      borderRadius: 10, overflow: 'hidden',
-      background: 'var(--surface-2)',
-    }}>
-      {/* Header */}
-      <div style={{ padding: '10px 0 10px 14px', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>User</div>
-      {PERMISSIONS.map((key) => (
-        <div key={key} style={{ padding: '10px 0', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-          {PERM_LABELS[key]}
-        </div>
-      ))}
-      {/* Rows */}
-      {users.map((user) => {
-        const isLocked = user.isEnvAdmin || user.id === currentUserId;
-        return (
-          <div key={user.id} style={{ display: 'contents' }}>
-            <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
-            <div style={{ paddingLeft: 14, paddingTop: 12, paddingBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <UserAvatar user={user} size={32}/>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {user.global_name || user.username}
-                  {user.id === currentUserId && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>(you)</span>}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                  @{user.username}
-                  {user.lastSeen && <> · {relativeTime(new Date(user.lastSeen).getTime())}</>}
-                  {!user.lastSeen && <> · not logged in yet</>}
+
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {users.map((user) => {
+          const isLocked = user.isEnvAdmin || user.id === currentUserId;
+          return (
+            <div key={user.id} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <UserAvatar user={user} size={32}/>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>
+                    {user.global_name || user.username}
+                    {user.id === currentUserId && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400, marginLeft: 6 }}>(you)</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>@{user.username}{user.lastSeen && <> · {relativeTime(new Date(user.lastSeen).getTime())}</>}</div>
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                {PERMISSIONS.map((key) => {
+                  const checked = user.permissions?.[key] === true;
+                  const isBusy = busy === user.id + key;
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                      onClick={() => !isLocked && !isBusy && onToggle(user, key)}>
+                      <Checkbox checked={checked} disabled={isLocked || isBusy} onChange={() => {}}/>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{PERM_LABELS[key]}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            {PERMISSIONS.map((key) => {
-              const checked = user.permissions?.[key] === true;
-              const isBusy = busy === user.id + key;
-              return (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Checkbox checked={checked} disabled={isLocked || isBusy} onChange={() => onToggle(user, key)}/>
-                </div>
-              );
-            })}
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ overflowX: 'auto', borderRadius: 10 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(160px, 1fr) ' + PERMISSIONS.map(() => '88px').join(' '),
+        minWidth: 580,
+        borderRadius: 10, overflow: 'hidden',
+        background: 'var(--surface-2)',
+      }}>
+        <div style={{ padding: '10px 0 10px 14px', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>User</div>
+        {PERMISSIONS.map((key) => (
+          <div key={key} style={{ padding: '10px 0', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+            {PERM_LABELS[key]}
           </div>
-        );
-      })}
+        ))}
+        {users.map((user) => {
+          const isLocked = user.isEnvAdmin || user.id === currentUserId;
+          return (
+            <div key={user.id} style={{ display: 'contents' }}>
+              <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
+              <div style={{ paddingLeft: 14, paddingTop: 12, paddingBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <UserAvatar user={user} size={32}/>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {user.global_name || user.username}
+                    {user.id === currentUserId && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>(you)</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                    @{user.username}
+                    {user.lastSeen && <> · {relativeTime(new Date(user.lastSeen).getTime())}</>}
+                    {!user.lastSeen && <> · not logged in yet</>}
+                  </div>
+                </div>
+              </div>
+              {PERMISSIONS.map((key) => {
+                const checked = user.permissions?.[key] === true;
+                const isBusy = busy === user.id + key;
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Checkbox checked={checked} disabled={isLocked || isBusy} onChange={() => onToggle(user, key)}/>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

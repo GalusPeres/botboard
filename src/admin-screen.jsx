@@ -6,12 +6,28 @@ import { relativeTime } from './format.js';
 
 const PERMISSIONS = ['controlBot', 'soundLibrary', 'settings', 'botModules', 'userManagement'];
 const PERM_LABELS = {
-  controlBot:     'Control Bot',
-  soundLibrary:   'Sound Library',
+  controlBot:     'Control',
+  soundLibrary:   'Library',
   settings:       'Settings',
   botModules:     'Bot Modules',
   userManagement: 'User Mgmt',
 };
+
+function Checkbox({ checked, disabled, onChange }) {
+  return (
+    <div onClick={() => !disabled && onChange()} style={{
+      width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+      border: '1.5px solid ' + (checked ? 'var(--accent)' : 'var(--border, #444)'),
+      background: checked ? 'var(--accent)' : 'var(--surface-3, #2a2a2a)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: disabled ? 'default' : 'pointer',
+      opacity: disabled ? 0.4 : 1,
+      transition: 'background 0.1s, border-color 0.1s',
+    }}>
+      {checked && <Icon name="check" size={10} style={{ color: '#000', pointerEvents: 'none' }}/>}
+    </div>
+  );
+}
 
 function UserAvatar({ user, size = 36 }) {
   const initial = (user.global_name || user.username || '?').charAt(0).toUpperCase();
@@ -39,9 +55,9 @@ function RolesTable({ users, currentUserId, onToggle, busy }) {
       background: 'var(--surface-2)',
     }}>
       {/* Header */}
-      <div style={{ padding: '8px 0 8px 12px', fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>User</div>
+      <div style={{ padding: '10px 0 10px 14px', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>User</div>
       {PERMISSIONS.map((key) => (
-        <div key={key} style={{ padding: '8px 0', fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <div key={key} style={{ padding: '10px 0', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
           {PERM_LABELS[key]}
         </div>
       ))}
@@ -51,14 +67,14 @@ function RolesTable({ users, currentUserId, onToggle, busy }) {
         return (
           <div key={user.id} style={{ display: 'contents' }}>
             <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
-            <div style={{ paddingLeft: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <UserAvatar user={user} size={30}/>
+            <div style={{ paddingLeft: 14, paddingTop: 12, paddingBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <UserAvatar user={user} size={32}/>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                   {user.global_name || user.username}
                   {user.id === currentUserId && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400 }}>(you)</span>}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
                   @{user.username}
                   {user.lastSeen && <> · {relativeTime(new Date(user.lastSeen).getTime())}</>}
                   {!user.lastSeen && <> · not logged in yet</>}
@@ -70,9 +86,7 @@ function RolesTable({ users, currentUserId, onToggle, busy }) {
               const isBusy = busy === user.id + key;
               return (
                 <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <input type="checkbox" checked={checked} disabled={isLocked || isBusy}
-                    onChange={() => !isLocked && onToggle(user, key)}
-                    style={{ accentColor: 'var(--accent)', width: 15, height: 15, cursor: isLocked ? 'default' : 'pointer', opacity: isLocked ? 0.4 : 1 }}/>
+                  <Checkbox checked={checked} disabled={isLocked || isBusy} onChange={() => onToggle(user, key)}/>
                 </div>
               );
             })}

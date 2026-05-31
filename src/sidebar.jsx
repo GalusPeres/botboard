@@ -119,7 +119,7 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
   );
 };
 
-export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, modules = [], restartEnabled, onRestart }) => {
+export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, modules = [], restartEnabled, onRestart, isAdmin = true }) => {
   const displayName = user?.global_name || user?.username || 'Discord user';
   const userHandle = user?.username ? `@${user.username}` : '';
   const userInitial = displayName.charAt(0).toUpperCase();
@@ -138,47 +138,56 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
       <div className="nav-section">
         <div className="nav-label">General</div>
         <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
-        <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>
+        {isAdmin && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>}
       </div>
 
-      {BOT_MODULES.map((bot) => (
-        <BotGroup
-          key={bot.key}
-          botKey={bot.key}
-          groupCls={bot.group}
-          botIcon={bot.icon}
-          name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
-          avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
-          status={botStatus[bot.key]}
-          restartEnabled={restartEnabled}
-          onRestart={() => onRestart(bot.key)}
-        >
-          {bot.pages.map((page) => (
-            <NavItem key={page.id} id={page.id} route={route} setRoute={setRoute}
-              icon={page.icon} label={page.label}
-              badge={page.badge === 'sounds' ? soundsCount : undefined}/>
-          ))}
-        </BotGroup>
-      ))}
+      {BOT_MODULES.map((bot) => {
+        const visiblePages = isAdmin ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
+        return (
+          <BotGroup
+            key={bot.key}
+            botKey={bot.key}
+            groupCls={bot.group}
+            botIcon={bot.icon}
+            name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
+            avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
+            status={botStatus[bot.key]}
+            restartEnabled={restartEnabled}
+            onRestart={() => onRestart(bot.key)}
+          >
+            {visiblePages.map((page) => (
+              <NavItem key={page.id} id={page.id} route={route} setRoute={setRoute}
+                icon={page.icon} label={page.label}
+                badge={page.badge === 'sounds' ? soundsCount : undefined}/>
+            ))}
+          </BotGroup>
+        );
+      })}
 
-      {extraModules.map((module) => (
-        <BotGroup
-          key={module.id}
-          botKey={module.id}
-          groupCls="mod"
-          botIcon={module.manifest?.icon || 'grid'}
-          name={moduleDisplayName(module, module.id)}
-          avatar={moduleAvatar(module)}
-          status={module.online ? 'online' : 'offline'}
-          restartEnabled={restartEnabled}
-          onRestart={() => onRestart(module.id)}
-        >
-          {supportedGenericPages(module).map((page) => (
-            <NavItem key={page.id} id={`bot/${module.id}/${page.id}`} route={route} setRoute={setRoute}
-              icon={page.icon || 'grid'} label={page.label || page.id} group="mod"/>
-          ))}
-        </BotGroup>
-      ))}
+      {extraModules.map((module) => {
+        const visiblePages = isAdmin
+          ? supportedGenericPages(module)
+          : supportedGenericPages(module).filter((page) => (page.kind || page.id) !== 'settings');
+        if (visiblePages.length === 0) return null;
+        return (
+          <BotGroup
+            key={module.id}
+            botKey={module.id}
+            groupCls="mod"
+            botIcon={module.manifest?.icon || 'grid'}
+            name={moduleDisplayName(module, module.id)}
+            avatar={moduleAvatar(module)}
+            status={module.online ? 'online' : 'offline'}
+            restartEnabled={restartEnabled}
+            onRestart={() => onRestart(module.id)}
+          >
+            {visiblePages.map((page) => (
+              <NavItem key={page.id} id={`bot/${module.id}/${page.id}`} route={route} setRoute={setRoute}
+                icon={page.icon || 'grid'} label={page.label || page.id} group="mod"/>
+            ))}
+          </BotGroup>
+        );
+      })}
 
       <div className="sidebar-spacer"/>
 
@@ -333,7 +342,7 @@ export const Topbar = ({ route, server, voiceChannels = [], voiceTargets = {}, s
   );
 };
 
-export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, modules = [], soundsCount = 0, restartEnabled, onRestart, onLogout }) => {
+export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, modules = [], soundsCount = 0, restartEnabled, onRestart, onLogout, isAdmin = true }) => {
   const go = (nextRoute) => { setRoute(nextRoute); onClose(); };
   return (
     <div className="mobile-sidebar-backdrop" onClick={onClose}>
@@ -352,6 +361,7 @@ export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onC
           modules={modules}
           restartEnabled={restartEnabled}
           onRestart={onRestart}
+          isAdmin={isAdmin}
         />
       </div>
     </div>

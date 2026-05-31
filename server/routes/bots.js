@@ -3,6 +3,7 @@ import { botIds, hasBot, botStatus, botFetch } from '../botClient.js';
 import { restartContainer } from '../docker.js';
 import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot } from '../botRegistry.js';
 import { config } from '../config.js';
+import { requireAdmin } from '../auth.js';
 
 function configuredName(bot) {
   const cfg = botConfig(bot);
@@ -121,7 +122,7 @@ export default function botsRoutes() {
     res.json(modules);
   });
 
-  router.get('/registry', (req, res) => {
+  router.get('/registry', requireAdmin, (req, res) => {
     try {
       res.json(registrySnapshot());
     } catch (err) {
@@ -129,7 +130,7 @@ export default function botsRoutes() {
     }
   });
 
-  router.post('/registry/test', async (req, res) => {
+  router.post('/registry/test', requireAdmin, async (req, res) => {
     try {
       res.json(await probeBotUrl(req.body?.url));
     } catch (err) {
@@ -137,7 +138,7 @@ export default function botsRoutes() {
     }
   });
 
-  router.post('/registry', (req, res) => {
+  router.post('/registry', requireAdmin, (req, res) => {
     try {
       const { id, ...input } = req.body || {};
       const bot = upsertRegistryBot(id, input);
@@ -147,7 +148,7 @@ export default function botsRoutes() {
     }
   });
 
-  router.put('/registry/:bot', (req, res) => {
+  router.put('/registry/:bot', requireAdmin, (req, res) => {
     try {
       const bot = upsertRegistryBot(req.params.bot, req.body || {});
       res.json(bot);
@@ -156,7 +157,7 @@ export default function botsRoutes() {
     }
   });
 
-  router.delete('/registry/:bot', (req, res) => {
+  router.delete('/registry/:bot', requireAdmin, (req, res) => {
     try {
       res.json(deleteRegistryBot(req.params.bot));
     } catch (err) {

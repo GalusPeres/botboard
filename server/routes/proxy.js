@@ -14,6 +14,13 @@ export default function proxyRoutes() {
     if (!hasBot(bot)) return res.status(404).json({ error: 'unknown bot' });
 
     const subPath = req.params[0];
+
+    // Block settings access for non-admins (both reading and writing).
+    if (subPath === 'settings' || subPath.startsWith('settings/')) {
+      if (!req.session?.user?.isAdmin) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+    }
     const url = `${botBaseUrl(bot)}/api/${subPath}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
 
     try {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed } from '../auth.js';
+import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed, isAdmin } from '../auth.js';
 import { discordOAuthEnabled } from '../config.js';
 
 export default function authRoutes() {
@@ -41,6 +41,7 @@ export default function authRoutes() {
         avatar: user.avatar
           ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
           : null,
+        isAdmin: isAdmin(user.id),
       };
       req.session.userGuilds = guilds.map((g) => g.id);
       req.session.save((saveErr) => {

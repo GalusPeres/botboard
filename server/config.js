@@ -36,6 +36,7 @@ export const config = {
     clientSecret: optional('DISCORD_CLIENT_SECRET'),
     redirectUri: optional('DISCORD_REDIRECT_URI'),
     allowedUserIds: list('ALLOWED_USER_IDS'),
+    adminUserIds: list('ADMIN_USER_IDS'),
   },
 
   bots: {

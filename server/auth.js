@@ -59,12 +59,25 @@ export function isAllowed(userId) {
   return allowed.includes(userId);
 }
 
+export function isAdmin(userId) {
+  const admins = config.discord.adminUserIds;
+  // If no admin list is configured, everyone who can log in is an admin (backwards compat).
+  if (admins.length === 0) return true;
+  return admins.includes(userId);
+}
+
 export function requireAuth(req, res, next) {
   if (config.devAuthBypass) {
-    req.session.user = req.session.user || { id: 'dev', username: 'dev', avatar: null, dev: true };
+    req.session.user = req.session.user || { id: 'dev', username: 'dev', avatar: null, dev: true, isAdmin: true };
     return next();
   }
   if (!discordOAuthEnabled()) return res.status(503).json({ error: 'Discord OAuth not configured' });
   if (!req.session?.user) return res.status(401).json({ error: 'unauthorized' });
+  next();
+}
+
+export function requireAdmin(req, res, next) {
+  if (config.devAuthBypass) return next();
+  if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'forbidden' });
   next();
 }

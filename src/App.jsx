@@ -51,8 +51,16 @@ export default function App() {
   const [stage, setStage] = useState(initialUser && initialServer?.id ? 'app' : 'boot');
   const [user, setUser] = useState(initialUser);
   const [server, setServer] = useState(initialServer);
-  const [route, setRoute] = useHashRoute('overview');
+  const [route, setRouteRaw] = useHashRoute('overview');
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+
+  // Wrap setRoute so non-admins are silently redirected away from restricted pages.
+  const ADMIN_ROUTES = new Set(['bot-modules', 'sb/settings', 'mb/settings']);
+  const setRoute = (next) => {
+    const adminOnly = ADMIN_ROUTES.has(next) || String(next).includes('/settings');
+    if (adminOnly && !user?.isAdmin) return;
+    setRouteRaw(next);
+  };
 
   const [currentSound, setCurrentSound] = useState(null);
   const [currentPreview, setCurrentPreview] = useState(null);
@@ -615,7 +623,8 @@ function DashboardApp(props) {
                botInfo={botInfo}
                modules={modules}
                restartEnabled={restartEnabled}
-               onRestart={(bot) => setRestartConfirm(bot)}/>
+               onRestart={(bot) => setRestartConfirm(bot)}
+               isAdmin={!!user?.isAdmin}/>
       <div className="main">
         <Topbar route={route} server={server}
                 voiceChannels={voiceChannels}
@@ -727,6 +736,7 @@ function DashboardApp(props) {
           restartEnabled={restartEnabled}
           onRestart={(bot) => { setRestartConfirm(bot); setMoreSheetOpen(false); }}
           onLogout={onLogout}
+          isAdmin={!!user?.isAdmin}
         />
       )}
 

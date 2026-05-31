@@ -63,6 +63,30 @@ export default function App() {
     setRouteRaw(next);
   };
 
+  // Poll permissions every 15 s so changes made in Roles take effect live.
+  useEffect(() => {
+    if (stage !== 'app') return;
+    const id = setInterval(async () => {
+      try {
+        const me = await API.auth.me();
+        if (!me.user) return;
+        const newPerms = me.user.permissions || {};
+        setUser((prev) => {
+          if (JSON.stringify(prev?.permissions) === JSON.stringify(newPerms)) return prev;
+          return { ...prev, permissions: newPerms };
+        });
+      } catch {}
+    }, 15000);
+    return () => clearInterval(id);
+  }, [stage]);
+
+  // If the current route requires a permission that was just revoked, go to overview.
+  const ROUTE_PERM = { 'bot-modules': 'botModules', 'admin': 'userManagement', 'sb/settings': 'settings', 'mb/settings': 'settings' };
+  useEffect(() => {
+    const required = ROUTE_PERM[route] || (String(route).endsWith('/settings') ? 'settings' : null);
+    if (required && perms[required] === false) setRouteRaw('overview');
+  }, [perms]);
+
   const [currentSound, setCurrentSound] = useState(null);
   const [currentPreview, setCurrentPreview] = useState(null);
   const [toast, setToast] = useState(null);

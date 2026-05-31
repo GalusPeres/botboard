@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import { requireAdmin } from '../auth.js';
-import { listUsers, setAdminOverride, removeUser, recordUser } from '../userRegistry.js';
+import { listUsers, setPermissions, recordUser } from '../userRegistry.js';
 import { botIds, botBaseUrl, botAuthHeader } from '../botClient.js';
 
 export default function usersRoutes() {
   const router = Router();
 
-  // All user-management routes are admin-only.
   router.use(requireAdmin);
 
   router.get('/', (req, res) => {
@@ -17,7 +16,7 @@ export default function usersRoutes() {
     }
   });
 
-  // Pre-register a user (add them before they log in).
+  // Pre-register a user before they log in.
   router.post('/', (req, res) => {
     try {
       const { id, username, global_name, avatar } = req.body || {};
@@ -30,27 +29,16 @@ export default function usersRoutes() {
     }
   });
 
-  router.patch('/:id', (req, res) => {
+  // Update individual permissions for a user.
+  router.patch('/:id/permissions', (req, res) => {
     try {
-      const { isAdmin } = req.body || {};
-      if (typeof isAdmin !== 'boolean') {
-        return res.status(400).json({ error: 'isAdmin must be a boolean' });
-      }
-      res.json(setAdminOverride(req.params.id, isAdmin));
+      res.json(setPermissions(req.params.id, req.body || {}));
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
     }
   });
 
-  router.delete('/:id', (req, res) => {
-    try {
-      res.json(removeUser(req.params.id));
-    } catch (err) {
-      res.status(err.status || 500).json({ error: err.message });
-    }
-  });
-
-  // Fetch guild members from the first available bot (for the member picker UI).
+  // Fetch guild members from the first available bot.
   router.get('/guild-members/:guildId', async (req, res) => {
     const bot = botIds()[0];
     if (!bot) return res.status(503).json({ error: 'no bot available' });

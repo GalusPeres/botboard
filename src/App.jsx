@@ -55,11 +55,11 @@ export default function App() {
   const [route, setRouteRaw] = useHashRoute('overview');
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
-  // Wrap setRoute so non-admins are silently redirected away from restricted pages.
-  const ADMIN_ROUTES = new Set(['bot-modules', 'admin', 'sb/settings', 'mb/settings']);
+  const perms = user?.permissions || {};
   const setRoute = (next) => {
-    const adminOnly = ADMIN_ROUTES.has(next) || String(next).includes('/settings');
-    if (adminOnly && !user?.isAdmin) return;
+    if (['bot-modules'].includes(next) && !perms.botModules) return;
+    if (['admin'].includes(next) && !perms.userManagement) return;
+    if ((next === 'sb/settings' || next === 'mb/settings' || String(next).endsWith('/settings')) && !perms.settings) return;
     setRouteRaw(next);
   };
 
@@ -625,7 +625,7 @@ function DashboardApp(props) {
                modules={modules}
                restartEnabled={restartEnabled}
                onRestart={(bot) => setRestartConfirm(bot)}
-               isAdmin={!!user?.isAdmin}/>
+               permissions={perms}/>
       <div className="main">
         <Topbar route={route} server={server}
                 voiceChannels={voiceChannels}
@@ -738,7 +738,7 @@ function DashboardApp(props) {
           restartEnabled={restartEnabled}
           onRestart={(bot) => { setRestartConfirm(bot); setMoreSheetOpen(false); }}
           onLogout={onLogout}
-          isAdmin={!!user?.isAdmin}
+          permissions={perms}
         />
       )}
 

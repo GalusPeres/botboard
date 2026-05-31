@@ -3,6 +3,7 @@
 
 import { Router } from 'express';
 import { hasBot, botBaseUrl, botAuthHeader } from '../botClient.js';
+import { hasPermission } from '../auth.js';
 
 const PROXY_PASS_HEADERS = ['content-type', 'content-disposition', 'cache-control'];
 
@@ -14,12 +15,14 @@ export default function proxyRoutes() {
     if (!hasBot(bot)) return res.status(404).json({ error: 'unknown bot' });
 
     const subPath = req.params[0];
+    const userId = req.session?.user?.id;
 
-    // Block settings access for non-admins (both reading and writing).
     if (subPath === 'settings' || subPath.startsWith('settings/')) {
-      if (!req.session?.user?.isAdmin) {
-        return res.status(403).json({ error: 'forbidden' });
-      }
+      if (!hasPermission(userId, 'settings')) return res.status(403).json({ error: 'forbidden' });
+    }
+
+    if ((subPath === 'sounds' || subPath.startsWith('sounds/')) && !['GET', 'HEAD'].includes(req.method)) {
+      if (!hasPermission(userId, 'soundLibrary')) return res.status(403).json({ error: 'forbidden' });
     }
     const url = `${botBaseUrl(bot)}/api/${subPath}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
 

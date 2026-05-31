@@ -1,9 +1,5 @@
-// Discord OAuth + session middleware.
-// Flow: /api/auth/discord -> Discord login -> /api/auth/callback -> session cookie.
-// requireAuth guards every /api/* route except auth + healthcheck.
-
 import { config, discordOAuthEnabled } from './config.js';
-import { getAdminOverride } from './userRegistry.js';
+import { getPermissions } from './userRegistry.js';
 
 const OAUTH_BASE = 'https://discord.com/api/oauth2/authorize';
 const TOKEN_URL = 'https://discord.com/api/oauth2/token';
@@ -55,24 +51,25 @@ export async function fetchUserGuilds(accessToken) {
 }
 
 export function isAllowed() {
-  // Login is open to everyone — admin status is controlled separately.
   return true;
 }
 
+// Live permission check — reads from file so changes take effect immediately.
+export function hasPermission(userId, permission) {
+  if (!userId) return false;
+  return getPermissions(userId)[permission] === true;
+}
+
 export function isAdmin(userId) {
-  // ALLOWED_USER_IDS = the bootstrap admin list (put your own ID here).
-  // ADMIN_USER_IDS = additional admins via ENV.
-  // Both are checked before the file-based override from the Admin screen.
-  const envAdmins = [...config.discord.allowedUserIds, ...config.discord.adminUserIds];
-  if (envAdmins.includes(userId)) return true;
-  // File-based override set via the Admin screen.
-  const override = getAdminOverride(userId);
-  return override === true;
+  return hasPermission(userId, 'userManagement');
 }
 
 export function requireAuth(req, res, next) {
   if (config.devAuthBypass) {
-    req.session.user = req.session.user || { id: 'dev', username: 'dev', avatar: null, dev: true, isAdmin: true };
+    req.session.user = req.session.user || {
+      id: 'dev', username: 'dev', avatar: null, dev: true,
+      permissions: { controlBot: true, soundLibrary: true, settings: true, userManagement: true, botModules: true },
+    };
     return next();
   }
   if (!discordOAuthEnabled()) return res.status(503).json({ error: 'Discord OAuth not configured' });
@@ -82,6 +79,14 @@ export function requireAuth(req, res, next) {
 
 export function requireAdmin(req, res, next) {
   if (config.devAuthBypass) return next();
-  if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'forbidden' });
+  if (!hasPermission(req.session?.user?.id, 'userManagement')) return res.status(403).json({ error: 'forbidden' });
   next();
+}
+
+export function requirePermission(permission) {
+  return (req, res, next) => {
+    if (config.devAuthBypass) return next();
+    if (!hasPermission(req.session?.user?.id, permission)) return res.status(403).json({ error: 'forbidden' });
+    next();
+  };
 }

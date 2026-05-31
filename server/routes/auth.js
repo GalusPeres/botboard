@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed, isAdmin } from '../auth.js';
-import { recordUser } from '../userRegistry.js';
+import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed, isAdmin, hasPermission } from '../auth.js';
+import { recordUser, getPermissions } from '../userRegistry.js';
 import { discordOAuthEnabled } from '../config.js';
 
 export default function authRoutes() {
@@ -34,19 +34,16 @@ export default function authRoutes() {
         return res.status(403).send('Your Discord account is not on the allowlist.');
       }
 
-      const adminStatus = isAdmin(user.id);
-      // Record the user in users.json so admins can manage them via the dashboard.
-      recordUser({ id: user.id, username: user.username, global_name: user.global_name, avatar: user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : null });
+      const avatar = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : null;
+      recordUser({ id: user.id, username: user.username, global_name: user.global_name, avatar });
 
       const guilds = await fetchUserGuilds(token.access_token);
       req.session.user = {
         id: user.id,
         username: user.username,
         global_name: user.global_name,
-        avatar: user.avatar
-          ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
-          : null,
-        isAdmin: adminStatus,
+        avatar,
+        permissions: getPermissions(user.id),
       };
       req.session.userGuilds = guilds.map((g) => g.id);
       req.session.save((saveErr) => {

@@ -120,7 +120,7 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
   );
 };
 
-export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, modules = [], restartEnabled, onRestart, isAdmin = true }) => {
+export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, modules = [], restartEnabled, onRestart, permissions = {} }) => {
   const displayName = user?.global_name || user?.username || 'Discord user';
   const userHandle = user?.username ? `@${user.username}` : '';
   const userInitial = displayName.charAt(0).toUpperCase();
@@ -139,12 +139,12 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
       <div className="nav-section">
         <div className="nav-label">General</div>
         <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
-        {isAdmin && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>}
-        {isAdmin && <NavItem id="admin" route={route} setRoute={setRoute} icon="settings" label="Admin"/>}
+        {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>}
+        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="settings" label="Admin"/>}
       </div>
 
       {BOT_MODULES.map((bot) => {
-        const visiblePages = isAdmin ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
+        const visiblePages = permissions.settings ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
         return (
           <BotGroup
             key={bot.key}
@@ -167,7 +167,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
       })}
 
       {extraModules.map((module) => {
-        const visiblePages = isAdmin
+        const visiblePages = permissions.settings
           ? supportedGenericPages(module)
           : supportedGenericPages(module).filter((page) => (page.kind || page.id) !== 'settings');
         if (visiblePages.length === 0) return null;
@@ -344,7 +344,7 @@ export const Topbar = ({ route, server, voiceChannels = [], voiceTargets = {}, s
   );
 };
 
-export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, modules = [], soundsCount = 0, restartEnabled, onRestart, onLogout, isAdmin = true }) => {
+export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, modules = [], soundsCount = 0, restartEnabled, onRestart, onLogout, permissions = {} }) => {
   const go = (nextRoute) => { setRoute(nextRoute); onClose(); };
   return (
     <div className="mobile-sidebar-backdrop" onClick={onClose}>
@@ -363,7 +363,7 @@ export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onC
           modules={modules}
           restartEnabled={restartEnabled}
           onRestart={onRestart}
-          isAdmin={isAdmin}
+          permissions={permissions}
         />
       </div>
     </div>

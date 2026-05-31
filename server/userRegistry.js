@@ -1,10 +1,22 @@
-// Persists a record of every Discord user who has logged in, plus any
-// admin-status overrides set through the dashboard UI.
-// File location: USERS_CONFIG_PATH (default ./data/users.json → /app/data/users.json).
-
 import fs from 'fs';
 import path from 'path';
 import { config } from './config.js';
+
+export const PERMISSIONS = ['controlBot', 'soundLibrary', 'settings', 'userManagement', 'botModules'];
+
+const DEFAULT_PERMISSIONS = {
+  controlBot: true,
+  soundLibrary: false,
+  settings: false,
+  userManagement: false,
+  botModules: false,
+};
+
+const ALL_PERMISSIONS = Object.fromEntries(PERMISSIONS.map((k) => [k, true]));
+
+function envAdminSet() {
+  return new Set([...config.discord.allowedUserIds, ...config.discord.adminUserIds]);
+}
 
 function registryPath() {
   return path.resolve(config.usersConfigPath);
@@ -26,8 +38,6 @@ function save(data) {
   fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
 }
 
-// Called on every successful login — creates or updates the user record.
-// Does NOT change an existing isAdmin value (that's done explicitly via UI).
 export function recordUser(user) {
   const data = load();
   const existing = data[user.id] || {};
@@ -42,59 +52,44 @@ export function recordUser(user) {
   save(data);
 }
 
-// Returns the stored isAdmin override for a user (true / false / undefined).
-export function getAdminOverride(userId) {
+export function getPermissions(userId) {
+  if (envAdminSet().has(userId)) return { ...ALL_PERMISSIONS };
   const data = load();
-  return data[userId]?.isAdmin;
+  return { ...DEFAULT_PERMISSIONS, ...(data[userId]?.permissions || {}) };
 }
 
-// Returns all known users as an array, enriched with whether their admin
-// status is locked to the ADMIN_USER_IDS env var.
+export function setPermissions(userId, incoming) {
+  if (envAdminSet().has(userId)) {
+    const err = new Error('Permissions of ENV admins cannot be changed here.');
+    err.status = 400;
+    throw err;
+  }
+  const data = load();
+  if (!data[userId]) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+  const merged = { ...(data[userId].permissions || {}), ...incoming };
+  // Only keep known keys with boolean values.
+  for (const key of Object.keys(merged)) {
+    if (!PERMISSIONS.includes(key) || typeof merged[key] !== 'boolean') delete merged[key];
+  }
+  data[userId].permissions = merged;
+  save(data);
+  return serialize(data[userId]);
+}
+
+function serialize(u) {
+  const isEnvAdmin = envAdminSet().has(u.id);
+  return {
+    ...u,
+    permissions: isEnvAdmin ? { ...ALL_PERMISSIONS } : { ...DEFAULT_PERMISSIONS, ...(u.permissions || {}) },
+    isEnvAdmin,
+  };
+}
+
 export function listUsers() {
   const data = load();
-  const envAdmins = new Set(config.discord.adminUserIds);
-  return Object.values(data).map((u) => ({
-    ...u,
-    isAdmin: envAdmins.has(u.id) || u.isAdmin === true,
-    isAdminFixed: envAdmins.has(u.id), // locked by ENV — cannot be changed via UI
-  }));
-}
-
-// Updates the isAdmin flag for a user. Throws if user not found.
-export function setAdminOverride(userId, isAdmin) {
-  const envAdmins = new Set(config.discord.adminUserIds);
-  if (envAdmins.has(userId)) {
-    const err = new Error('This user\'s admin status is set by the ADMIN_USER_IDS environment variable and cannot be changed here.');
-    err.status = 400;
-    throw err;
-  }
-  const data = load();
-  if (!data[userId]) {
-    const err = new Error('User not found');
-    err.status = 404;
-    throw err;
-  }
-  data[userId].isAdmin = isAdmin;
-  save(data);
-  const envAdmin = envAdmins.has(userId);
-  return { ...data[userId], isAdmin: envAdmin || data[userId].isAdmin === true, isAdminFixed: envAdmin };
-}
-
-// Removes a user record entirely (revokes their stored access).
-export function removeUser(userId) {
-  const envAdmins = new Set(config.discord.adminUserIds);
-  if (envAdmins.has(userId)) {
-    const err = new Error('Cannot remove a user who is listed in ADMIN_USER_IDS.');
-    err.status = 400;
-    throw err;
-  }
-  const data = load();
-  if (!data[userId]) {
-    const err = new Error('User not found');
-    err.status = 404;
-    throw err;
-  }
-  delete data[userId];
-  save(data);
-  return { removed: userId };
+  return Object.values(data).map(serialize);
 }

@@ -4,6 +4,14 @@ import { useFetch } from './hooks.js';
 import * as API from './api.js';
 import { relativeTime } from './format.js';
 
+const PERMISSION_LABELS = {
+  controlBot:     'Control Bot',
+  soundLibrary:   'Edit Sound Library',
+  settings:       'Change Settings',
+  botModules:     'Edit Bot Modules',
+  userManagement: 'User Management',
+};
+
 function UserAvatar({ user, size = 36 }) {
   const initial = (user.global_name || user.username || '?').charAt(0).toUpperCase();
   if (user.avatar) {
@@ -189,12 +197,11 @@ export function AdminScreen({ currentUserId, server }) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const toggleAdmin = useCallback(async (user) => {
-    setBusy(user.id);
+  const togglePermission = useCallback(async (user, permission) => {
+    setBusy(user.id + permission);
     try {
-      const updated = await API.users.setAdmin(user.id, !user.isAdmin);
+      const updated = await API.users.setPermissions(user.id, { [permission]: !user.permissions[permission] });
       setUsers((prev) => (prev ?? fetchedUsers ?? []).map((u) => u.id === user.id ? { ...u, ...updated } : u));
-      showToast(`${user.global_name || user.username} is now ${updated.isAdmin ? 'Admin' : 'User'}`);
     } catch (err) {
       showToast(err.message || 'Failed to update');
     } finally {
@@ -249,8 +256,7 @@ export function AdminScreen({ currentUserId, server }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{user.global_name || user.username}</span>
-                  {isYou && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>(you)</span>}
-                  {user.isAdmin && <AdminBadge fixed={user.isAdminFixed}/>}
+                  {user.isEnvAdmin && <AdminBadge fixed={true}/>}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
                   {user.username && <>@{user.username}</>}
@@ -259,20 +265,31 @@ export function AdminScreen({ currentUserId, server }) {
                 </div>
               </div>
 
-              {!user.isAdminFixed && !isYou && (
-                <button
-                  className={'btn btn-sm ' + (user.isAdmin ? 'btn-ghost' : '')}
-                  onClick={() => toggleAdmin(user)}
-                  disabled={isBusy}
-                >
-                  <Icon name={user.isAdmin ? 'x' : 'check'} size={12}/>
-                  {user.isAdmin ? 'Revoke Admin' : 'Make Admin'}
-                </button>
+              {!isYou && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {Object.entries(PERMISSION_LABELS).map(([key, label]) => {
+                    const checked = user.permissions?.[key] === true;
+                    const disabled = user.isEnvAdmin || busy === user.id + key;
+                    return (
+                      <label key={key} style={{
+                        display: 'flex', alignItems: 'center', gap: 5, cursor: disabled ? 'default' : 'pointer',
+                        fontSize: 12, color: disabled ? 'var(--text-dim)' : 'var(--text)',
+                        userSelect: 'none',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={() => !disabled && togglePermission(user, key)}
+                          style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
               )}
-
-              {user.isAdminFixed && !isYou && (
-                <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>Managed via ENV</span>
-              )}
+              {isYou && <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>(you)</span>}
             </div>
           );
         })}

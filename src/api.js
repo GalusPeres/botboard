@@ -103,8 +103,7 @@ export const sound = {
 export const users = {
   list: () => api('/api/users'),
   add: (user) => api('/api/users', { method: 'POST', body: user }),
-  setAdmin: (id, isAdmin) => api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: { isAdmin } }),
-  remove: (id) => api(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  setPermissions: (id, permissions) => api(`/api/users/${encodeURIComponent(id)}/permissions`, { method: 'PATCH', body: permissions }),
   guildMembers: (guildId) => api(`/api/users/guild-members/${encodeURIComponent(guildId)}`),
 };
 

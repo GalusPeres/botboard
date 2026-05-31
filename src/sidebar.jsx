@@ -8,7 +8,7 @@ import { useCloseOnOutside } from './hooks.js';
 export const ROUTES = {
   overview:     { title: 'Overview',              group: 'gen' },
   'bot-modules':{ title: 'Bot Modules',           group: 'gen' },
-  'admin':      { title: 'Admin',                 group: 'gen' },
+  'admin':      { title: 'Roles',                  group: 'gen' },
   'sb/board':   { title: 'Soundboard',            group: 'sb',  parentBot: 'soundbot' },
   'sb/library': { title: 'Sound Library',         group: 'sb',  parentBot: 'soundbot' },
   'sb/stats':   { title: 'Statistics',            group: 'sb',  parentBot: 'soundbot' },
@@ -140,7 +140,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
         <div className="nav-label">General</div>
         <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
         {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="grid" label="Bot Modules"/>}
-        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="settings" label="Admin"/>}
+        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="settings" label="Roles"/>}
       </div>
 
       {BOT_MODULES.map((bot) => {

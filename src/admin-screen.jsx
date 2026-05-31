@@ -224,7 +224,7 @@ export function AdminScreen({ currentUserId, server }) {
   return (
     <div className="content-narrow">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>User Management</h2>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Roles</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
             <Icon name="refresh" size={13}/> Refresh

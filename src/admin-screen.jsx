@@ -9,8 +9,8 @@ const PERM_LABELS = {
   controlBot:     'Control',
   soundLibrary:   'Library',
   settings:       'Settings',
-  botModules:     'Bot Modules',
-  userManagement: 'User Mgmt',
+  botModules:     'Bots',
+  userManagement: 'Roles',
 };
 
 function Checkbox({ checked, disabled, onChange }) {
@@ -154,8 +154,8 @@ export function AdminScreen({ currentUserId }) {
   const [toast, setToast] = useState(null);
 
   const displayed = users ?? fetchedUsers ?? [];
-  const admins = displayed.filter((u) => u.isEnvAdmin || u.permissions?.userManagement === true);
-  const regularUsers = displayed.filter((u) => !u.isEnvAdmin && !u.permissions?.userManagement);
+  const admins = displayed.filter((u) => u.isEnvAdmin);
+  const regularUsers = displayed.filter((u) => !u.isEnvAdmin);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 

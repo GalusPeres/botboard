@@ -226,6 +226,7 @@ function DashboardApp(props) {
     onLogout, tweaks, setTweak,
   } = props;
 
+  const perms = user?.permissions || {};
   const guildId = server.id;
   const previewAudioRef = useRef(null);
   const { data: serverOptions } = useFetch(API.bots.servers, [guildId]);

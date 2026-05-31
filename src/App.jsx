@@ -643,7 +643,7 @@ function DashboardApp(props) {
             botInfo={botInfo} statusData={statusData} liveLogs={liveLogs}
             sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}/>}
           {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}/>}
-          {route === 'admin' && <AdminScreen currentUserId={user?.id}/>}
+          {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'sb/board' && (
             <>
               <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Icon } from './components.jsx';
 import { useFetch } from './hooks.js';
 import * as API from './api.js';
@@ -41,15 +41,149 @@ function AdminBadge({ fixed }) {
   );
 }
 
-export function AdminScreen({ currentUserId }) {
+// Modal to add users — either from server member list or by entering a user ID.
+function AddUserModal({ guildId, existingIds, onAdd, onClose }) {
+  const [tab, setTab] = useState('server'); // 'server' | 'id'
+  const [search, setSearch] = useState('');
+  const [manualId, setManualId] = useState('');
+  const [members, setMembers] = useState(null);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersError, setMembersError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (tab === 'server' && guildId && members === null) {
+      setLoadingMembers(true);
+      setMembersError(null);
+      API.users.guildMembers(guildId)
+        .then(setMembers)
+        .catch((err) => setMembersError(err.message))
+        .finally(() => setLoadingMembers(false));
+    }
+  }, [tab, guildId, members]);
+
+  useEffect(() => {
+    if (tab === 'id') setTimeout(() => inputRef.current?.focus(), 50);
+  }, [tab]);
+
+  const filtered = (members || []).filter((m) => {
+    if (existingIds.has(m.id)) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (m.global_name || '').toLowerCase().includes(q) || m.username.toLowerCase().includes(q);
+  });
+
+  const addMember = async (member) => {
+    setBusy(true);
+    try {
+      await onAdd({ id: member.id, username: member.username, global_name: member.global_name, avatar: member.avatar });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addById = async () => {
+    const id = manualId.trim();
+    if (!id) return;
+    setBusy(true);
+    try {
+      await onAdd({ id });
+      setManualId('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-header">
+          <span className="modal-title">Add User</span>
+          <button className="btn-icon btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={14}/></button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 2, padding: '0 20px 12px', borderBottom: '1px solid var(--border)' }}>
+          {[['server', 'Server Members'], ['id', 'By User ID']].map(([key, label]) => (
+            <button key={key} className={'btn btn-sm ' + (tab === key ? '' : 'btn-ghost')}
+              onClick={() => setTab(key)} style={{ flex: 1 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'server' && (
+          <>
+            <div style={{ padding: '12px 20px 8px' }}>
+              <input
+                className="input"
+                placeholder="Search members..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 16px' }}>
+              {loadingMembers && <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>Loading members...</div>}
+              {membersError && <div style={{ color: 'var(--red, #f87171)', fontSize: 13, padding: '8px 0' }}>{membersError}</div>}
+              {!loadingMembers && !membersError && filtered.length === 0 && (
+                <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>
+                  {search ? 'No matches.' : 'All server members are already added.'}
+                </div>
+              )}
+              {filtered.map((m) => (
+                <div key={m.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  <UserAvatar user={m} size={32}/>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{m.global_name || m.username}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>@{m.username}</div>
+                  </div>
+                  <button className="btn btn-sm" onClick={() => addMember(m)} disabled={busy}>
+                    Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === 'id' && (
+          <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Enter a Discord User ID. Right-click any user in Discord → Copy User ID (enable Developer Mode first).
+            </div>
+            <input
+              ref={inputRef}
+              className="input"
+              placeholder="e.g. 123456789012345678"
+              value={manualId}
+              onChange={(e) => setManualId(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addById()}
+            />
+            <button className="btn" onClick={addById} disabled={busy || !manualId.trim()}>
+              Add User
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function AdminScreen({ currentUserId, server }) {
   const { data: fetchedUsers, reload } = useFetch(() => API.users.list(), []);
   const [users, setUsers] = useState(null);
-  const [busy, setBusy] = useState(null); // userId currently being acted on
+  const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  // Use local state when available (after mutations), fall back to fetched data.
   const displayed = users ?? fetchedUsers ?? [];
+  const existingIds = new Set(displayed.map((u) => u.id));
 
   const showToast = (msg) => {
     setToast(msg);
@@ -66,6 +200,17 @@ export function AdminScreen({ currentUserId }) {
       showToast(err.message || 'Failed to update');
     } finally {
       setBusy(null);
+    }
+  }, [fetchedUsers]);
+
+  const addUser = useCallback(async (userData) => {
+    try {
+      const added = await API.users.add(userData);
+      setUsers((prev) => [...(prev ?? fetchedUsers ?? []).filter((u) => u.id !== added.id), added]);
+      showToast(`${added.global_name || added.username || added.id} added`);
+    } catch (err) {
+      showToast(err.message || 'Failed to add user');
+      throw err;
     }
   }, [fetchedUsers]);
 
@@ -89,17 +234,22 @@ export function AdminScreen({ currentUserId }) {
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>User Management</h2>
           <p style={{ margin: '4px 0 0', color: 'var(--text-dim)', fontSize: 13 }}>
-            Everyone who logs in via Discord appears here — you can then grant or revoke admin rights.
+            Everyone who logs in appears here — you can grant or revoke admin rights.
           </p>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
-          <Icon name="refresh" size={13}/> Refresh
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
+            <Icon name="refresh" size={13}/> Refresh
+          </button>
+          <button className="btn btn-sm" onClick={() => setShowAddModal(true)}>
+            <Icon name="check" size={13}/> Add User
+          </button>
+        </div>
       </div>
 
       {displayed.length === 0 && (
         <div className="empty" style={{ padding: '48px 0' }}>
-          <div>No users have logged in yet.</div>
+          <div>No users yet. Click "Add User" to add someone.</div>
         </div>
       )}
 
@@ -122,8 +272,9 @@ export function AdminScreen({ currentUserId }) {
                   {user.isAdmin && <AdminBadge fixed={user.isAdminFixed}/>}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
-                  @{user.username}
+                  {user.username && <>@{user.username}</>}
                   {user.lastSeen && <> · Last seen {relativeTime(new Date(user.lastSeen).getTime())}</>}
+                  {!user.lastSeen && <> · Not logged in yet</>}
                 </div>
               </div>
 
@@ -142,7 +293,6 @@ export function AdminScreen({ currentUserId }) {
                     className="btn btn-sm btn-ghost"
                     onClick={() => setConfirmRemove(user)}
                     disabled={isBusy}
-                    title="Remove this user (they can log in again)"
                     style={{ color: 'var(--red, #f87171)' }}
                   >
                     <Icon name="x" size={12}/> Remove
@@ -151,38 +301,40 @@ export function AdminScreen({ currentUserId }) {
               )}
 
               {user.isAdminFixed && !isYou && (
-                <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
-                  Managed via ENV
-                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>Managed via ENV</span>
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Remove confirmation */}
+      {showAddModal && (
+        <AddUserModal
+          guildId={server?.id}
+          existingIds={existingIds}
+          onAdd={async (userData) => { await addUser(userData); }}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+
       {confirmRemove && (
         <div className="modal-backdrop" onClick={() => setConfirmRemove(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
             <div className="modal-header">
               <span className="modal-title">Remove user?</span>
-              <button className="btn-icon btn-ghost btn-sm" onClick={() => setConfirmRemove(null)}>
-                <Icon name="x" size={14}/>
-              </button>
+              <button className="btn-icon btn-ghost btn-sm" onClick={() => setConfirmRemove(null)}><Icon name="x" size={14}/></button>
             </div>
             <div style={{ padding: '0 20px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0' }}>
                 <UserAvatar user={confirmRemove} size={28}/>
                 <strong>{confirmRemove.global_name || confirmRemove.username}</strong>
               </div>
-              This removes them from the user list. They can still log in again if they have access.
+              This removes them from the list. They can still log in again.
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost btn-sm" onClick={() => setConfirmRemove(null)}>Cancel</button>
               <button className="btn btn-sm" style={{ background: 'var(--red, #f87171)', color: '#fff' }}
-                onClick={() => removeUser(confirmRemove)}>
-                Remove
-              </button>
+                onClick={() => removeUser(confirmRemove)}>Remove</button>
             </div>
           </div>
         </div>

@@ -102,8 +102,10 @@ export const sound = {
 
 export const users = {
   list: () => api('/api/users'),
+  add: (user) => api('/api/users', { method: 'POST', body: user }),
   setAdmin: (id, isAdmin) => api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: { isAdmin } }),
   remove: (id) => api(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  guildMembers: (guildId) => api(`/api/users/guild-members/${encodeURIComponent(guildId)}`),
 };
 
 export function logsSSE(onMessage, onError, onOpen) {

@@ -179,7 +179,6 @@ export function AdminScreen({ currentUserId, server }) {
   const [users, setUsers] = useState(null);
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
-  const [confirmRemove, setConfirmRemove] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const displayed = users ?? fetchedUsers ?? [];
@@ -214,29 +213,11 @@ export function AdminScreen({ currentUserId, server }) {
     }
   }, [fetchedUsers]);
 
-  const removeUser = useCallback(async (user) => {
-    setConfirmRemove(null);
-    setBusy(user.id);
-    try {
-      await API.users.remove(user.id);
-      setUsers((prev) => (prev ?? fetchedUsers ?? []).filter((u) => u.id !== user.id));
-      showToast(`${user.global_name || user.username} removed`);
-    } catch (err) {
-      showToast(err.message || 'Failed to remove');
-    } finally {
-      setBusy(null);
-    }
-  }, [fetchedUsers]);
 
   return (
     <div className="content-narrow">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>User Management</h2>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-dim)', fontSize: 13 }}>
-            Everyone who logs in appears here — you can grant or revoke admin rights.
-          </p>
-        </div>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>User Management</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
             <Icon name="refresh" size={13}/> Refresh
@@ -279,25 +260,14 @@ export function AdminScreen({ currentUserId, server }) {
               </div>
 
               {!user.isAdminFixed && !isYou && (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <button
-                    className={'btn btn-sm ' + (user.isAdmin ? 'btn-ghost' : '')}
-                    onClick={() => toggleAdmin(user)}
-                    disabled={isBusy}
-                    title={user.isAdmin ? 'Remove admin rights' : 'Grant admin rights'}
-                  >
-                    <Icon name={user.isAdmin ? 'x' : 'check'} size={12}/>
-                    {user.isAdmin ? 'Revoke Admin' : 'Make Admin'}
-                  </button>
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => setConfirmRemove(user)}
-                    disabled={isBusy}
-                    style={{ color: 'var(--red, #f87171)' }}
-                  >
-                    <Icon name="x" size={12}/> Remove
-                  </button>
-                </div>
+                <button
+                  className={'btn btn-sm ' + (user.isAdmin ? 'btn-ghost' : '')}
+                  onClick={() => toggleAdmin(user)}
+                  disabled={isBusy}
+                >
+                  <Icon name={user.isAdmin ? 'x' : 'check'} size={12}/>
+                  {user.isAdmin ? 'Revoke Admin' : 'Make Admin'}
+                </button>
               )}
 
               {user.isAdminFixed && !isYou && (
@@ -317,30 +287,7 @@ export function AdminScreen({ currentUserId, server }) {
         />
       )}
 
-      {confirmRemove && (
-        <div className="modal-backdrop" onClick={() => setConfirmRemove(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
-            <div className="modal-header">
-              <span className="modal-title">Remove user?</span>
-              <button className="btn-icon btn-ghost btn-sm" onClick={() => setConfirmRemove(null)}><Icon name="x" size={14}/></button>
-            </div>
-            <div style={{ padding: '0 20px 16px', color: 'var(--text-dim)', fontSize: 13 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0' }}>
-                <UserAvatar user={confirmRemove} size={28}/>
-                <strong>{confirmRemove.global_name || confirmRemove.username}</strong>
-              </div>
-              This removes them from the list. They can still log in again.
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost btn-sm" onClick={() => setConfirmRemove(null)}>Cancel</button>
-              <button className="btn btn-sm" style={{ background: 'var(--red, #f87171)', color: '#fff' }}
-                onClick={() => removeUser(confirmRemove)}>Remove</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {toast && <div className="toast">{toast}</div>}
+{toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

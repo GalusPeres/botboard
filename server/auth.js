@@ -54,22 +54,20 @@ export async function fetchUserGuilds(accessToken) {
   return res.json();
 }
 
-export function isAllowed(userId) {
-  const allowed = config.discord.allowedUserIds;
-  if (allowed.length === 0) return true;
-  return allowed.includes(userId);
+export function isAllowed() {
+  // Login is open to everyone — admin status is controlled separately.
+  return true;
 }
 
 export function isAdmin(userId) {
-  const envAdmins = config.discord.adminUserIds;
-  // ENV list always grants admin — highest priority.
+  // ALLOWED_USER_IDS = the bootstrap admin list (put your own ID here).
+  // ADMIN_USER_IDS = additional admins via ENV.
+  // Both are checked before the file-based override from the Admin screen.
+  const envAdmins = [...config.discord.allowedUserIds, ...config.discord.adminUserIds];
   if (envAdmins.includes(userId)) return true;
-  // Check file-based override (set via dashboard UI).
+  // File-based override set via the Admin screen.
   const override = getAdminOverride(userId);
-  if (override === true) return true;
-  if (override === false) return false;
-  // No explicit override: if no ADMIN_USER_IDS configured at all, everyone is admin (backwards compat).
-  return envAdmins.length === 0;
+  return override === true;
 }
 
 export function requireAuth(req, res, next) {

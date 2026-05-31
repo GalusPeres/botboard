@@ -89,7 +89,7 @@ export function AdminScreen({ currentUserId }) {
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>User Management</h2>
           <p style={{ margin: '4px 0 0', color: 'var(--text-dim)', fontSize: 13 }}>
-            All Discord accounts that have logged into this dashboard.
+            Everyone who logs in via Discord appears here — you can then grant or revoke admin rights.
           </p>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
@@ -123,7 +123,7 @@ export function AdminScreen({ currentUserId }) {
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>
                   @{user.username}
-                  {user.lastSeen && <> · Last seen {relativeTime(user.lastSeen)}</>}
+                  {user.lastSeen && <> · Last seen {relativeTime(new Date(user.lastSeen).getTime())}</>}
                 </div>
               </div>
 

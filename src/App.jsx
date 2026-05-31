@@ -76,7 +76,7 @@ export default function App() {
           return { ...prev, permissions: newPerms };
         });
       } catch {}
-    }, 15000);
+    }, 3000);
     return () => clearInterval(id);
   }, [stage]);
 

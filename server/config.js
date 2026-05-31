@@ -1,3 +1,29 @@
+import fs from 'node:fs';
+
+// Load persisted settings from a mounted .env file into process.env before
+// the config object is built. Mirrors the same pattern used in the bots so
+// any override written to /app/data/.env takes effect after a restart.
+function loadEnvFile() {
+  const filePath = process.env.BOTBOARD_ENV_FILE || '/app/data/.env';
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    for (const line of content.split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+      if (!match) continue;
+      const key = match[1];
+      let value = match[2].trim();
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.warn('[env] Could not load env file:', err.message);
+  }
+}
+loadEnvFile();
+
 function required(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required environment variable: ${name}`);

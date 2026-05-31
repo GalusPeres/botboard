@@ -16,5 +16,6 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY server ./server
+RUN mkdir -p /app/data /app/.sessions
 EXPOSE 3000
 CMD ["node", "server/index.js"]

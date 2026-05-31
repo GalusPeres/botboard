@@ -703,7 +703,7 @@ function DashboardApp(props) {
             </>
           )}
           {route === 'sb/library' && <LibraryScreen sounds={sounds}
-            addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} playSound={playSound}/>}
+            addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} playSound={playSound} permissions={perms}/>}
           {route === 'sb/stats' && <StatsScreen bot="sound" sounds={sounds}
             botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>}
           {route === 'sb/logs' && <LogsScreen bot="sound"

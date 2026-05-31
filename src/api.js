@@ -98,6 +98,8 @@ export const sound = {
   settings: () => api('/api/bots/sound/settings'),
   saveSettings: (patch) => api('/api/bots/sound/settings', { method: 'PUT', body: patch }),
   previewUrl: (name) => `/api/bots/sound/sounds/${encodeURIComponent(name)}/file`,
+  downloadUrl: (name) => `/api/bots/sound/sounds/${encodeURIComponent(name)}/file`,
+  downloadAllUrl: () => `/api/bots/sound/sounds/download-zip`,
 };
 
 export const users = {

@@ -21,8 +21,12 @@ export default function proxyRoutes() {
       if (!hasPermission(userId, 'settings')) return res.status(403).json({ error: 'forbidden' });
     }
 
-    if ((subPath === 'sounds' || subPath.startsWith('sounds/')) && !['GET', 'HEAD'].includes(req.method)) {
-      if (!hasPermission(userId, 'soundLibrary')) return res.status(403).json({ error: 'forbidden' });
+    if (subPath === 'sounds' || subPath.startsWith('sounds/')) {
+      const isWrite = !['GET', 'HEAD'].includes(req.method);
+      const isDownload = subPath === 'sounds/download-zip' || subPath.endsWith('/file');
+      if (isWrite || isDownload) {
+        if (!hasPermission(userId, 'soundLibrary')) return res.status(403).json({ error: 'forbidden' });
+      }
     }
     const url = `${botBaseUrl(bot)}/api/${subPath}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
 

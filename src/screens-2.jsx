@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, Waveform, Tag, fmtDur } from './components.jsx';
 import { useCloseOnOutside } from './hooks.js';
+import * as API from './api.js';
 
 export const SoundboardScreen = ({ playSound, previewSound, currentSound, currentPreview, sounds, tileSize, targetChannel }) => {
   const [search, setSearch] = useState('');
@@ -450,7 +451,7 @@ const MusicCompact = ({ playerState, dispatch, addTrack, searchTracks, playerErr
   );
 };
 
-export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, playSound }) => {
+export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, playSound, permissions = {} }) => {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('plays');
   const [editing, setEditing] = useState(null);
@@ -493,13 +494,20 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
           <button className="btn btn-sm" onClick={() => playSound && playSound(sorted[0])}>
             <Icon name="play" size={12}/> Test play
           </button>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowUpload(true)}>
-            <Icon name="upload" size={13}/> Upload
-          </button>
+          {permissions.soundLibrary && (
+            <a className="btn btn-sm btn-ghost" href={API.sound.downloadAllUrl()} download="sounds.zip">
+              <Icon name="download" size={13}/> Download All
+            </a>
+          )}
+          {permissions.soundLibrary && (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowUpload(true)}>
+              <Icon name="upload" size={13}/> Upload
+            </button>
+          )}
         </div>
       </div>
 
-      {showUpload && (
+      {showUpload && permissions.soundLibrary && (
         <div className="upload-zone" style={{ marginBottom: 16 }} onClick={(e) => e.stopPropagation()}>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <Icon name="upload" size={18}/>
@@ -562,12 +570,21 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
               <td className="col-mono col-dim">{s.added}</td>
               <td className="col-actions">
                 <div style={{ display: 'inline-flex', gap: 4 }}>
-                  <button className="btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
-                    <Icon name="edit" size={12}/>
-                  </button>
-                  <button className="btn-icon btn-ghost btn-sm" onClick={() => deleteSound(s.name)} title="Delete">
-                    <Icon name="trash" size={12} style={{ color: 'var(--red)' }}/>
-                  </button>
+                  {permissions.soundLibrary && (
+                    <a className="btn-icon btn-ghost btn-sm" href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
+                      <Icon name="download" size={12}/>
+                    </a>
+                  )}
+                  {permissions.soundLibrary && (
+                    <button className="btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
+                      <Icon name="edit" size={12}/>
+                    </button>
+                  )}
+                  {permissions.soundLibrary && (
+                    <button className="btn-icon btn-ghost btn-sm" onClick={() => deleteSound(s.name)} title="Delete">
+                      <Icon name="trash" size={12} style={{ color: 'var(--red)' }}/>
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

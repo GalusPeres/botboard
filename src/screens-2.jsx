@@ -41,7 +41,11 @@ export const SoundboardScreen = ({ playSound, previewSound, currentSound, curren
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
-        {['plays', 'date', 'name'].map((key) => {
+        {[
+          { key: 'plays', label: 'plays' },
+          { key: 'date', label: 'newest' },
+          { key: 'name', label: 'name' },
+        ].map(({ key, label }) => {
           const active = sortBy === key;
           return (
             <button
@@ -51,7 +55,7 @@ export const SoundboardScreen = ({ playSound, previewSound, currentSound, curren
               onClick={() => setSortBy(key)}
               style={active ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'transparent' } : undefined}
             >
-              {key}
+              {label}
             </button>
           );
         })}

@@ -710,7 +710,7 @@ function DashboardApp(props) {
           )}
           {activeMeta.module && activeGenericKind === 'patch-watcher' && (
             <PatchWatcherScreen botId={activeMeta.parentBot}
-              botName={activeGenericName} setToast={setToast}/>
+              botName={activeGenericName} guildId={guildId} setToast={setToast}/>
           )}
           {activeMeta.module && !['patch-watcher', 'stats', 'logs', 'settings'].includes(activeGenericKind) && (
             <div className="content-narrow">

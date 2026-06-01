@@ -285,7 +285,7 @@ export const Topbar = ({ route, server, voiceChannels = [], voiceTargets = {}, s
   const [chanOpen, setChanOpen] = useState(false);
   const channelRef = useRef(null);
   const sectionTitle = meta.module
-    ? moduleDisplayName(meta.module, meta.parentBot)
+    ? meta.title
     : meta.parentBot
       ? dashboardBotName(meta.parentBot, botInfo)
       : 'General';

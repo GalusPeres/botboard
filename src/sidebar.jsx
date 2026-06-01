@@ -1,6 +1,6 @@
 // Sidebar + topbar + mobile navigation. Bot identity per route ('sb', 'mb', 'gen')
 // drives the accent stripe and crumb color.
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './components.jsx';
 import { dashboardBotName, moduleAvatar, moduleDisplayName } from './botIdentity.js';
 import { useCloseOnOutside } from './hooks.js';
@@ -127,6 +127,13 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
   const userInitial = displayName.charAt(0).toUpperCase();
   const moduleById = new Map((modules || []).map((item) => [item.id, item]));
   const extraModules = (modules || []).filter((module) => !FIXED_MODULE_BY_ID[module.id] && supportedGenericPages(module).length);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+  const toggleGroup = (key) => setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    const meta = routeMeta(route, modules);
+    if (!meta.parentBot) return;
+    setCollapsedGroups((prev) => prev[meta.parentBot] ? { ...prev, [meta.parentBot]: false } : prev);
+  }, [route, modules]);
 
   return (
     <aside className="sidebar">
@@ -137,63 +144,67 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
 
       <ServerDropdown server={server} servers={servers} onChangeServer={onChangeServer}/>
 
-      <div className="nav-section">
-        <div className="nav-label">General</div>
-        <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
-        {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
-        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-        {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
+      <div className="sidebar-scroll">
+        <div className="nav-section">
+          <div className="nav-label">General</div>
+          <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
+          {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
+          {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+          {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
+        </div>
+
+        {BOT_MODULES.map((bot) => {
+          const visiblePages = permissions.settings ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
+          return (
+            <BotGroup
+              key={bot.key}
+              botKey={bot.key}
+              groupCls={bot.group}
+              botIcon={bot.icon}
+              name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
+              avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
+              status={botStatus[bot.key]}
+              collapsed={!!collapsedGroups[bot.key]}
+              onToggle={() => toggleGroup(bot.key)}
+              restartEnabled={restartEnabled && !!permissions.restartBot}
+              onRestart={() => onRestart(bot.key)}
+            >
+              {visiblePages.map((page) => (
+                <NavItem key={page.id} id={page.id} route={route} setRoute={setRoute}
+                  icon={page.icon} label={page.label}
+                  badge={page.badge === 'sounds' ? soundsCount : undefined}/>
+              ))}
+            </BotGroup>
+          );
+        })}
+
+        {extraModules.map((module) => {
+          const visiblePages = permissions.settings
+            ? supportedGenericPages(module)
+            : supportedGenericPages(module).filter((page) => (page.kind || page.id) !== 'settings');
+          if (visiblePages.length === 0) return null;
+          return (
+            <BotGroup
+              key={module.id}
+              botKey={module.id}
+              groupCls="mod"
+              botIcon={module.manifest?.icon || 'grid'}
+              name={moduleDisplayName(module, module.id)}
+              avatar={moduleAvatar(module)}
+              status={module.online ? 'online' : 'offline'}
+              collapsed={!!collapsedGroups[module.id]}
+              onToggle={() => toggleGroup(module.id)}
+              restartEnabled={restartEnabled && !!permissions.restartBot}
+              onRestart={() => onRestart(module.id)}
+            >
+              {visiblePages.map((page) => (
+                <NavItem key={page.id} id={`bot/${module.id}/${page.id}`} route={route} setRoute={setRoute}
+                  icon={page.icon || 'grid'} label={page.label || page.id} group="mod"/>
+              ))}
+            </BotGroup>
+          );
+        })}
       </div>
-
-      {BOT_MODULES.map((bot) => {
-        const visiblePages = permissions.settings ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
-        return (
-          <BotGroup
-            key={bot.key}
-            botKey={bot.key}
-            groupCls={bot.group}
-            botIcon={bot.icon}
-            name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
-            avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
-            status={botStatus[bot.key]}
-            restartEnabled={restartEnabled && !!permissions.restartBot}
-            onRestart={() => onRestart(bot.key)}
-          >
-            {visiblePages.map((page) => (
-              <NavItem key={page.id} id={page.id} route={route} setRoute={setRoute}
-                icon={page.icon} label={page.label}
-                badge={page.badge === 'sounds' ? soundsCount : undefined}/>
-            ))}
-          </BotGroup>
-        );
-      })}
-
-      {extraModules.map((module) => {
-        const visiblePages = permissions.settings
-          ? supportedGenericPages(module)
-          : supportedGenericPages(module).filter((page) => (page.kind || page.id) !== 'settings');
-        if (visiblePages.length === 0) return null;
-        return (
-          <BotGroup
-            key={module.id}
-            botKey={module.id}
-            groupCls="mod"
-            botIcon={module.manifest?.icon || 'grid'}
-            name={moduleDisplayName(module, module.id)}
-            avatar={moduleAvatar(module)}
-            status={module.online ? 'online' : 'offline'}
-            restartEnabled={restartEnabled && !!permissions.restartBot}
-            onRestart={() => onRestart(module.id)}
-          >
-            {visiblePages.map((page) => (
-              <NavItem key={page.id} id={`bot/${module.id}/${page.id}`} route={route} setRoute={setRoute}
-                icon={page.icon || 'grid'} label={page.label || page.id} group="mod"/>
-            ))}
-          </BotGroup>
-        );
-      })}
-
-      <div className="sidebar-spacer"/>
 
       <div className="sidebar-user">
         {user?.avatar
@@ -224,11 +235,11 @@ export const NavItem = ({ id, route, setRoute, icon, label, badge, group }) => {
   );
 };
 
-export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, restartEnabled, onRestart, children }) => {
+export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, collapsed, onToggle, restartEnabled, onRestart, children }) => {
   const dotKind = status === 'online' ? 'on' : status === 'restarting' ? 'restarting' : 'off';
   return (
-    <div className={'bot-group bot-group-' + groupCls}>
-      <div className="bot-group-head">
+    <div className={'bot-group bot-group-' + groupCls + (collapsed ? ' collapsed' : '')}>
+      <div className="bot-group-head" onClick={onToggle}>
         <div className={'bot-mark ' + groupCls}>
           {avatar
             ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }}/>
@@ -241,6 +252,12 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, rest
             <span>{status}</span>
           </div>
         </div>
+        <button className="bot-collapse-btn"
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                title={collapsed ? 'Expand bot' : 'Collapse bot'}>
+          <Icon name="chevron-down" size={12}/>
+        </button>
         {restartEnabled && (
           <button className={'bot-restart-btn' + (status === 'restarting' ? ' spinning' : '')}
                   onClick={(e) => { e.stopPropagation(); onRestart(); }}
@@ -250,7 +267,7 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, rest
           </button>
         )}
       </div>
-      <div className="bot-group-nav">
+      <div className="bot-group-nav" hidden={collapsed}>
         {children}
       </div>
     </div>

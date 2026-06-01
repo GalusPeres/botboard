@@ -77,8 +77,8 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
   padding: 16px 12px;
-  gap: 18px;
-  overflow-y: auto;
+  gap: 14px;
+  overflow: hidden;
 }
 .sidebar-brand {
   display: flex;
@@ -164,6 +164,17 @@ ul, ol { list-style: none; }
 
 /* Nav sections */
 .nav-section { display: flex; flex-direction: column; gap: 1px; }
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.sidebar-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { border-color: var(--bg-deeper); }
 .nav-label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -238,7 +249,10 @@ ul, ol { list-style: none; }
   gap: 10px;
   padding: 0 10px 6px 8px;
   border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.12s;
 }
+.bot-group-head:hover { background: var(--surface); }
 .bot-group .bot-mark {
   width: 22px; height: 22px;
   border-radius: 5px;
@@ -283,6 +297,20 @@ ul, ol { list-style: none; }
 }
 .bot-group-status.restarting span:not(.dot) { color: var(--amber); }
 
+.bot-collapse-btn {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: 5px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  transition: color 0.12s, background 0.12s, transform 0.12s;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bot-collapse-btn:hover { background: var(--surface-2); color: var(--text); }
+.bot-group.collapsed .bot-collapse-btn { transform: rotate(-90deg); }
+
 .bot-restart-btn {
   width: 24px; height: 24px;
   display: grid; place-items: center;
@@ -304,8 +332,9 @@ ul, ol { list-style: none; }
 }
 
 .bot-group-nav { display: flex; flex-direction: column; gap: 1px; padding-left: 10px; }
+.bot-group-nav[hidden] { display: none; }
 
-.sidebar-spacer { flex: 1; }
+.sidebar-spacer { display: none; }
 
 .sidebar-user {
   display: flex;
@@ -315,6 +344,7 @@ ul, ol { list-style: none; }
   border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--surface);
+  flex-shrink: 0;
 }
 .user-avatar {
   width: 32px;

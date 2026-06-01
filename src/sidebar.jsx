@@ -126,7 +126,9 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
   const userHandle = user?.username ? `@${user.username}` : '';
   const userInitial = displayName.charAt(0).toUpperCase();
   const moduleById = new Map((modules || []).map((item) => [item.id, item]));
-  const extraModules = (modules || []).filter((module) => !FIXED_MODULE_BY_ID[module.id] && supportedGenericPages(module).length);
+  const serverBotIds = Array.isArray(server?.bots) ? new Set(server.bots) : null;
+  const botVisibleOnServer = (botId) => !serverBotIds || serverBotIds.has(botId);
+  const extraModules = (modules || []).filter((module) => !FIXED_MODULE_BY_ID[module.id] && botVisibleOnServer(module.id) && supportedGenericPages(module).length);
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('botboard:collapsed-groups') || '{}'); } catch { return {}; }
   });
@@ -157,6 +159,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
 
       <div className="sidebar-bots-scroll">
         {BOT_MODULES.map((bot) => {
+          if (!botVisibleOnServer(FIXED_ID_BY_KEY[bot.key])) return null;
           const visiblePages = permissions.settings ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
           return (
             <BotGroup

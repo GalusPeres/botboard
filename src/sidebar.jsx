@@ -55,7 +55,7 @@ const FIXED_ID_BY_KEY = {
 
 function supportedGenericPages(module) {
   const pages = module?.manifest?.pages || [];
-  return pages.filter((page) => ['stats', 'logs', 'settings'].includes(page.kind || page.id));
+  return pages.filter((page) => ['patch-watcher', 'stats', 'logs', 'settings'].includes(page.kind || page.id));
 }
 
 export function routeMeta(route, modules = []) {

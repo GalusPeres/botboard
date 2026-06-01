@@ -6,7 +6,7 @@ import { Sidebar, Topbar, MobileMoreSheet, routeMeta } from './sidebar.jsx';
 import { Icon } from './components.jsx';
 import { LoginScreen, ServerSelectScreen, OverviewScreen } from './screens-1.jsx';
 import { SoundboardScreen, MusicScreen, LibraryScreen } from './screens-2.jsx';
-import { StatsScreen, SoundbotSettingsScreen, NewibotSettingsScreen, LogsScreen, GenericStatsScreen, GenericSettingsScreen } from './screens-3.jsx';
+import { StatsScreen, SoundbotSettingsScreen, NewibotSettingsScreen, LogsScreen, GenericStatsScreen, GenericSettingsScreen, PatchWatcherScreen } from './screens-3.jsx';
 import { BotRegistryScreen } from './registry-screen.jsx';
 import { AdminScreen } from './admin-screen.jsx';
 import { dashboardBotName, moduleDisplayName } from './botIdentity.js';
@@ -708,7 +708,11 @@ function DashboardApp(props) {
             <GenericSettingsScreen botId={activeMeta.parentBot}
               botName={activeGenericName} setToast={setToast}/>
           )}
-          {activeMeta.module && !['stats', 'logs', 'settings'].includes(activeGenericKind) && (
+          {activeMeta.module && activeGenericKind === 'patch-watcher' && (
+            <PatchWatcherScreen botId={activeMeta.parentBot}
+              botName={activeGenericName} setToast={setToast}/>
+          )}
+          {activeMeta.module && !['patch-watcher', 'stats', 'logs', 'settings'].includes(activeGenericKind) && (
             <div className="content-narrow">
               <div className="empty">
                 <div>No renderer is available yet for module page "{activeGenericKind}".</div>

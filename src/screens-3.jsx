@@ -580,3 +580,128 @@ export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
     </div>
   );
 };
+
+export const PatchWatcherScreen = ({ botId, botName, setToast }) => {
+  const { data: patches, loading: patchesLoading, error: patchesError, reload: reloadPatches } = usePoll(
+    () => API.moduleApi.patches(botId),
+    10000,
+    [botId],
+  );
+  const { data: sources, loading: sourcesLoading, error: sourcesError, reload: reloadSources } = usePoll(
+    () => API.moduleApi.sources(botId),
+    10000,
+    [botId],
+  );
+  const [checking, setChecking] = useState(false);
+
+  const runCheck = async (post = false) => {
+    setChecking(true);
+    try {
+      const result = await API.moduleApi.checkPatches(botId, post);
+      await Promise.all([reloadPatches(), reloadSources()]);
+      setToast?.({ id: Date.now(), msg: `${botName}: ${result.newPatches} new patch notes found` });
+    } catch (err) {
+      setToast?.({ id: Date.now(), msg: `${botName}: check failed: ${err.message}` });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const toggleSource = async (source) => {
+    try {
+      await API.moduleApi.updateSource(botId, source.id, { enabled: !source.enabled });
+      await reloadSources();
+    } catch (err) {
+      setToast?.({ id: Date.now(), msg: `${source.name}: update failed: ${err.message}` });
+    }
+  };
+
+  const postPatch = async (patch) => {
+    try {
+      await API.moduleApi.postPatch(botId, patch.id);
+      await reloadPatches();
+      setToast?.({ id: Date.now(), msg: `${botName}: patch posted` });
+    } catch (err) {
+      setToast?.({ id: Date.now(), msg: `${botName}: post failed: ${err.message}` });
+    }
+  };
+
+  const latest = patches || [];
+  const sourceList = sources || [];
+
+  return (
+    <div className="content-narrow">
+      <div className="page-head">
+        <div>
+          <div className="page-title">Patch Watcher</div>
+          <div className="page-sub">Monitor official patch notes and post updates to Discord.</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-sm" type="button" onClick={() => runCheck(false)} disabled={checking}>
+            <Icon name="refresh" size={13}/> {checking ? 'Checking...' : 'Check now'}
+          </button>
+          <button className="btn btn-sm btn-primary" type="button" onClick={() => runCheck(true)} disabled={checking}>
+            <Icon name="send" size={13}/> Check + post
+          </button>
+        </div>
+      </div>
+
+      {(patchesError || sourcesError) && (
+        <div className="settings-notice registry-error" style={{ marginBottom: 16 }}>
+          PatchWatcher failed: {(patchesError || sourcesError).message}
+        </div>
+      )}
+
+      <div className="grid grid-2">
+        <div className="card">
+          <div className="card-header"><div className="card-title">Sources</div></div>
+          {sourcesLoading && <div style={{ color: 'var(--text-muted)' }}>Loading sources...</div>}
+          {!sourcesLoading && sourceList.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No sources configured.</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {sourceList.map((source) => (
+              <div key={source.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700 }}>{source.name}</div>
+                  <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+                    {source.lastCheck ? `Last check ${new Date(source.lastCheck).toLocaleString()}` : 'Never checked'}
+                    {source.lastError ? ` - ${source.lastError}` : ''}
+                  </div>
+                </div>
+                <Tag kind={source.lastStatus === 'error' ? 'error' : source.enabled ? 'success' : 'info'}>
+                  {source.enabled ? (source.lastStatus || 'enabled') : 'disabled'}
+                </Tag>
+                <button className="btn btn-sm btn-ghost" type="button" onClick={() => toggleSource(source)}>
+                  {source.enabled ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><div className="card-title">Latest Patches</div></div>
+          {patchesLoading && <div style={{ color: 'var(--text-muted)' }}>Loading patches...</div>}
+          {!patchesLoading && latest.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No patches recorded yet.</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {latest.slice(0, 12).map((patch) => (
+              <div key={patch.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <a href={patch.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text)', fontWeight: 700, textDecoration: 'none' }}>
+                    {patch.title}
+                  </a>
+                  <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+                    {patch.game} - {patch.publishedAt ? new Date(patch.publishedAt).toLocaleDateString() : 'date unknown'}
+                  </div>
+                </div>
+                {patch.postedAt && <Tag kind="success">posted</Tag>}
+                <button className="btn btn-sm btn-ghost" type="button" onClick={() => postPatch(patch)}>
+                  <Icon name="send" size={12}/> Post
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

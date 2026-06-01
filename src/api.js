@@ -53,6 +53,11 @@ export const moduleApi = {
   settings: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/settings`),
   settingsSchema: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/settings/schema`),
   saveSettings: (bot, patch) => api(`/api/bots/${encodeURIComponent(bot)}/settings`, { method: 'PUT', body: patch }),
+  patches: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/patches`),
+  sources: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/sources`),
+  checkPatches: (bot, post = false) => api(`/api/bots/${encodeURIComponent(bot)}/check`, { method: 'POST', body: { post } }),
+  updateSource: (bot, sourceId, patch) => api(`/api/bots/${encodeURIComponent(bot)}/sources/${encodeURIComponent(sourceId)}`, { method: 'PUT', body: patch }),
+  postPatch: (bot, patchId, channelId = '') => api(`/api/bots/${encodeURIComponent(bot)}/patches/${encodeURIComponent(patchId)}/post`, { method: 'POST', body: { channelId } }),
 };
 
 export const music = {

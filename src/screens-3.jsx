@@ -810,6 +810,9 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 12 }}>
                       {selectedPatch.publishedAt ? new Date(selectedPatch.publishedAt).toLocaleString() : 'No publish date'}
                     </div>
+                    {selectedPatch.imageUrl && (
+                      <img src={selectedPatch.imageUrl} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 6, marginTop: 12 }}/>
+                    )}
                   </div>
                 </div>
               </div>

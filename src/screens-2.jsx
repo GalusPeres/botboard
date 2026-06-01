@@ -6,8 +6,18 @@ import * as API from './api.js';
 
 export const SoundboardScreen = ({ playSound, previewSound, currentSound, currentPreview, sounds, tileSize, targetChannel }) => {
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('plays');
 
-  const filtered = sounds.filter(s => !search || s.name.includes(search.toLowerCase()));
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase();
+    const visible = sounds.filter(s => !term || s.name.includes(term));
+    const comparators = {
+      plays: (a, b) => (b.plays || 0) - (a.plays || 0) || a.name.localeCompare(b.name),
+      date: (a, b) => (b.addedMs || 0) - (a.addedMs || 0) || a.name.localeCompare(b.name),
+      name: (a, b) => a.name.localeCompare(b.name),
+    };
+    return [...visible].sort(comparators[sortBy] || comparators.plays);
+  }, [sounds, search, sortBy]);
 
   const targetName = targetChannel?.name || null;
 
@@ -31,10 +41,20 @@ export const SoundboardScreen = ({ playSound, previewSound, currentSound, curren
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
-        <span className="btn btn-sm" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'transparent' }}>
-          all
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>{sounds.length}</span>
-        </span>
+        {['plays', 'date', 'name'].map((key) => {
+          const active = sortBy === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setSortBy(key)}
+              style={active ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'transparent' } : undefined}
+            >
+              {key}
+            </button>
+          );
+        })}
       </div>
 
       <div className={'sound-grid size-' + tileSize}>

@@ -127,13 +127,22 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
   const userInitial = displayName.charAt(0).toUpperCase();
   const moduleById = new Map((modules || []).map((item) => [item.id, item]));
   const extraModules = (modules || []).filter((module) => !FIXED_MODULE_BY_ID[module.id] && supportedGenericPages(module).length);
-  const [collapsedGroups, setCollapsedGroups] = useState({});
-  const toggleGroup = (key) => setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('botboard:collapsed-groups') || '{}'); } catch { return {}; }
+  });
+  const setCollapsed = (updater) => {
+    setCollapsedGroups((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try { localStorage.setItem('botboard:collapsed-groups', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const toggleGroup = (key) => setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   useEffect(() => {
     const meta = routeMeta(route, modules);
     if (!meta.parentBot) return;
-    setCollapsedGroups((prev) => prev[meta.parentBot] ? { ...prev, [meta.parentBot]: false } : prev);
-  }, [route, modules]);
+    setCollapsed((prev) => prev[meta.parentBot] ? { ...prev, [meta.parentBot]: false } : prev);
+  }, [route]);
 
   return (
     <aside className="sidebar">
@@ -144,15 +153,15 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
 
       <ServerDropdown server={server} servers={servers} onChangeServer={onChangeServer}/>
 
-      <div className="sidebar-scroll">
-        <div className="nav-section">
-          <div className="nav-label">General</div>
-          <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
-          {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
-          {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-          {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
-        </div>
+      <div className="nav-section sidebar-general">
+        <div className="nav-label">General</div>
+        <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
+        {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
+        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+        {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
+      </div>
 
+      <div className="sidebar-bots-scroll">
         {BOT_MODULES.map((bot) => {
           const visiblePages = permissions.settings ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
           return (

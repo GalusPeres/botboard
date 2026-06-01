@@ -164,7 +164,10 @@ ul, ol { list-style: none; }
 
 /* Nav sections */
 .nav-section { display: flex; flex-direction: column; gap: 1px; }
-.sidebar-scroll {
+.sidebar-general {
+  flex-shrink: 0;
+}
+.sidebar-bots-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -173,8 +176,8 @@ ul, ol { list-style: none; }
   flex-direction: column;
   gap: 18px;
 }
-.sidebar-scroll::-webkit-scrollbar { width: 6px; }
-.sidebar-scroll::-webkit-scrollbar-thumb { border-color: var(--bg-deeper); }
+.sidebar-bots-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-bots-scroll::-webkit-scrollbar-thumb { border-color: var(--bg-deeper); }
 .nav-label {
   font-family: var(--font-mono);
   font-size: 10px;

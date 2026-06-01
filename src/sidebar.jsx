@@ -1,6 +1,6 @@
 // Sidebar + topbar + mobile navigation. Bot identity per route ('sb', 'mb', 'gen')
 // drives the accent stripe and crumb color.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Icon } from './components.jsx';
 import { dashboardBotName, moduleAvatar, moduleDisplayName } from './botIdentity.js';
 import { useCloseOnOutside } from './hooks.js';
@@ -138,12 +138,6 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
     });
   };
   const toggleGroup = (key) => setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
-  useEffect(() => {
-    const meta = routeMeta(route, modules);
-    if (!meta.parentBot) return;
-    setCollapsed((prev) => prev[meta.parentBot] ? { ...prev, [meta.parentBot]: false } : prev);
-  }, [route]);
-
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">

@@ -2,10 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { config } from './config.js';
 
-export const PERMISSIONS = ['controlBot', 'soundLibrary', 'settings', 'userManagement', 'botModules'];
+export const PERMISSIONS = ['controlBot', 'restartBot', 'soundLibrary', 'settings', 'userManagement', 'botModules'];
 
 const DEFAULT_PERMISSIONS = {
   controlBot: true,
+  restartBot: false,
   soundLibrary: false,
   settings: false,
   userManagement: false,

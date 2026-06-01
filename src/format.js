@@ -41,13 +41,16 @@ export function adaptTrack(t) {
 }
 
 export function adaptSound(s) {
+  const [m, sec] = (s.duration || '0:00').split(':').map(Number);
   return {
     id: s.name,
     name: s.name,
     duration: s.duration,
+    durationSec: (m || 0) * 60 + (sec || 0),
     size: formatBytes(s.size),
+    sizeBytes: s.size || 0,
     plays: s.plays,
-    added: relativeTime(s.added),
+    addedMs: s.added || 0,
   };
 }
 

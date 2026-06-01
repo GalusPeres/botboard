@@ -57,6 +57,7 @@ export const moduleApi = {
 
 export const music = {
   guilds: () => api('/api/bots/music/guilds'),
+  guild: (guildId) => api(`/api/bots/music/guilds/${guildId}`),
   player: (guildId) => api(`/api/bots/music/guilds/${guildId}/player`),
   connect: (guildId, channelId) => api(`/api/bots/music/guilds/${guildId}/player/connect`, { method: 'POST', body: { channelId } }),
   search: (guildId, query) => api(`/api/bots/music/guilds/${guildId}/player/search`, { method: 'POST', body: { query } }),
@@ -80,6 +81,7 @@ export const music = {
 
 export const sound = {
   guilds: () => api('/api/bots/sound/guilds'),
+  guild: (guildId) => api(`/api/bots/sound/guilds/${guildId}`),
   list: () => api('/api/bots/sound/sounds'),
   upload: (file, name) => {
     const fd = new FormData();

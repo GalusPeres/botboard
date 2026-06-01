@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed, isAdmin, hasPermission } from '../auth.js';
 import { recordUser, getPermissions } from '../userRegistry.js';
 import { discordOAuthEnabled } from '../config.js';
+import { logActivity } from '../activityLog.js';
 
 export default function authRoutes() {
   const router = Router();
@@ -48,6 +49,7 @@ export default function authRoutes() {
       req.session.userGuilds = guilds.map((g) => g.id);
       req.session.save((saveErr) => {
         if (saveErr) return res.status(500).send('Login session could not be saved.');
+        logActivity(`Login: ${user.global_name || user.username} (@${user.username})`);
         res.redirect('/');
       });
     } catch (err) {
@@ -57,8 +59,10 @@ export default function authRoutes() {
   });
 
   router.post('/logout', (req, res) => {
+    const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
     req.session.destroy(() => {
       res.clearCookie('connect.sid');
+      logActivity(`Logout: ${who}`);
       res.json({ loggedOut: true });
     });
   });

@@ -6,9 +6,10 @@ import { dashboardBotName, moduleAvatar, moduleDisplayName } from './botIdentity
 import { useCloseOnOutside } from './hooks.js';
 
 export const ROUTES = {
-  overview:     { title: 'Overview',              group: 'gen' },
-  'bot-modules':{ title: 'Bot Modules',           group: 'gen' },
-  'admin':      { title: 'Roles',                  group: 'gen' },
+  overview:          { title: 'Overview',     group: 'gen' },
+  'bot-modules':     { title: 'Bot Modules',  group: 'gen' },
+  'admin':           { title: 'Roles',        group: 'gen' },
+  'botboard-logs':   { title: 'Live Logs',    group: 'gen' },
   'sb/board':   { title: 'Soundboard',            group: 'sb',  parentBot: 'soundbot' },
   'sb/library': { title: 'Sound Library',         group: 'sb',  parentBot: 'soundbot' },
   'sb/stats':   { title: 'Statistics',            group: 'sb',  parentBot: 'soundbot' },
@@ -141,6 +142,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
         <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
         {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
         {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+        {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
       </div>
 
       {BOT_MODULES.map((bot) => {
@@ -154,7 +156,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
             name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
             avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
             status={botStatus[bot.key]}
-            restartEnabled={restartEnabled}
+            restartEnabled={restartEnabled && !!permissions.restartBot}
             onRestart={() => onRestart(bot.key)}
           >
             {visiblePages.map((page) => (
@@ -180,7 +182,7 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
             name={moduleDisplayName(module, module.id)}
             avatar={moduleAvatar(module)}
             status={module.online ? 'online' : 'offline'}
-            restartEnabled={restartEnabled}
+            restartEnabled={restartEnabled && !!permissions.restartBot}
             onRestart={() => onRestart(module.id)}
           >
             {visiblePages.map((page) => (

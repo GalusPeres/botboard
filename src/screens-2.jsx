@@ -451,25 +451,66 @@ const MusicCompact = ({ playerState, dispatch, addTrack, searchTracks, playerErr
   );
 };
 
-export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, playSound, permissions = {} }) => {
+function fmtDate(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function SortHeader({ col, label, sortBy, sortDir, onSort, style }) {
+  const active = sortBy === col;
+  return (
+    <div onClick={() => onSort(col)} style={{
+      padding: '10px 8px', fontSize: 10, fontWeight: 600,
+      color: active ? 'var(--text)' : 'var(--text-dim)',
+      textTransform: 'uppercase', letterSpacing: '0.07em',
+      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+      userSelect: 'none', whiteSpace: 'nowrap', ...style,
+    }}>
+      {label}
+      <span style={{ fontSize: 10, opacity: active ? 1 : 0 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+    </div>
+  );
+}
+
+const ICON_BTN = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: 26, height: 26, borderRadius: 6, border: 'none', cursor: 'pointer',
+  background: 'transparent', color: 'var(--text-dim)',
+  transition: 'background 0.1s, color 0.1s',
+};
+
+export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, previewSound, permissions = {} }) => {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('plays');
+  const [sortDir, setSortDir] = useState('desc');
   const [editing, setEditing] = useState(null);
   const [editVal, setEditVal] = useState('');
   const [uploadName, setUploadName] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const handleSort = (col) => {
+    if (sortBy === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col);
+      setSortDir(col === 'name' ? 'asc' : 'desc');
+    }
+  };
 
   const sorted = useMemo(() => {
     const filtered = sounds.filter(s => !search || s.name.includes(search.toLowerCase()));
+    const mult = sortDir === 'asc' ? 1 : -1;
     const cmp = {
-      plays: (a, b) => b.plays - a.plays,
-      name: (a, b) => a.name.localeCompare(b.name),
-      added: (a, b) => parseInt(a.added) - parseInt(b.added),
-      size: (a, b) => parseInt(b.size) - parseInt(a.size),
-    }[sortBy];
-    return filtered.sort(cmp);
-  }, [sounds, search, sortBy]);
+      plays:    (a, b) => mult * (a.plays - b.plays),
+      name:     (a, b) => mult * a.name.localeCompare(b.name),
+      added:    (a, b) => mult * ((a.addedMs || 0) - (b.addedMs || 0)),
+      size:     (a, b) => mult * ((a.sizeBytes || 0) - (b.sizeBytes || 0)),
+      duration: (a, b) => mult * ((a.durationSec || 0) - (b.durationSec || 0)),
+    }[sortBy] || (() => 0);
+    return [...filtered].sort(cmp);
+  }, [sounds, search, sortBy, sortDir]);
 
   const startEdit = (s) => { setEditing(s.name); setEditVal(s.name); };
   const commitEdit = () => {
@@ -483,6 +524,8 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
     setUploadName(''); setUploadFile(null); setShowUpload(false);
   };
 
+  const gridCols = `40px minmax(160px,1fr) 70px 72px 68px 84px ${permissions.soundLibrary ? '92px' : '36px'}`;
+
   return (
     <div className="content-narrow">
       <div className="page-head">
@@ -491,9 +534,6 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
           <div className="page-sub">Manage your MP3 files. Configured upload limits are enforced by the connected bot.</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-sm" onClick={() => playSound && playSound(sorted[0])}>
-            <Icon name="play" size={12}/> Test play
-          </button>
           {permissions.soundLibrary && (
             <a className="btn btn-sm btn-ghost" href={API.sound.downloadAllUrl()} download="sounds.zip">
               <Icon name="download" size={13}/> Download All
@@ -525,72 +565,93 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, play
           <Icon name="search" size={14} style={{ color: 'var(--text-dim)' }}/>
           <input placeholder="Filter sounds…" value={search} onChange={e => setSearch(e.target.value)}/>
         </div>
-        <select className="select" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ width: 160 }}>
-          <option value="plays">Sort: Most plays</option>
-          <option value="name">Sort: Name (a-z)</option>
-          <option value="added">Sort: Newest</option>
-          <option value="size">Sort: File size</option>
-        </select>
       </div>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th style={{ width: 40 }}></th>
-            <th>Filename</th>
-            <th style={{ width: 80 }}>Length</th>
-            <th style={{ width: 80 }}>Size</th>
-            <th style={{ width: 80 }}>Plays</th>
-            <th style={{ width: 80 }}>Added</th>
-            <th style={{ width: 140 }} className="col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      {deleteConfirm && (
+        <div className="modal-backdrop" onClick={() => setDeleteConfirm(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Sound löschen?</h3>
+            <p><strong>{deleteConfirm}.mp3</strong> wird unwiderruflich gelöscht.</p>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setDeleteConfirm(null)}>Abbrechen</button>
+              <button className="btn btn-danger" onClick={() => { deleteSound(deleteConfirm); setDeleteConfirm(null); }}>
+                <Icon name="trash" size={13}/> Löschen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ overflowX: 'auto', borderRadius: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 520, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+          {/* Header */}
+          <div/>
+          <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} style={{ paddingLeft: 4 }}/>
+          <SortHeader col="duration" label="Length"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <SortHeader col="size"     label="Size"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <SortHeader col="plays"    label="Plays"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <SortHeader col="added"    label="Added"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <div/>
+
+          {/* Rows */}
           {sorted.map(s => (
-            <tr key={s.name}>
-              <td>
-                <button className="btn-icon btn-ghost btn-sm" onClick={() => playSound && playSound(s)} title="Play">
-                  <Icon name="play" size={12} style={{ color: 'var(--accent)' }}/>
+            <div key={s.name} style={{ display: 'contents' }}>
+              <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
+
+              {/* Preview */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+                <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }} onClick={() => previewSound && previewSound(s)} title="Vorhören (lokal)">
+                  <Icon name="headphones" size={13}/>
                 </button>
-              </td>
-              <td>
+              </div>
+
+              {/* Filename */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 4px' }}>
                 {editing === s.name ? (
                   <input className="input" autoFocus value={editVal}
-                         onChange={e => setEditVal(e.target.value)}
-                         onBlur={commitEdit}
-                         onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null); }}
-                         style={{ width: 160 }}/>
+                    onChange={e => setEditVal(e.target.value)}
+                    onBlur={commitEdit}
+                    onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null); }}
+                    style={{ width: 150 }}/>
                 ) : (
-                  <span className="col-mono" style={{ fontWeight: 600 }}>{s.name}.mp3</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13 }}>{s.name}.mp3</span>
                 )}
-              </td>
-              <td className="col-mono col-dim">{s.duration}</td>
-              <td className="col-mono col-dim">{s.size}</td>
-              <td className="col-mono">{s.plays}</td>
-              <td className="col-mono col-dim">{s.added}</td>
-              <td className="col-actions">
-                <div style={{ display: 'inline-flex', gap: 4 }}>
-                  {permissions.soundLibrary && (
-                    <a className="btn-icon btn-ghost btn-sm" href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
-                      <Icon name="download" size={12}/>
-                    </a>
-                  )}
-                  {permissions.soundLibrary && (
-                    <button className="btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
-                      <Icon name="edit" size={12}/>
-                    </button>
-                  )}
-                  {permissions.soundLibrary && (
-                    <button className="btn-icon btn-ghost btn-sm" onClick={() => deleteSound(s.name)} title="Delete">
-                      <Icon name="trash" size={12} style={{ color: 'var(--red)' }}/>
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
+              </div>
+
+              {/* Length */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.duration}</div>
+
+              {/* Size */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.size}</div>
+
+              {/* Plays */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{s.plays}</div>
+
+              {/* Added */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(s.addedMs)}</div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, padding: '10px 8px' }}>
+                {permissions.soundLibrary && (
+                  <a className="btn btn-icon btn-ghost btn-sm" style={{ textDecoration: 'none' }} href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
+                    <Icon name="download" size={12}/>
+                  </a>
+                )}
+                {permissions.soundLibrary && (
+                  <button className="btn btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
+                    <Icon name="edit" size={12}/>
+                  </button>
+                )}
+                {permissions.soundLibrary && (
+                  <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => setDeleteConfirm(s.name)} title="Delete">
+                    <Icon name="trash" size={12}/>
+                  </button>
+                )}
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   );
 };

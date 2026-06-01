@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { hasBot, botBaseUrl, botAuthHeader } from '../botClient.js';
 import { hasPermission } from '../auth.js';
+import { logActivity } from '../activityLog.js';
 
 const PROXY_PASS_HEADERS = ['content-type', 'content-disposition', 'cache-control'];
 
@@ -28,6 +29,22 @@ export default function proxyRoutes() {
         if (!hasPermission(userId, 'soundLibrary')) return res.status(403).json({ error: 'forbidden' });
       }
     }
+    // Log key dashboard actions before forwarding
+    const who = req.session?.user?.global_name || req.session?.user?.username || 'dashboard';
+    if (subPath === 'sounds' && req.method === 'POST') {
+      const name = req.body?.name || '?';
+      logActivity(`${who} → Sound hochgeladen: ${name} (${bot})`);
+    } else if (subPath.startsWith('sounds/') && req.method === 'DELETE') {
+      const name = subPath.split('/')[1] || '?';
+      logActivity(`${who} → Sound gelöscht: ${name} (${bot})`, 'warn');
+    } else if (subPath.startsWith('sounds/') && req.method === 'PATCH') {
+      const name = subPath.split('/')[1] || '?';
+      logActivity(`${who} → Sound umbenannt: ${name} → ${req.body?.name || '?'} (${bot})`);
+    } else if ((subPath === 'settings' || subPath.startsWith('settings/')) && req.method === 'PUT') {
+      const changes = Object.entries(req.body || {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', ');
+      logActivity(`${who} → Einstellungen (${bot}): ${changes || '(keine Änderungen)'}`);
+    }
+
     const url = `${botBaseUrl(bot)}/api/${subPath}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
 
     try {

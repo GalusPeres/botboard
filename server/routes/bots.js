@@ -4,6 +4,7 @@ import { restartContainer } from '../docker.js';
 import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot } from '../botRegistry.js';
 import { config } from '../config.js';
 import { requireAdmin, requirePermission } from '../auth.js';
+import { logActivity } from '../activityLog.js';
 
 function configuredName(bot) {
   const cfg = botConfig(bot);
@@ -165,11 +166,13 @@ export default function botsRoutes() {
     }
   });
 
-  router.post('/:bot/restart', async (req, res) => {
+  router.post('/:bot/restart', requirePermission('restartBot'), async (req, res) => {
     const { bot } = req.params;
     if (!hasBot(bot)) return res.status(400).json({ error: 'unknown bot' });
     try {
       const result = await restartContainer(bot);
+      const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
+      logActivity(`${who} → Bot neugestartet: ${bot}`);
       res.json(result);
     } catch (err) {
       console.error('[restart]', err);

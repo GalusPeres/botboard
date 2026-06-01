@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAdmin } from '../auth.js';
 import { listUsers, setPermissions, recordUser } from '../userRegistry.js';
 import { botIds, botBaseUrl, botAuthHeader } from '../botClient.js';
+import { logActivity } from '../activityLog.js';
 
 export default function usersRoutes() {
   const router = Router();
@@ -32,7 +33,14 @@ export default function usersRoutes() {
   // Update individual permissions for a user.
   router.patch('/:id/permissions', (req, res) => {
     try {
-      res.json(setPermissions(req.params.id, req.body || {}));
+      const result = setPermissions(req.params.id, req.body || {});
+      const by = req.session?.user?.global_name || req.session?.user?.username || 'admin';
+      const target = result.global_name || result.username || req.params.id;
+      const changes = Object.entries(req.body || {})
+        .map(([k, v]) => `${k}=${v ? 'on' : 'off'}`)
+        .join(', ');
+      logActivity(`${by} → Rechte geändert für ${target}: ${changes}`);
+      res.json(result);
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
     }

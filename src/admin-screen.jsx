@@ -4,9 +4,10 @@ import { useFetch } from './hooks.js';
 import * as API from './api.js';
 import { relativeTime } from './format.js';
 
-const PERMISSIONS = ['controlBot', 'soundLibrary', 'settings', 'botModules', 'userManagement'];
+const PERMISSIONS = ['controlBot', 'restartBot', 'soundLibrary', 'settings', 'botModules', 'userManagement'];
 const PERM_LABELS = {
   controlBot:     'Control',
+  restartBot:     'Restart',
   soundLibrary:   'Library',
   settings:       'Settings',
   botModules:     'Bots',

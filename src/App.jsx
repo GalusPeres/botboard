@@ -42,6 +42,7 @@ function applyAccent(key) {
 
 const POLL_STATUS_MS = 2000;
 const POLL_PLAYER_MS = 2000;
+const POLL_GUILD_MS = 1000; // faster for voice-channel detection
 
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
@@ -58,7 +59,7 @@ export default function App() {
   const perms = user?.permissions || {};
   const setRoute = (next) => {
     if (['bot-modules'].includes(next) && !perms.botModules) return;
-    if (['admin'].includes(next) && !perms.userManagement) return;
+    if (['admin', 'botboard-logs'].includes(next) && !perms.userManagement) return;
     if ((next === 'sb/settings' || next === 'mb/settings' || String(next).endsWith('/settings')) && !perms.settings) return;
     setRouteRaw(next);
   };
@@ -81,7 +82,7 @@ export default function App() {
   }, [stage]);
 
   // If the current route requires a permission that was just revoked, go to overview.
-  const ROUTE_PERM = { 'bot-modules': 'botModules', 'admin': 'userManagement', 'sb/settings': 'settings', 'mb/settings': 'settings' };
+  const ROUTE_PERM = { 'bot-modules': 'botModules', 'admin': 'userManagement', 'botboard-logs': 'userManagement', 'sb/settings': 'settings', 'mb/settings': 'settings' };
   useEffect(() => {
     const required = ROUTE_PERM[route] || (String(route).endsWith('/settings') ? 'settings' : null);
     if (required && perms[required] === false) setRouteRaw('overview');
@@ -267,14 +268,12 @@ function DashboardApp(props) {
   const moduleLabels = Object.fromEntries(modules.map((module) => [module.id, moduleDisplayName(module, module.id)]));
 
   const { data: guildDetail, reload: reloadGuildDetail } = usePoll(async () => {
-    const [musicGuilds, soundGuilds] = await Promise.all([
-      API.music.guilds().catch(() => []),
-      API.sound.guilds().catch(() => []),
-    ]);
-    return musicGuilds.find((guild) => guild.id === guildId)
-      || soundGuilds.find((guild) => guild.id === guildId)
-      || null;
-  }, POLL_STATUS_MS, [guildId]);
+    // Fetch just this guild from music bot (primary), fall back to sound bot.
+    // Much faster than fetching all guilds from both bots every tick.
+    const result = await API.music.guild(guildId).catch(() => null)
+      || await API.sound.guild(guildId).catch(() => null);
+    return result;
+  }, POLL_GUILD_MS, [guildId]);
   const voiceChannels = guildDetail?.voiceChannels || [];
 
   // Per-bot voice target. Default 'auto' = follow the channel the user is in.
@@ -669,41 +668,15 @@ function DashboardApp(props) {
             sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}/>}
           {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}/>}
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
+          {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
+            liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
           {route === 'sb/board' && (
-            <>
-              <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
-                playSound={playSound} previewSound={previewSound}
-                tileSize={tweaks.tileSize} targetChannel={soundTarget}/>
-              {(currentSound || currentPreview) && (
-                <div className="mini-player">
-                  <div className="mini-player-cover"
-                       style={currentPreview && !currentSound ? { background: 'oklch(0.72 0.15 240)', color: '#fff' } : {}}>
-                    {(currentSound || currentPreview).name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="mini-player-info">
-                    <div className="mini-player-name">{(currentSound || currentPreview).name}.mp3</div>
-                    <div className="mini-player-meta">
-                      {currentSound
-                        ? <>Playing in Discord · {soundTarget ? soundTarget.name : 'joining voice'}</>
-                        : <>Local preview · not sent to Discord</>}
-                    </div>
-                  </div>
-                  <div className="mini-player-actions">
-                    {currentSound && (
-                      <button className="btn btn-sm" onClick={() => playSound(currentSound)}>
-                        <Icon name="refresh" size={12}/> Replay
-                      </button>
-                    )}
-                    <button className="btn btn-icon btn-sm btn-ghost" onClick={() => { previewAudioRef.current?.pause(); previewAudioRef.current = null; setCurrentSound(null); setCurrentPreview(null); }}>
-                      <Icon name="x" size={12}/>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+            <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
+              playSound={playSound} previewSound={previewSound}
+              tileSize={tweaks.tileSize} targetChannel={soundTarget}/>
           )}
           {route === 'sb/library' && <LibraryScreen sounds={sounds}
-            addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} playSound={playSound} permissions={perms}/>}
+            addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>}
           {route === 'sb/stats' && <StatsScreen bot="sound" sounds={sounds}
             botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>}
           {route === 'sb/logs' && <LogsScreen bot="sound"

@@ -7,10 +7,12 @@ export function useFetch(fn, deps = []) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const hasDataRef = useRef(false);
   const reload = useCallback(async () => {
-    setLoading(true);
+    if (!hasDataRef.current) setLoading(true);
     try {
       const result = await fn();
+      hasDataRef.current = true;
       setData(result);
       setError(null);
     } catch (err) {

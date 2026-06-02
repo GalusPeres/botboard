@@ -14,7 +14,7 @@ import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './
 import * as API from './api.js';
 import { useFetch, usePoll, useSSE, useHashRoute } from './hooks.js';
 import { adaptTrack, adaptSound, normalizeLog, msToClock, formatBytes, relativeTime } from './format.js';
-import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets } from './storage.js';
+import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo } from './storage.js';
 import { SETTING_MAP_MUSIC, SETTING_MAP_SOUND, mapSettingsPatch, mergeSettings } from './settings-map.js';
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -257,9 +257,29 @@ function DashboardApp(props) {
     soundbot: statusData?.sound?.online ? 'online' : 'offline',
     newibot: statusData?.music?.online ? 'online' : 'offline',
   };
-  const botInfo = {
+
+  // Bot-Identität (Name + Avatar) — mit localStorage-Cache damit beim Refresh
+  // sofort die richtigen Werte stehen statt erst nach dem ersten Poll.
+  const [botInfoCache, setBotInfoCache] = useState(() => savedBotInfo() || {});
+  const liveBotInfo = {
     soundbot: statusData?.sound?.bot || moduleById.get('sound')?.manifest?.bot || null,
     newibot: statusData?.music?.bot || moduleById.get('music')?.manifest?.bot || null,
+  };
+  // Sobald echte Daten da sind, Cache aktualisieren
+  useEffect(() => {
+    if (liveBotInfo.soundbot || liveBotInfo.newibot) {
+      const next = {
+        soundbot: liveBotInfo.soundbot || botInfoCache.soundbot || null,
+        newibot: liveBotInfo.newibot || botInfoCache.newibot || null,
+      };
+      setBotInfoCache(next);
+      saveBotInfo(next);
+    }
+  }, [statusData, modulesData]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Cache als sofortiger Startwert, überschrieben von Live-Daten sobald verfügbar
+  const botInfo = {
+    soundbot: liveBotInfo.soundbot || botInfoCache.soundbot || null,
+    newibot: liveBotInfo.newibot || botInfoCache.newibot || null,
   };
   const displayNames = {
     soundbot: moduleDisplayName(moduleById.get('sound'), dashboardBotName('soundbot', botInfo)),
@@ -367,6 +387,8 @@ function DashboardApp(props) {
 
   const { data: rawSounds, reload: reloadSounds } = usePoll(API.sound.list, POLL_STATUS_MS, [guildId]);
   const sounds = (rawSounds || []).map(adaptSound);
+  // null = noch am Laden, dann Badge verstecken statt "0" zeigen
+  const soundsCountForBadge = rawSounds !== null ? sounds.length : null;
 
   const { data: musicSettings, reload: reloadMusicSettings } = useFetch(API.music.settings, []);
   const { data: soundSettings, reload: reloadSoundSettings } = useFetch(API.sound.settings, []);
@@ -642,7 +664,7 @@ function DashboardApp(props) {
                servers={serverOptions || [server]}
                onChangeServer={changeServer}
                user={user}
-               soundsCount={sounds.length}
+               soundsCount={soundsCountForBadge}
                onLogout={onLogout}
                botStatus={botStatus}
                botInfo={botInfo}
@@ -736,7 +758,7 @@ function DashboardApp(props) {
           botStatus={botStatus}
           botInfo={botInfo}
           modules={modules}
-          soundsCount={sounds.length}
+          soundsCount={soundsCountForBadge}
           restartEnabled={restartEnabled}
           onRestart={(bot) => { setRestartConfirm(bot); setMoreSheetOpen(false); }}
           onLogout={onLogout}

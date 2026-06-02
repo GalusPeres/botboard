@@ -236,7 +236,7 @@ export const NavItem = ({ id, route, setRoute, icon, label, badge, group }) => {
          onClick={() => setRoute(id)}>
       <Icon name={icon} className="nav-icon"/>
       <span>{label}</span>
-      {badge !== undefined && <span className="nav-badge">{badge}</span>}
+      {badge != null && badge > 0 && <span className="nav-badge">{badge}</span>}
     </div>
   );
 };

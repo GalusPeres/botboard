@@ -53,6 +53,25 @@ export function saveVoiceTargets(guildId, targets) {
   } catch {}
 }
 
+// Bot identity (names + avatar URLs) — cached so the first render after a
+// refresh shows the correct names/avatars without waiting for the status poll.
+const BOT_INFO_KEY = 'botboard:bot-info';
+
+export function savedBotInfo() {
+  try {
+    const raw = window.localStorage.getItem(BOT_INFO_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveBotInfo(info) {
+  try {
+    window.localStorage.setItem(BOT_INFO_KEY, JSON.stringify(info));
+  } catch {}
+}
+
 // Cleared on logout / when landing on the login screen, so a new login always
 // starts back on Auto (a fixed pick only survives refreshes within a session).
 export function clearVoiceTargets() {

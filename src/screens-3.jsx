@@ -641,6 +641,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
   const EMPTY_SOURCE_FORM = { name: '', game: '', url: '', mode: 'generic' };
   const [sourceFormOpen, setSourceFormOpen] = useState(false);
   const [sourceForm, setSourceForm] = useState(EMPTY_SOURCE_FORM);
+  const [editingSource, setEditingSource] = useState(null); // null = add new, string id = edit existing
   const [savingSource, setSavingSource] = useState(false);
   const latest = patches || [];
   const sourceList = sources || [];
@@ -706,17 +707,32 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
     }
   };
 
-  const addSourceFn = async (e) => {
+  const openAddSource = () => { setEditingSource(null); setSourceForm(EMPTY_SOURCE_FORM); setSourceFormOpen(true); };
+  const openEditSource = (source) => {
+    setEditingSource(source.id);
+    setSourceForm({ name: source.name || '', game: source.game || '', url: source.url || '', mode: source.mode || 'generic' });
+    setSourceFormOpen(true);
+  };
+
+  const saveSourceFn = async (e) => {
     e.preventDefault();
     setSavingSource(true);
     try {
-      await API.moduleApi.addSource(botId, sourceForm);
+      if (editingSource) {
+        await API.moduleApi.updateSource(botId, editingSource, {
+          name: sourceForm.name, game: sourceForm.game, url: sourceForm.url, mode: sourceForm.mode,
+        });
+        setToast?.({ id: Date.now(), msg: `Source "${sourceForm.name}" updated` });
+      } else {
+        await API.moduleApi.addSource(botId, sourceForm);
+        setToast?.({ id: Date.now(), msg: `Source "${sourceForm.name}" added` });
+      }
       await reloadSources();
       setSourceFormOpen(false);
       setSourceForm(EMPTY_SOURCE_FORM);
-      setToast?.({ id: Date.now(), msg: `Source "${sourceForm.name}" added` });
+      setEditingSource(null);
     } catch (err) {
-      setToast?.({ id: Date.now(), msg: `Add source failed: ${err.message}` });
+      setToast?.({ id: Date.now(), msg: `${editingSource ? 'Update' : 'Add'} failed: ${err.message}` });
     } finally {
       setSavingSource(false);
     }
@@ -915,7 +931,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
         <div className="card">
           <div className="card-header">
             <div className="card-title">Sources</div>
-            <button className="btn btn-sm btn-primary" type="button" onClick={() => { setSourceForm(EMPTY_SOURCE_FORM); setSourceFormOpen(true); }}>
+            <button className="btn btn-sm btn-primary" type="button" onClick={openAddSource}>
               <Icon name="plus" size={12}/> Add
             </button>
           </div>
@@ -955,6 +971,9 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button className="btn btn-sm btn-ghost" type="button" onClick={() => toggleSource(source)}>
                       {source.enabled ? 'Disable' : 'Enable'}
+                    </button>
+                    <button className="btn btn-sm btn-ghost" type="button" title="Edit source" onClick={() => openEditSource(source)}>
+                      <Icon name="edit" size={12}/>
                     </button>
                     <button className="btn btn-sm btn-ghost" type="button" title="Remove source" onClick={() => deleteSourceFn(source)}>
                       <Icon name="trash" size={12}/>
@@ -998,8 +1017,8 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
       {/* Add Source modal */}
       {sourceFormOpen && (
         <div className="modal-backdrop" onClick={() => setSourceFormOpen(false)}>
-          <form className="modal registry-modal" onSubmit={addSourceFn} onClick={(e) => e.stopPropagation()}>
-            <h3>Add source</h3>
+          <form className="modal registry-modal" onSubmit={saveSourceFn} onClick={(e) => e.stopPropagation()}>
+            <h3>{editingSource ? 'Edit source' : 'Add source'}</h3>
             <label className="registry-field">
               <span>Name</span>
               <input className="input" value={sourceForm.name} placeholder="Diablo IV" required autoFocus
@@ -1031,7 +1050,8 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
             <div className="registry-form-actions">
               <button className="btn" type="button" onClick={() => setSourceFormOpen(false)}>Cancel</button>
               <button className="btn btn-primary" type="submit" disabled={savingSource}>
-                <Icon name="plus" size={13}/> {savingSource ? 'Adding…' : 'Add source'}
+                <Icon name={editingSource ? 'check' : 'plus'} size={13}/>
+                {savingSource ? (editingSource ? 'Saving…' : 'Adding…') : (editingSource ? 'Save changes' : 'Add source')}
               </button>
             </div>
           </form>

@@ -276,6 +276,13 @@ ul, ol { list-style: none; }
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  /* Fade-out statt harter Abschnitt oder Zeilenumbruch */
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
 }
 .bot-group-status {
   display: inline-flex;

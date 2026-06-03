@@ -60,7 +60,7 @@ export default function App() {
   const setRoute = (next) => {
     if (['bot-modules'].includes(next) && !perms.botModules) return;
     if (['admin', 'botboard-logs'].includes(next) && !perms.userManagement) return;
-    if ((next === 'sb/settings' || next === 'mb/settings' || String(next).endsWith('/settings')) && !perms.settings) return;
+    if (String(next).endsWith('/settings') && !perms.settings) return;
     setRouteRaw(next);
   };
 
@@ -82,7 +82,7 @@ export default function App() {
   }, [stage]);
 
   // If the current route requires a permission that was just revoked, go to overview.
-  const ROUTE_PERM = { 'bot-modules': 'botModules', 'admin': 'userManagement', 'botboard-logs': 'userManagement', 'sb/settings': 'settings', 'mb/settings': 'settings' };
+  const ROUTE_PERM = { 'bot-modules': 'botModules', 'admin': 'userManagement', 'botboard-logs': 'userManagement' };
   useEffect(() => {
     const required = ROUTE_PERM[route] || (String(route).endsWith('/settings') ? 'settings' : null);
     if (required && perms[required] === false) setRouteRaw('overview');
@@ -259,39 +259,12 @@ function DashboardApp(props) {
   };
 
   const { data: statusData, reload: reloadStatus } = usePoll(API.bots.status, POLL_STATUS_MS, [guildId]);
-  const botStatus = {
-    soundbot: statusData?.sound?.online ? 'online' : 'offline',
-    newibot: statusData?.music?.online ? 'online' : 'offline',
-  };
 
-  // Bot-Identität (Name + Avatar) — mit localStorage-Cache damit beim Refresh
-  // sofort die richtigen Werte stehen statt erst nach dem ersten Poll.
-  const [botInfoCache, setBotInfoCache] = useState(() => savedBotInfo() || {});
-  const liveBotInfo = {
-    soundbot: statusData?.sound?.bot || moduleById.get('sound')?.manifest?.bot || null,
-    newibot: statusData?.music?.bot || moduleById.get('music')?.manifest?.bot || null,
-  };
-  // Sobald echte Daten da sind, Cache aktualisieren
-  useEffect(() => {
-    if (liveBotInfo.soundbot || liveBotInfo.newibot) {
-      const next = {
-        soundbot: liveBotInfo.soundbot || botInfoCache.soundbot || null,
-        newibot: liveBotInfo.newibot || botInfoCache.newibot || null,
-      };
-      setBotInfoCache(next);
-      saveBotInfo(next);
-    }
-  }, [statusData, modulesData]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Cache als sofortiger Startwert, überschrieben von Live-Daten sobald verfügbar
-  const botInfo = {
-    soundbot: liveBotInfo.soundbot || botInfoCache.soundbot || null,
-    newibot: liveBotInfo.newibot || botInfoCache.newibot || null,
-  };
-  const displayNames = {
-    soundbot: moduleDisplayName(moduleById.get('sound'), dashboardBotName('soundbot', botInfo)),
-    newibot: moduleDisplayName(moduleById.get('music'), dashboardBotName('newibot', botInfo)),
-  };
-  const moduleLabels = Object.fromEntries(modules.map((module) => [module.id, moduleDisplayName(module, module.id)]));
+  // All keyed by module ID (e.g. 'sound', 'music', 'patchwatcher') — no hardcoding.
+  // botStatus and botInfo come from the cached modules, so they're correct on first render.
+  const botStatus = Object.fromEntries(modules.map((m) => [m.id, m.online ? 'online' : 'offline']));
+  const botInfo   = Object.fromEntries(modules.map((m) => [m.id, m.manifest?.bot || m.status?.bot || null]));
+  const displayNames = Object.fromEntries(modules.map((m) => [m.id, moduleDisplayName(m, m.id)]));
 
   const { data: guildDetail, reload: reloadGuildDetail } = usePoll(async () => {
     // Fetch just this guild from music bot (primary), fall back to sound bot.
@@ -354,8 +327,8 @@ function DashboardApp(props) {
   }, [guildId]);
 
   const botVoiceChannelId = {
-    soundbot: statusData?.sound?.voiceChannelId || null,
-    newibot: rawPlayer?.voiceChannelId || null,
+    sound: statusData?.sound?.voiceChannelId || null,
+    music: rawPlayer?.voiceChannelId || null,
   };
 
   const playerState = rawPlayer ? {
@@ -470,11 +443,11 @@ function DashboardApp(props) {
 
   const playSound = async (sound) => {
     if (!sound) return;
-    if (botStatus.soundbot !== 'online') {
-      setToast({ msg: `${displayNames.soundbot} is offline`, id: Date.now() });
+    if (botStatus.sound !== 'online') {
+      setToast({ msg: `${displayNames.sound} is offline`, id: Date.now() });
       return;
     }
-    const targetChannel = requireTarget('soundbot');
+    const targetChannel = requireTarget('sound');
     if (!targetChannel) return;
     setCurrentSound(sound);
     setToast({ msg: `▶ ${sound.name}.mp3 → ${targetChannel.name}`, id: Date.now() });
@@ -488,14 +461,14 @@ function DashboardApp(props) {
     }
   };
   const connectSound = async () => {
-    const target = requireTarget('soundbot');
+    const target = requireTarget('sound');
     if (!target) return;
     try {
       await API.sound.connect({ guildId, channelId: target.id });
       await Promise.all([reloadStatus(), reloadGuildDetail()]);
-      setToast({ msg: `${displayNames.soundbot} joined ${target.name}`, id: Date.now() });
+      setToast({ msg: `${displayNames.sound} joined ${target.name}`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `${displayNames.soundbot} join failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.sound} join failed: ${err.message}`, id: Date.now() });
     }
   };
   const stopSound = async () => {
@@ -503,9 +476,9 @@ function DashboardApp(props) {
       await API.sound.stop();
       setCurrentSound(null);
       await reloadStatus();
-      setToast({ msg: `${displayNames.soundbot} playback stopped`, id: Date.now() });
+      setToast({ msg: `${displayNames.sound} playback stopped`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `${displayNames.soundbot} stop failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.sound} stop failed: ${err.message}`, id: Date.now() });
     }
   };
   const disconnectSound = async () => {
@@ -513,9 +486,9 @@ function DashboardApp(props) {
       await API.sound.disconnect();
       setCurrentSound(null);
       await Promise.all([reloadStatus(), reloadGuildDetail()]);
-      setToast({ msg: `${displayNames.soundbot} disconnected`, id: Date.now() });
+      setToast({ msg: `${displayNames.sound} disconnected`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `${displayNames.soundbot} disconnect failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.sound} disconnect failed: ${err.message}`, id: Date.now() });
     }
   };
 
@@ -560,9 +533,9 @@ function DashboardApp(props) {
   }, []);
 
   const restartBot = async (bot) => {
-    const apiKey = bot === 'newibot' ? 'music' : bot === 'soundbot' ? 'sound' : bot;
+    const apiKey = bot; // already module ID: 'sound', 'music', 'patchwatcher', …
     if (!apiKey) return;
-    const label = displayNames[bot] || moduleLabels[apiKey] || bot;
+    const label = displayNames[bot] || bot;
     setToast({ msg: `Restarting ${label}...`, id: Date.now() });
     try {
       await API.bots.restart(apiKey);
@@ -605,7 +578,7 @@ function DashboardApp(props) {
     }
   };
   const addMusic = async (query) => {
-    const targetChannel = requireTarget('newibot');
+    const targetChannel = requireTarget('music');
     if (!targetChannel) return false;
     try {
       await API.music.play(guildId, { query, channelId: targetChannel.id });
@@ -618,14 +591,14 @@ function DashboardApp(props) {
     }
   };
   const connectMusic = async () => {
-    const target = requireTarget('newibot');
+    const target = requireTarget('music');
     if (!target) return;
     try {
       await API.music.connect(guildId, target.id);
       await Promise.all([reloadPlayer(), reloadStatus(), reloadGuildDetail()]);
-      setToast({ msg: `${displayNames.newibot} joined ${target.name}`, id: Date.now() });
+      setToast({ msg: `${displayNames.music} joined ${target.name}`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `${displayNames.newibot} join failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.music} join failed: ${err.message}`, id: Date.now() });
     }
   };
   const stopMusic = async () => {
@@ -641,24 +614,16 @@ function DashboardApp(props) {
     try {
       await API.music.disconnect(guildId);
       await Promise.all([reloadPlayer(), reloadStatus(), reloadGuildDetail()]);
-      setToast({ msg: `${displayNames.newibot} disconnected`, id: Date.now() });
+      setToast({ msg: `${displayNames.music} disconnected`, id: Date.now() });
     } catch (err) {
-      setToast({ msg: `${displayNames.newibot} disconnect failed: ${err.message}`, id: Date.now() });
+      setToast({ msg: `${displayNames.music} disconnect failed: ${err.message}`, id: Date.now() });
     }
   };
   const searchMusic = useCallback((query) => API.music.search(guildId, query), [guildId]);
-  const soundTarget = resolveTarget('soundbot');
+  const soundTarget = resolveTarget('sound');
   const voiceControls = {
-    soundbot: {
-      onJoin: connectSound,
-      onStop: stopSound,
-      onDisconnect: disconnectSound,
-    },
-    newibot: {
-      onJoin: connectMusic,
-      onStop: stopMusic,
-      onDisconnect: disconnectMusic,
-    },
+    sound: { onJoin: connectSound, onStop: stopSound, onDisconnect: disconnectSound },
+    music: { onJoin: connectMusic, onStop: stopMusic, onDisconnect: disconnectMusic },
   };
   const activeMeta = routeMeta(route, modules);
   const activeGenericKind = activeMeta.module ? (activeMeta.page?.kind || activeMeta.page?.id) : '';
@@ -685,7 +650,6 @@ function DashboardApp(props) {
                 userVoiceChannel={userVoiceChannel} botVoiceChannelId={botVoiceChannelId}
                 voiceControls={voiceControls}
                 onOpenMenu={() => setMoreSheetOpen(true)}
-                botInfo={botInfo}
                 modules={modules}/>
         <div className="content">
           {route === 'overview' && <OverviewScreen server={server} openRoute={setRoute}
@@ -698,52 +662,54 @@ function DashboardApp(props) {
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
-          {route === 'sb/board' && (
+          {/* All bot pages routed by kind — no hardcoded bot names */}
+          {activeMeta.module && activeGenericKind === 'soundboard' && (
             <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
               playSound={playSound} previewSound={previewSound}
-              tileSize={tweaks.tileSize} targetChannel={soundTarget}/>
+              tileSize={tweaks.tileSize} targetChannel={resolveTarget(activeMeta.parentBot)}/>
           )}
-          {route === 'sb/library' && <LibraryScreen sounds={sounds}
-            addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>}
-          {route === 'sb/stats' && <StatsScreen bot="sound" sounds={sounds}
-            botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>}
-          {route === 'sb/logs' && <LogsScreen bot="sound"
-            botName={displayNames.soundbot} liveLogs={liveLogs} connection={logConnection}/>}
-          {route === 'sb/settings' && <SoundbotSettingsScreen
-            settings={settings} onSave={(patch) => saveSettings('sound', patch)}
-            settingsLoaded={!!soundSettings}
-            botStatus={botStatus.soundbot} botName={displayNames.soundbot} restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>}
-
-          {route === 'mb/player' && <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
-            playerStyle={tweaks.playerStyle} playerError={playerError}/>}
-          {route === 'mb/stats' && <StatsScreen bot="music" sounds={sounds}
-            botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>}
-          {route === 'mb/logs' && <LogsScreen bot="music"
-            botName={displayNames.newibot} liveLogs={liveLogs} connection={logConnection}/>}
-          {route === 'mb/settings' && <NewibotSettingsScreen
-            settings={settings} onSave={(patch) => saveSettings('music', patch)}
-            settingsLoaded={!!musicSettings}
-            botStatus={botStatus.newibot} botName={displayNames.newibot} restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>}
-
+          {activeMeta.module && activeGenericKind === 'file-library' && (
+            <LibraryScreen sounds={sounds}
+              addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>
+          )}
+          {activeMeta.module && activeGenericKind === 'music-player' && (
+            <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
+              playerStyle={tweaks.playerStyle} playerError={playerError}/>
+          )}
           {activeMeta.module && activeGenericKind === 'stats' && (
-            <GenericStatsScreen botId={activeMeta.parentBot} botName={activeGenericName}/>
+            activeMeta.parentBot === 'sound' ? (
+              <StatsScreen bot="sound" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>
+            ) : activeMeta.parentBot === 'music' ? (
+              <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
+            ) : (
+              <GenericStatsScreen botId={activeMeta.parentBot} botName={activeGenericName}/>
+            )
           )}
           {activeMeta.module && activeGenericKind === 'logs' && (
             <LogsScreen bot={activeMeta.parentBot}
               botName={activeGenericName} liveLogs={liveLogs} connection={logConnection}/>
           )}
           {activeMeta.module && activeGenericKind === 'settings' && (
-            <GenericSettingsScreen botId={activeMeta.parentBot}
-              botName={activeGenericName} setToast={setToast}/>
+            activeMeta.parentBot === 'sound' ? (
+              <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
+                settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={activeGenericName}
+                restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+            ) : activeMeta.parentBot === 'music' ? (
+              <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
+                settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={activeGenericName}
+                restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+            ) : (
+              <GenericSettingsScreen botId={activeMeta.parentBot} botName={activeGenericName} setToast={setToast}/>
+            )
           )}
           {activeMeta.module && activeGenericKind === 'patch-watcher' && (
             <PatchWatcherScreen botId={activeMeta.parentBot}
               botName={activeGenericName} guildId={guildId} setToast={setToast}/>
           )}
-          {activeMeta.module && !['patch-watcher', 'stats', 'logs', 'settings'].includes(activeGenericKind) && (
+          {activeMeta.module && !['soundboard','file-library','music-player','patch-watcher','stats','logs','settings'].includes(activeGenericKind) && (
             <div className="content-narrow">
               <div className="empty">
-                <div>No renderer is available yet for module page "{activeGenericKind}".</div>
+                <div>No renderer for page kind "{activeGenericKind}" yet.</div>
               </div>
             </div>
           )}
@@ -774,7 +740,7 @@ function DashboardApp(props) {
 
       {restartConfirm && (
         <RestartModal which={restartConfirm}
-                      names={{ ...moduleLabels, ...displayNames }}
+                      names={displayNames}
                       onCancel={() => setRestartConfirm(null)}
                       onConfirm={() => { restartBot(restartConfirm); setRestartConfirm(null); }}/>
       )}
@@ -788,16 +754,16 @@ function DashboardApp(props) {
 // per-bot API config. Keep this in one place so the screens stay dumb.
 
 const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) => {
-  const names = { soundbot: dynamicNames.soundbot || 'Sound Bot', newibot: dynamicNames.newibot || 'Music Bot', all: 'both bots' };
+  const names = { sound: dynamicNames.sound || 'Sound Bot', music: dynamicNames.music || 'Music Bot', all: 'both bots' };
   const label = names[which] || dynamicNames[which] || which;
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>Restart {label}?</h3>
         <p>
-          {which === 'newibot'
+          {which === 'music'
             ? 'The current track will stop. Queue will be preserved. Estimated downtime ~3s.'
-            : which === 'soundbot'
+            : which === 'sound'
             ? 'Any sound currently playing will stop. Estimated downtime ~3s.'
             : 'Both bots will be restarted. Active queue will be preserved, current track will stop.'}
         </p>

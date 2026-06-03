@@ -89,38 +89,38 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
         <BotFocusCard
           color="sb"
           icon="soundboard"
-          name={dashboardBotName('soundbot', botInfo)}
-          avatar={botInfo?.soundbot?.avatar}
-          status={botStatus?.soundbot || 'offline'}
+          name={dashboardBotName('sound', botInfo)}
+          avatar={botInfo?.sound?.avatar}
+          status={botStatus?.sound || 'offline'}
           activity={currentSound ? `${currentSound.name}.mp3` : 'Idle'}
           activityMeta={currentSound ? `playing in ${voiceJoined ? channel.name : 'voice'}` : null}
-          primary={{ label: 'Open Soundboard', icon: 'soundboard', onClick: () => openRoute('sb/board') }}
+          primary={{ label: 'Open Soundboard', icon: 'soundboard', onClick: () => openRoute('bot/sound/soundboard') }}
           secondary={[
-            { label: 'Library', icon: 'library', onClick: () => openRoute('sb/library') },
-            { label: 'Settings', icon: 'settings', onClick: () => openRoute('sb/settings') },
+            { label: 'Library', icon: 'library', onClick: () => openRoute('bot/sound/library') },
+            { label: 'Settings', icon: 'settings', onClick: () => openRoute('bot/sound/settings') },
           ]}
           stats={[
             { label: 'Sounds', value: soundsCount },
             { label: 'Recorded plays', value: totalPlays.toLocaleString() },
-            { label: 'Status', value: botStatus?.soundbot || 'offline', kind: botStatus?.soundbot === 'online' ? 'success' : 'warn' },
+            { label: 'Status', value: botStatus?.sound || 'offline', kind: botStatus?.sound === 'online' ? 'success' : 'warn' },
           ]}
         />
         <BotFocusCard
           color="mb"
           icon="music"
-          name={dashboardBotName('newibot', botInfo)}
-          avatar={botInfo?.newibot?.avatar}
-          status={botStatus?.newibot || 'offline'}
+          name={dashboardBotName('music', botInfo)}
+          avatar={botInfo?.music?.avatar}
+          status={botStatus?.music || 'offline'}
           activity={currentTrack ? currentTrack.title : 'Queue empty'}
           activityMeta={currentTrack ? `${currentTrack.artist} · ${currentTrack.source}` : null}
-          primary={{ label: 'Open Music Player', icon: 'music', onClick: () => openRoute('mb/player') }}
+          primary={{ label: 'Open Music Player', icon: 'music', onClick: () => openRoute('bot/music/player') }}
           secondary={[
-            { label: 'Settings', icon: 'settings', onClick: () => openRoute('mb/settings') },
+            { label: 'Settings', icon: 'settings', onClick: () => openRoute('bot/music/settings') },
           ]}
           stats={[
             { label: 'Queue', value: queueLength },
             { label: 'Lavalink', value: statusData?.music?.lavalink?.connected ? 'connected' : 'offline', kind: statusData?.music?.lavalink?.connected ? 'success' : 'warn' },
-            { label: 'Status', value: botStatus?.newibot || 'offline', kind: botStatus?.newibot === 'online' ? 'success' : 'warn' },
+            { label: 'Status', value: botStatus?.music || 'offline', kind: botStatus?.music === 'online' ? 'success' : 'warn' },
           ]}
         />
       </div>
@@ -129,7 +129,7 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
         <div className="card">
           <div className="card-header">
             <div className="card-title">Top sounds - recorded plays</div>
-            <button className="btn btn-ghost btn-sm" onClick={() => openRoute('sb/board')}>Open <Icon name="chevron-right" size={12}/></button>
+            <button className="btn btn-ghost btn-sm" onClick={() => openRoute('bot/sound/soundboard')}>Open <Icon name="chevron-right" size={12}/></button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {topSounds.map((s, i) => (
@@ -150,8 +150,8 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
           <div className="card-header">
             <div className="card-title">Activity history</div>
             <div className="page-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('sb/stats')}>{dashboardBotName('soundbot', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
-              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('mb/stats')}>{dashboardBotName('newibot', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
+              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('bot/sound/stats')}>{dashboardBotName('sound', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
+              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('bot/music/stats')}>{dashboardBotName('music', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
             </div>
           </div>
           <div className="empty" style={{ padding: '42px 20px' }}>
@@ -163,16 +163,16 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
 
       <div className="grid grid-2">
         <ActivityCard
-          title={`${dashboardBotName('soundbot', botInfo)} activity`}
+          title={`${dashboardBotName('sound', botInfo)} activity`}
           logs={soundLogs}
           openLabel="Logs"
-          onOpen={() => openRoute('sb/logs')}
+          onOpen={() => openRoute('bot/sound/logs')}
         />
         <ActivityCard
-          title={`${dashboardBotName('newibot', botInfo)} activity`}
+          title={`${dashboardBotName('music', botInfo)} activity`}
           logs={musicLogs}
           openLabel="Logs"
-          onOpen={() => openRoute('mb/logs')}
+          onOpen={() => openRoute('bot/music/logs')}
         />
       </div>
     </div>

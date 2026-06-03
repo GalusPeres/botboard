@@ -4,10 +4,10 @@ export function botDisplayName(bot, fallback = 'Bot') {
   return clean || fallback;
 }
 
-export function dashboardBotName(botKey, botInfo = {}) {
-  if (botKey === 'soundbot') return botDisplayName(botInfo.soundbot, 'Sound Bot');
-  if (botKey === 'newibot') return botDisplayName(botInfo.newibot, 'Music Bot');
-  return botDisplayName(botInfo[botKey], 'Bot');
+// botId is the module ID: 'sound', 'music', 'patchwatcher', …
+export function dashboardBotName(botId, botInfo = {}) {
+  const defaults = { sound: 'Sound Bot', music: 'Music Bot' };
+  return botDisplayName(botInfo[botId], defaults[botId] || 'Bot');
 }
 
 export function moduleDisplayName(module, fallback = 'Bot') {

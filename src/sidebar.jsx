@@ -1,61 +1,31 @@
-// Sidebar + topbar + mobile navigation. Bot identity per route ('sb', 'mb', 'gen')
-// drives the accent stripe and crumb color.
+// Sidebar + topbar + mobile navigation.
+// All bots come from the manifest API (modules prop) — nothing hardcoded.
+// Route format for all bots: bot/:moduleId/:pageId
+// Topbar always shows the BOT name; page screens show their own content title.
 import React, { useRef, useState } from 'react';
 import { Icon } from './components.jsx';
 import { dashboardBotName, moduleAvatar, moduleDisplayName } from './botIdentity.js';
 import { useCloseOnOutside } from './hooks.js';
 
+// Only truly static routes (no bot association)
 export const ROUTES = {
-  overview:          { title: 'Overview',     group: 'gen' },
-  'bot-modules':     { title: 'Bot Modules',  group: 'gen' },
-  'admin':           { title: 'Roles',        group: 'gen' },
-  'botboard-logs':   { title: 'Live Logs',    group: 'gen' },
-  'sb/board':   { title: 'Soundboard',            group: 'sb',  parentBot: 'soundbot' },
-  'sb/library': { title: 'Sound Library',         group: 'sb',  parentBot: 'soundbot' },
-  'sb/stats':   { title: 'Statistics',            group: 'sb',  parentBot: 'soundbot' },
-  'sb/logs':    { title: 'Live Logs',             group: 'sb',  parentBot: 'soundbot' },
-  'sb/settings':{ title: 'Settings',              group: 'sb',  parentBot: 'soundbot' },
-  'mb/player':  { title: 'Music Player',          group: 'mb',  parentBot: 'newibot' },
-  'mb/stats':   { title: 'Statistics',            group: 'mb',  parentBot: 'newibot' },
-  'mb/logs':    { title: 'Live Logs',             group: 'mb',  parentBot: 'newibot' },
-  'mb/settings':{ title: 'Settings',              group: 'mb',  parentBot: 'newibot' },
+  overview:        { title: 'Overview',    group: 'gen' },
+  'bot-modules':   { title: 'Bot Modules', group: 'gen' },
+  'admin':         { title: 'Roles',       group: 'gen' },
+  'botboard-logs': { title: 'Live Logs',   group: 'gen' },
 };
 
-const BOT_MODULES = [
-  {
-    key: 'soundbot', group: 'sb', icon: 'soundboard', fallbackName: 'Sound Bot',
-    pages: [
-      { id: 'sb/board', icon: 'soundboard', label: 'Soundboard', badge: 'sounds' },
-      { id: 'sb/library', icon: 'library', label: 'Sound Library' },
-      { id: 'sb/stats', icon: 'stats', label: 'Statistics' },
-      { id: 'sb/logs', icon: 'logs', label: 'Live Logs' },
-      { id: 'sb/settings', icon: 'settings', label: 'Settings' },
-    ],
-  },
-  {
-    key: 'newibot', group: 'mb', icon: 'music', fallbackName: 'Music Bot',
-    pages: [
-      { id: 'mb/player', icon: 'music', label: 'Music Player' },
-      { id: 'mb/stats', icon: 'stats', label: 'Statistics' },
-      { id: 'mb/logs', icon: 'logs', label: 'Live Logs' },
-      { id: 'mb/settings', icon: 'settings', label: 'Settings' },
-    ],
-  },
-];
+// CSS accent class from manifest type
+function groupCls(module) {
+  const type = module?.manifest?.type;
+  if (type === 'soundboard')   return 'sb';
+  if (type === 'music-player') return 'mb';
+  return 'mod';
+}
 
-const FIXED_MODULE_BY_ID = {
-  sound: 'soundbot',
-  music: 'newibot',
-};
-
-const FIXED_ID_BY_KEY = {
-  soundbot: 'sound',
-  newibot: 'music',
-};
-
-function supportedGenericPages(module) {
-  const pages = module?.manifest?.pages || [];
-  return pages.filter((page) => ['patch-watcher', 'stats', 'logs', 'settings'].includes(page.kind || page.id));
+// All pages from manifest are eligible
+function modulePages(module) {
+  return module?.manifest?.pages || [];
 }
 
 export function routeMeta(route, modules = []) {
@@ -63,11 +33,11 @@ export function routeMeta(route, modules = []) {
   const match = String(route || '').match(/^bot\/([^/]+)\/([^/]+)$/);
   if (!match) return { title: 'Overview', group: 'gen' };
   const [, botId, pageId] = match;
-  const module = modules.find((item) => item.id === botId);
-  const page = module?.manifest?.pages?.find((item) => item.id === pageId);
+  const module = modules.find((m) => m.id === botId);
+  const page = module?.manifest?.pages?.find((p) => p.id === pageId);
   return {
     title: page?.label || pageId,
-    group: 'mod',
+    group: groupCls(module),
     parentBot: botId,
     module,
     page,
@@ -86,14 +56,12 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const options = (servers.length ? servers : [server]).filter(Boolean);
-
   useCloseOnOutside(wrapRef, open, () => setOpen(false));
-
   return (
     <div className="server-selector-wrap" ref={wrapRef}>
       <button className="server-switcher server-selector" type="button" aria-label="Select server"
         aria-haspopup="menu" aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}>
+        onClick={() => setOpen((v) => !v)}>
         {server?.icon
           ? <img src={server.icon} alt="" className="server-icon" style={{ objectFit: 'cover' }}/>
           : <div className="server-icon" style={{ background: guildColor(server?.id) }}>{guildInitials(server?.name)}</div>}
@@ -121,25 +89,28 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
   );
 };
 
-export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user, soundsCount = 0, onLogout, botStatus, botInfo, modules = [], restartEnabled, onRestart, permissions = {} }) => {
+export const Sidebar = ({
+  route, setRoute, server, servers, onChangeServer,
+  user, soundsCount = null, onLogout,
+  modules = [], restartEnabled, onRestart, permissions = {},
+}) => {
   const displayName = user?.global_name || user?.username || 'Discord user';
   const userHandle = user?.username ? `@${user.username}` : '';
   const userInitial = displayName.charAt(0).toUpperCase();
-  const moduleById = new Map((modules || []).map((item) => [item.id, item]));
+
   const serverBotIds = Array.isArray(server?.bots) ? new Set(server.bots) : null;
-  const botVisibleOnServer = (botId) => !serverBotIds || serverBotIds.has(botId);
-  const extraModules = (modules || []).filter((module) => !FIXED_MODULE_BY_ID[module.id] && botVisibleOnServer(module.id) && supportedGenericPages(module).length);
+  const botVisibleOnServer = (id) => !serverBotIds || serverBotIds.has(id);
+  const visibleModules = modules.filter((m) => botVisibleOnServer(m.id));
+
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('botboard:collapsed-groups') || '{}'); } catch { return {}; }
   });
-  const setCollapsed = (updater) => {
-    setCollapsedGroups((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      try { localStorage.setItem('botboard:collapsed-groups', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-  const toggleGroup = (key) => setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleGroup = (key) => setCollapsedGroups((prev) => {
+    const next = { ...prev, [key]: !prev[key] };
+    try { localStorage.setItem('botboard:collapsed-groups', JSON.stringify(next)); } catch {}
+    return next;
+  });
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -151,49 +122,24 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
 
       <div className="nav-section sidebar-general">
         <div className="nav-label">General</div>
-        <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
-        {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
-        {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-        {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
+        <NavItem id="overview"      route={route} setRoute={setRoute} icon="home"  label="Overview"/>
+        {permissions.botModules      && <NavItem id="bot-modules"   route={route} setRoute={setRoute} icon="bot"   label="Bots"/>}
+        {permissions.userManagement  && <NavItem id="admin"         route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+        {permissions.userManagement  && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs"  label="Live Logs"/>}
       </div>
 
       <div className="sidebar-bots-scroll">
-        {BOT_MODULES.map((bot) => {
-          if (!botVisibleOnServer(FIXED_ID_BY_KEY[bot.key])) return null;
-          const visiblePages = permissions.settings ? bot.pages : bot.pages.filter((page) => !page.id.endsWith('/settings'));
-          return (
-            <BotGroup
-              key={bot.key}
-              botKey={bot.key}
-              groupCls={bot.group}
-              botIcon={bot.icon}
-              name={moduleDisplayName(moduleById.get(FIXED_ID_BY_KEY[bot.key]), dashboardBotName(bot.key, botInfo) || bot.fallbackName)}
-              avatar={moduleAvatar(moduleById.get(FIXED_ID_BY_KEY[bot.key])) || botInfo?.[bot.key]?.avatar}
-              status={botStatus[bot.key]}
-              collapsed={!!collapsedGroups[bot.key]}
-              onToggle={() => toggleGroup(bot.key)}
-              restartEnabled={restartEnabled && !!permissions.restartBot}
-              onRestart={() => onRestart(bot.key)}
-            >
-              {visiblePages.map((page) => (
-                <NavItem key={page.id} id={page.id} route={route} setRoute={setRoute}
-                  icon={page.icon} label={page.label}
-                  badge={page.badge === 'sounds' ? soundsCount : undefined}/>
-              ))}
-            </BotGroup>
-          );
-        })}
-
-        {extraModules.map((module) => {
-          const visiblePages = permissions.settings
-            ? supportedGenericPages(module)
-            : supportedGenericPages(module).filter((page) => (page.kind || page.id) !== 'settings');
-          if (visiblePages.length === 0) return null;
+        {visibleModules.map((module) => {
+          const pages = permissions.settings
+            ? modulePages(module)
+            : modulePages(module).filter((p) => (p.kind || p.id) !== 'settings');
+          if (pages.length === 0) return null;
+          const cls = groupCls(module);
           return (
             <BotGroup
               key={module.id}
               botKey={module.id}
-              groupCls="mod"
+              groupCls={cls}
               botIcon={module.manifest?.icon || 'grid'}
               name={moduleDisplayName(module, module.id)}
               avatar={moduleAvatar(module)}
@@ -203,9 +149,17 @@ export const Sidebar = ({ route, setRoute, server, servers, onChangeServer, user
               restartEnabled={restartEnabled && !!permissions.restartBot}
               onRestart={() => onRestart(module.id)}
             >
-              {visiblePages.map((page) => (
-                <NavItem key={page.id} id={`bot/${module.id}/${page.id}`} route={route} setRoute={setRoute}
-                  icon={page.icon || 'grid'} label={page.label || page.id} group="mod"/>
+              {pages.map((page) => (
+                <NavItem
+                  key={page.id}
+                  id={`bot/${module.id}/${page.id}`}
+                  route={route}
+                  setRoute={setRoute}
+                  icon={page.icon || 'grid'}
+                  label={page.label || page.id}
+                  group={cls}
+                  badge={page.kind === 'soundboard' ? soundsCount : undefined}
+                />
               ))}
             </BotGroup>
           );
@@ -258,8 +212,7 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, coll
             <span>{status}</span>
           </div>
         </div>
-        <button className="bot-collapse-btn"
-                type="button"
+        <button className="bot-collapse-btn" type="button"
                 onClick={(e) => { e.stopPropagation(); onToggle(); }}
                 title={collapsed ? 'Expand bot' : 'Collapse bot'}>
           <Icon name="chevron-down" size={12}/>
@@ -280,16 +233,20 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, coll
   );
 };
 
-export const Topbar = ({ route, server, voiceChannels = [], voiceTargets = {}, setVoiceTarget, userVoiceChannel, botVoiceChannelId = {}, voiceControls = {}, onOpenMenu, botInfo, modules = [] }) => {
+export const Topbar = ({
+  route, server, voiceChannels = [], voiceTargets = {}, setVoiceTarget,
+  userVoiceChannel, botVoiceChannelId = {}, voiceControls = {},
+  onOpenMenu, modules = [],
+}) => {
   const meta = routeMeta(route, modules);
   const [chanOpen, setChanOpen] = useState(false);
   const channelRef = useRef(null);
-  const sectionTitle = meta.module
-    ? meta.title
-    : meta.parentBot
-      ? dashboardBotName(meta.parentBot, botInfo)
-      : 'General';
   useCloseOnOutside(channelRef, chanOpen, () => setChanOpen(false));
+
+  // Always show the BOT name in the topbar (page title lives in the content area)
+  const sectionTitle = meta.module
+    ? moduleDisplayName(meta.module, meta.parentBot)
+    : 'General';
 
   const botKey = meta.parentBot;
   const hasVoiceControls = !!(botKey && voiceControls[botKey]);
@@ -307,87 +264,82 @@ export const Topbar = ({ route, server, voiceChannels = [], voiceTargets = {}, s
         <Icon name="menu" size={20}/>
       </button>
       <span className="topbar-title">{sectionTitle}</span>
-
       <div className="topbar-spacer"/>
-
       {botKey && hasVoiceControls && (
-      <div className="topbar-actions">
-        <div className="topbar-voice-actions">
-          <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onJoin}>
-            <Icon name="speaker" size={12}/> <span>Join</span>
-          </button>
-          <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onStop}>
-            <Icon name="stop" size={12}/> <span>Stop</span>
-          </button>
-          <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onDisconnect}>
-            <Icon name="x" size={12}/> <span>Disconnect</span>
-          </button>
-        </div>
-        <div style={{ position: 'relative' }} className="voice-chip-bot" ref={channelRef}>
-          <button className={'voice-chip' + (connected ? ' connected' : '')}
-                  type="button"
-                  onClick={() => setChanOpen(o => !o)}>
-            <span className="voice-actor">Channel</span>
-            <span className="voice-dot"/>
-            <Icon name="speaker" size={13} style={{ color: connected ? 'var(--green)' : 'var(--text-muted)' }}/>
-            <span>{chipLabel}</span>
-            <Icon name="chevron-down" size={11} style={{ color: 'var(--text-dim)' }}/>
-          </button>
-          {chanOpen && (
-            <div className="menu" style={{ top: '110%', right: 0, minWidth: 240 }}>
-              <div style={{ padding: '6px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Target channel for {sectionTitle}</div>
-              <div className="menu-item"
-                   onClick={() => { setVoiceTarget(botKey, 'auto'); setChanOpen(false); }}
-                   style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Icon name="headphones" size={12} style={{ color: 'var(--text-dim)' }}/>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div>Where I am (Auto)</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{userVoiceChannel ? userVoiceChannel.name : "you're not in a channel"}</div>
+        <div className="topbar-actions">
+          <div className="topbar-voice-actions">
+            <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onJoin}>
+              <Icon name="speaker" size={12}/> <span>Join</span>
+            </button>
+            <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onStop}>
+              <Icon name="stop" size={12}/> <span>Stop</span>
+            </button>
+            <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onDisconnect}>
+              <Icon name="x" size={12}/> <span>Disconnect</span>
+            </button>
+          </div>
+          <div style={{ position: 'relative' }} className="voice-chip-bot" ref={channelRef}>
+            <button className={'voice-chip' + (connected ? ' connected' : '')}
+                    type="button" onClick={() => setChanOpen((o) => !o)}>
+              <span className="voice-actor">Channel</span>
+              <span className="voice-dot"/>
+              <Icon name="speaker" size={13} style={{ color: connected ? 'var(--green)' : 'var(--text-muted)' }}/>
+              <span>{chipLabel}</span>
+              <Icon name="chevron-down" size={11} style={{ color: 'var(--text-dim)' }}/>
+            </button>
+            {chanOpen && (
+              <div className="menu" style={{ top: '110%', right: 0, minWidth: 240 }}>
+                <div style={{ padding: '6px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Target channel for {sectionTitle}
                 </div>
-                {isAuto && <Icon name="check" size={12}/>}
-              </div>
-              {voiceChannels.length === 0 && (
-                <div style={{ padding: '8px 10px', color: 'var(--text-dim)', fontSize: 12 }}>No voice channels found.</div>
-              )}
-              {voiceChannels.map(c => (
-                <div key={c.id} className="menu-item"
-                     onClick={() => { setVoiceTarget(botKey, c.id); setChanOpen(false); }}
+                <div className="menu-item"
+                     onClick={() => { setVoiceTarget(botKey, 'auto'); setChanOpen(false); }}
                      style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Icon name="speaker" size={12} style={{ color: 'var(--text-dim)' }}/>
-                  <span style={{ flex: 1 }}>{c.name}</span>
-                  {selection === c.id
-                    ? <Icon name="check" size={12}/>
-                    : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{c.users}</span>}
+                  <Icon name="headphones" size={12} style={{ color: 'var(--text-dim)' }}/>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div>Where I am (Auto)</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                      {userVoiceChannel ? userVoiceChannel.name : "you're not in a channel"}
+                    </div>
+                  </div>
+                  {isAuto && <Icon name="check" size={12}/>}
                 </div>
-              ))}
-            </div>
-          )}
+                {voiceChannels.length === 0 && (
+                  <div style={{ padding: '8px 10px', color: 'var(--text-dim)', fontSize: 12 }}>No voice channels found.</div>
+                )}
+                {voiceChannels.map((c) => (
+                  <div key={c.id} className="menu-item"
+                       onClick={() => { setVoiceTarget(botKey, c.id); setChanOpen(false); }}
+                       style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Icon name="speaker" size={12} style={{ color: 'var(--text-dim)' }}/>
+                    <span style={{ flex: 1 }}>{c.name}</span>
+                    {selection === c.id
+                      ? <Icon name="check" size={12}/>
+                      : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{c.users}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       )}
     </header>
   );
 };
 
-export const MobileMoreSheet = ({ onClose, route, setRoute, server, servers, onChangeServer, user, botStatus, botInfo, modules = [], soundsCount = 0, restartEnabled, onRestart, onLogout, permissions = {} }) => {
-  const go = (nextRoute) => { setRoute(nextRoute); onClose(); };
+export const MobileMoreSheet = ({
+  onClose, route, setRoute, server, servers, onChangeServer,
+  user, modules = [], soundsCount = null, restartEnabled, onRestart, onLogout, permissions = {},
+}) => {
+  const go = (r) => { setRoute(r); onClose(); };
   return (
     <div className="mobile-sidebar-backdrop" onClick={onClose}>
-      <div className="mobile-sidebar-drawer" onClick={(event) => event.stopPropagation()}>
+      <div className="mobile-sidebar-drawer" onClick={(e) => e.stopPropagation()}>
         <Sidebar
-          route={route}
-          setRoute={go}
-          server={server}
-          servers={servers}
-          onChangeServer={onChangeServer}
-          user={user}
-          soundsCount={soundsCount}
-          onLogout={onLogout}
-          botStatus={botStatus}
-          botInfo={botInfo}
-          modules={modules}
-          restartEnabled={restartEnabled}
-          onRestart={onRestart}
+          route={route} setRoute={go}
+          server={server} servers={servers} onChangeServer={onChangeServer}
+          user={user} soundsCount={soundsCount} onLogout={onLogout}
+          modules={modules} restartEnabled={restartEnabled} onRestart={onRestart}
           permissions={permissions}
         />
       </div>

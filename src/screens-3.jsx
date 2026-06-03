@@ -54,8 +54,8 @@ export const StatsScreen = ({ bot, sounds = [], botStatus, botInfo, statusData, 
   const totalPlays = sounds.reduce((sum, sound) => sum + (sound.plays || 0), 0);
   const topSounds = [...sounds].filter((sound) => sound.plays > 0).sort((a, b) => b.plays - a.plays).slice(0, 8);
   const lavalink = statusData?.music?.lavalink;
-  const status = isSound ? botStatus?.soundbot : botStatus?.newibot;
-  const name = isSound ? dashboardBotName('soundbot', botInfo) : dashboardBotName('newibot', botInfo);
+  const status = isSound ? botStatus?.sound : botStatus?.music;
+  const name = isSound ? dashboardBotName('sound', botInfo) : dashboardBotName('music', botInfo);
   const botData = isSound ? statusData?.sound : statusData?.music;
   const fallbackCards = isSound
     ? [
@@ -268,7 +268,7 @@ export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botSt
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey="soundbot" onRestart={onRestart}
+        botStatus={botStatus} restartEnabled={restartEnabled} botKey="sound" onRestart={onRestart}
         onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
       {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">
@@ -311,7 +311,7 @@ export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botSta
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName} and external Lavalink.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey="newibot" onRestart={onRestart}
+        botStatus={botStatus} restartEnabled={restartEnabled} botKey="music" onRestart={onRestart}
         onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
       {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">

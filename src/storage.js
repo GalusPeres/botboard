@@ -41,9 +41,9 @@ export function saveServer(server) {
 export function savedVoiceTargets(guildId) {
   try {
     const raw = window.localStorage.getItem(`botboard:voice-targets:${guildId}`);
-    return { soundbot: 'auto', newibot: 'auto', ...(raw ? JSON.parse(raw) : {}) };
+    return { sound: 'auto', music: 'auto', ...(raw ? JSON.parse(raw) : {}) };
   } catch {
-    return { soundbot: 'auto', newibot: 'auto' };
+    return { sound: 'auto', music: 'auto' };
   }
 }
 

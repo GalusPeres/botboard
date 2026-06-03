@@ -873,30 +873,30 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     {postContent}
                   </div>
                 )}
-                <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', background: '#2b2d31', maxWidth: 516 }}>
-                  {/* Left accent bar — 4px, full height */}
-                  <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
-                  {/* Embed body — 16px right padding like Discord */}
+                <div style={{ display: 'flex', maxWidth: 516 }}>
+                  {/* Left accent bar — rounded on left side only */}
+                  <div style={{ width: 4, flexShrink: 0, background: embedColor, borderRadius: '4px 0 0 4px' }}/>
+                  {/* Embed body — no background, sits on card bg */}
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
-                    {/* Title — 16px, Discord link blue, no underline by default */}
+                    {/* Title — 16px, Discord link blue */}
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"
                        style={{ display: 'block', marginTop: 6, color: '#00b0f4', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: 1.375, wordBreak: 'break-word' }}>
                       {selectedPatch.title}
                     </a>
-                    {/* Description — 14px, normal weight */}
+                    {/* Description — 14px normal */}
                     <div style={{ marginTop: 6, color: '#dbdee1', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
-                    {/* Inline fields — labels 12px bold, values 14px normal */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: '0 32px', marginTop: 8 }}>
+                    {/* Inline fields — flex with minWidth so Source is pushed right */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 16px', marginTop: 4 }}>
                       {selectedPatch.game && (
-                        <div style={{ marginTop: 8 }}>
+                        <div style={{ marginTop: 8, minWidth: 120 }}>
                           <div style={{ color: '#dbdee1', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Game</div>
                           <div style={{ color: '#dbdee1', fontSize: 14 }}>{selectedPatch.game}</div>
                         </div>
                       )}
                       {selectedPatch.sourceName && (
-                        <div style={{ marginTop: 8 }}>
+                        <div style={{ marginTop: 8, minWidth: 120 }}>
                           <div style={{ color: '#dbdee1', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Source</div>
                           <div style={{ color: '#dbdee1', fontSize: 14 }}>{selectedPatch.sourceName}</div>
                         </div>
@@ -909,7 +909,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     )}
                     {/* Footer — no seconds, Discord-style timestamp */}
                     {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
-                      <div style={{ color: '#949ba4', fontSize: 12, marginTop: 8 }}>
+                      <div style={{ color: '#b5bac1', fontSize: 12, marginTop: 8 }}>
                         {new Date(selectedPatch.publishedAt || selectedPatch.discoveredAt)
                           .toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </div>

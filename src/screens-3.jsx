@@ -906,7 +906,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     )}
                     {/* Footer — no seconds, Discord-style timestamp */}
                     {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
-                      <div style={{ color: '#b5bac1', fontSize: 12, marginTop: 8 }}>
+                      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 8 }}>
                         {new Date(selectedPatch.publishedAt || selectedPatch.discoveredAt)
                           .toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </div>

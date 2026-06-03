@@ -92,7 +92,7 @@ const ServerDropdown = ({ server, servers = [], onChangeServer }) => {
 export const Sidebar = ({
   route, setRoute, server, servers, onChangeServer,
   user, soundsCount = null, onLogout,
-  modules = [], restartEnabled, onRestart, permissions = {},
+  modules = [], restartEnabled, onRestart, onStop, onStart, permissions = {},
 }) => {
   const displayName = user?.global_name || user?.username || 'Discord user';
   const userHandle = user?.username ? `@${user.username}` : '';
@@ -148,6 +148,7 @@ export const Sidebar = ({
               onToggle={() => toggleGroup(module.id)}
               restartEnabled={restartEnabled && !!permissions.restartBot}
               onRestart={() => onRestart(module.id)}
+              onStop={onStop} onStart={onStart}
             >
               {pages.map((page) => (
                 <NavItem
@@ -195,7 +196,7 @@ export const NavItem = ({ id, route, setRoute, icon, label, badge, group }) => {
   );
 };
 
-export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, collapsed, onToggle, restartEnabled, onRestart, children }) => {
+export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, collapsed, onToggle, restartEnabled, onRestart, onStop, onStart, children }) => {
   const dotKind = status === 'online' ? 'on' : status === 'restarting' ? 'restarting' : 'off';
   return (
     <div className={'bot-group bot-group-' + groupCls + (collapsed ? ' collapsed' : '')}>
@@ -217,13 +218,27 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, coll
                 title={collapsed ? 'Expand bot' : 'Collapse bot'}>
           <Icon name="chevron-down" size={12}/>
         </button>
-        {restartEnabled && (
-          <button className={'bot-restart-btn' + (status === 'restarting' ? ' spinning' : '')}
-                  onClick={(e) => { e.stopPropagation(); onRestart(); }}
-                  title={'Restart ' + name}
-                  disabled={status === 'restarting'}>
-            <Icon name="refresh" size={13}/>
+        {restartEnabled && status !== 'online' && onStart && (
+          <button className="bot-restart-btn" onClick={(e) => { e.stopPropagation(); onStart(botKey); }}
+                  title={'Start ' + name}>
+            <Icon name="play" size={13}/>
           </button>
+        )}
+        {restartEnabled && status === 'online' && (
+          <>
+            {onStop && (
+              <button className="bot-restart-btn" onClick={(e) => { e.stopPropagation(); onStop(botKey); }}
+                      title={'Stop ' + name}>
+                <Icon name="stop" size={13}/>
+              </button>
+            )}
+            <button className={'bot-restart-btn' + (status === 'restarting' ? ' spinning' : '')}
+                    onClick={(e) => { e.stopPropagation(); onRestart(); }}
+                    title={'Restart ' + name}
+                    disabled={status === 'restarting'}>
+              <Icon name="refresh" size={13}/>
+            </button>
+          </>
         )}
       </div>
       <div className="bot-group-nav" hidden={collapsed}>
@@ -329,7 +344,7 @@ export const Topbar = ({
 
 export const MobileMoreSheet = ({
   onClose, route, setRoute, server, servers, onChangeServer,
-  user, modules = [], soundsCount = null, restartEnabled, onRestart, onLogout, permissions = {},
+  user, modules = [], soundsCount = null, restartEnabled, onRestart, onStop, onStart, onLogout, permissions = {},
 }) => {
   const go = (r) => { setRoute(r); onClose(); };
   return (
@@ -339,7 +354,7 @@ export const MobileMoreSheet = ({
           route={route} setRoute={go}
           server={server} servers={servers} onChangeServer={onChangeServer}
           user={user} soundsCount={soundsCount} onLogout={onLogout}
-          modules={modules} restartEnabled={restartEnabled} onRestart={onRestart}
+          modules={modules} restartEnabled={restartEnabled} onRestart={onRestart} onStop={onStop} onStart={onStart}
           permissions={permissions}
         />
       </div>

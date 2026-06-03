@@ -39,7 +39,7 @@ function statusText(module) {
   return module.online ? 'online' : module.status?.error || 'offline';
 }
 
-export function BotRegistryScreen({ onChanged }) {
+export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop, onStart }) {
   const [registry, setRegistry] = useState(null);
   const [modules, setModules] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -233,14 +233,36 @@ export function BotRegistryScreen({ onChanged }) {
                 </div>
               </div>
               <div className="registry-row-actions">
+                {restartEnabled && bot.module?.online && (
+                  <>
+                    {onStop && (
+                      <button className="btn btn-sm" type="button" onClick={() => onStop(bot.id)} title="Stop">
+                        <Icon name="stop" size={12}/>
+                      </button>
+                    )}
+                    {onRestart && (
+                      <button className="btn btn-sm" type="button" onClick={() => onRestart(bot.id)} title="Restart">
+                        <Icon name="refresh" size={12}/>
+                      </button>
+                    )}
+                  </>
+                )}
+                {restartEnabled && !bot.module?.online && onStart && (
+                  <button className="btn btn-sm btn-primary" type="button" onClick={() => onStart(bot.id)} title="Start">
+                    <Icon name="play" size={12}/>
+                  </button>
+                )}
                 <button className="btn btn-sm" type="button" onClick={() => startEdit(bot)}>
                   <Icon name="edit" size={12}/> Edit
                 </button>
                 {bot.registryBacked && (
-                    <button className="btn btn-sm btn-danger" type="button" onClick={() => remove(bot)}>
-                      <Icon name={bot.envDefault ? 'refresh' : 'trash'} size={12}/>
-                      {bot.envDefault ? 'Reset' : 'Remove'}
-                    </button>
+                  bot.envDefault
+                    ? <button className="btn btn-sm" type="button" onClick={() => remove(bot)}>
+                        <Icon name="refresh" size={12}/> Reset
+                      </button>
+                    : <button className="btn btn-sm btn-danger" type="button" onClick={() => remove(bot)}>
+                        <Icon name="trash" size={12}/> Remove
+                      </button>
                 )}
               </div>
             </div>

@@ -673,6 +673,7 @@ function DashboardApp(props) {
                modules={modules}
                restartEnabled={restartEnabled}
                onRestart={(bot) => setRestartConfirm(bot)}
+               onStop={stopBot} onStart={startBot}
                permissions={perms}/>
       <div className="main">
         <Topbar route={route} server={server}
@@ -689,7 +690,9 @@ function DashboardApp(props) {
             botStatus={botStatus} currentSound={currentSound}
             botInfo={botInfo} statusData={statusData} liveLogs={liveLogs}
             sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}/>}
-          {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}/>}
+          {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}
+            restartEnabled={restartEnabled && !!perms.restartBot}
+            onRestart={restartBot} onStop={stopBot} onStart={startBot}/>}
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
@@ -778,6 +781,7 @@ function DashboardApp(props) {
           soundsCount={soundsCountForBadge}
           restartEnabled={restartEnabled}
           onRestart={(bot) => { setRestartConfirm(bot); setMoreSheetOpen(false); }}
+          onStop={stopBot} onStart={startBot}
           onLogout={onLogout}
           permissions={perms}
         />

@@ -628,6 +628,26 @@ function DashboardApp(props) {
   const activeMeta = routeMeta(route, modules);
   const activeGenericKind = activeMeta.module ? (activeMeta.page?.kind || activeMeta.page?.id) : '';
   const activeGenericName = activeMeta.module ? moduleDisplayName(activeMeta.module, activeMeta.parentBot) : '';
+
+  // Pre-fetch data for every extra module that is NOT sound/music.
+  // Data lives here in DashboardApp and survives navigation between that
+  // module's sub-pages, so GenericStatsScreen / GenericSettingsScreen can
+  // render instantly without their own first-fetch flash.
+  const extraModuleId = (activeMeta.module && activeMeta.parentBot !== 'sound' && activeMeta.parentBot !== 'music')
+    ? activeMeta.parentBot : null;
+  const { data: extraStats } = usePoll(
+    () => extraModuleId ? API.moduleApi.stats(extraModuleId).catch(() => null) : Promise.resolve(null),
+    5000, [extraModuleId],
+  );
+  const { data: extraSettings, reload: reloadExtraSettings } = useFetch(
+    () => extraModuleId ? API.moduleApi.settings(extraModuleId).catch(() => null) : Promise.resolve(null),
+    [extraModuleId],
+  );
+  const { data: extraSchema } = useFetch(
+    () => extraModuleId ? API.moduleApi.settingsSchema(extraModuleId).catch(() => null) : Promise.resolve(null),
+    [extraModuleId],
+  );
+
   return (
     <div className="app">
       <Sidebar route={route} setRoute={setRoute}
@@ -680,7 +700,7 @@ function DashboardApp(props) {
             ) : activeMeta.parentBot === 'music' ? (
               <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
             ) : (
-              <GenericStatsScreen botId={activeMeta.parentBot} botName={activeGenericName}/>
+              <GenericStatsScreen botId={activeMeta.parentBot} botName={activeGenericName} initialData={extraStats}/>
             )
           )}
           {activeMeta.module && activeGenericKind === 'logs' && (
@@ -697,7 +717,8 @@ function DashboardApp(props) {
                 settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={activeGenericName}
                 restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
             ) : (
-              <GenericSettingsScreen botId={activeMeta.parentBot} botName={activeGenericName} setToast={setToast}/>
+              <GenericSettingsScreen botId={activeMeta.parentBot} botName={activeGenericName} setToast={setToast}
+                initialSettings={extraSettings} initialSchema={extraSchema} onSaved={reloadExtraSettings}/>
             )
           )}
           {activeMeta.module && activeGenericKind === 'patch-watcher' && (

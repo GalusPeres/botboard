@@ -424,12 +424,15 @@ export const LogsScreen = ({ bot, botName, liveLogs, connection }) => {
   );
 };
 
-export const GenericStatsScreen = ({ botId, botName }) => {
-  const { data: stats, loading, error, reload } = usePoll(
+export const GenericStatsScreen = ({ botId, botName, initialData = null }) => {
+  // DashboardApp pre-fetches and passes initialData so this screen renders
+  // instantly on navigation. The local poll keeps data fresh after mount.
+  const { data: polledStats, error, reload } = usePoll(
     () => API.moduleApi.stats(botId),
     5000,
     [botId],
   );
+  const stats = polledStats ?? initialData;
 
   return (
     <div className="content-narrow">
@@ -443,7 +446,6 @@ export const GenericStatsScreen = ({ botId, botName }) => {
           </button>
         </div>
       </div>
-      {loading && <div className="empty">Loading statistics...</div>}
       {error && <div className="settings-notice registry-error">Stats failed: {error.message}</div>}
       {stats && (
         <>
@@ -490,16 +492,20 @@ export const GenericStatsScreen = ({ botId, botName }) => {
   );
 };
 
-export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
-  const { data: schema, loading: schemaLoading, error: schemaError } = useFetch(
+export const GenericSettingsScreen = ({ botId, botName, setToast, initialSettings = null, initialSchema = null, onSaved }) => {
+  // DashboardApp pre-fetches schema+settings and passes them as initialX props
+  // so this screen renders instantly. Local fetch keeps data fresh.
+  const { data: polledSchema, error: schemaError } = useFetch(
     () => API.moduleApi.settingsSchema(botId),
     [botId],
   );
-  const { data: settings, loading: settingsLoading, error: settingsError, reload } = useFetch(
+  const { data: polledSettings, error: settingsError, reload } = useFetch(
     () => API.moduleApi.settings(botId),
     [botId],
   );
-  const [draft, setDraft] = useState({});
+  const schema = polledSchema ?? initialSchema;
+  const settings = polledSettings ?? initialSettings;
+  const [draft, setDraft] = useState(initialSettings || {});
   const [pending, setPending] = useState('');
 
   useEffect(() => {
@@ -514,6 +520,7 @@ export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
     try {
       const result = await API.moduleApi.saveSettings(botId, { [field.key]: value });
       await reload();
+      onSaved?.();
       setToast?.({
         id: Date.now(),
         msg: result?.restartRequired ? `${botName}: saved, restart required` : `${botName}: setting saved`,
@@ -557,7 +564,7 @@ export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
           <div className="page-title">Settings</div>
         </div>
       </div>
-      {(schemaLoading || settingsLoading) && <div className="empty">Loading settings...</div>}
+      {!schema && !schemaError && <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading settings…</div>}
       {(schemaError || settingsError) && (
         <div className="settings-notice registry-error">
           Settings failed: {(schemaError || settingsError).message}

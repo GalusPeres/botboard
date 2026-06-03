@@ -873,32 +873,29 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     {postContent}
                   </div>
                 )}
-                <div style={{ display: 'flex', maxWidth: 516, background: '#2b2d31', borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
-                  {/* Left accent bar */}
+                {/* Discord embed: #2f3136 = visible grey, not black */}
+                <div style={{ display: 'flex', maxWidth: 516, background: '#2f3136', borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
-                  {/* Embed body — no background, sits on card bg */}
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
-                    {/* Title — 16px, Discord link blue */}
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"
                        style={{ display: 'block', marginTop: 6, color: '#00b0f4', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: 1.375, wordBreak: 'break-word' }}>
                       {selectedPatch.title}
                     </a>
-                    {/* Description — 14px normal */}
-                    <div style={{ marginTop: 6, color: '#dbdee1', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                    <div style={{ marginTop: 6, color: '#dcddde', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
-                    {/* Inline fields — flex with minWidth so Source is pushed right */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 16px', marginTop: 4 }}>
+                    {/* Inline fields — natural width, 40px gap like Discord */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 40px', marginTop: 4 }}>
                       {selectedPatch.game && (
-                        <div style={{ marginTop: 8, minWidth: 120 }}>
-                          <div style={{ color: '#dbdee1', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Game</div>
-                          <div style={{ color: '#dbdee1', fontSize: 14 }}>{selectedPatch.game}</div>
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ color: '#dcddde', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Game</div>
+                          <div style={{ color: '#dcddde', fontSize: 14 }}>{selectedPatch.game}</div>
                         </div>
                       )}
                       {selectedPatch.sourceName && (
-                        <div style={{ marginTop: 8, minWidth: 120 }}>
-                          <div style={{ color: '#dbdee1', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Source</div>
-                          <div style={{ color: '#dbdee1', fontSize: 14 }}>{selectedPatch.sourceName}</div>
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ color: '#dcddde', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Source</div>
+                          <div style={{ color: '#dcddde', fontSize: 14 }}>{selectedPatch.sourceName}</div>
                         </div>
                       )}
                     </div>

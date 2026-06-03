@@ -628,11 +628,17 @@ function limitDiscordText(value, max) {
   return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
+function samePatchLabel(left, right) {
+  return String(left || '').trim().toLowerCase() === String(right || '').trim().toLowerCase();
+}
+
 function buildDiscordEmbedPreview(patch, source) {
   if (!patch) return null;
+  const game = patch.game || source?.game || '';
+  const sourceName = patch.sourceName || source?.name || '';
   const fields = [
-    patch.game && { name: 'Game', value: patch.game, inline: true },
-    patch.sourceName && { name: 'Source', value: patch.sourceName, inline: true },
+    game && { name: 'Game', value: game, inline: true },
+    sourceName && !samePatchLabel(sourceName, game) && { name: 'Source', value: sourceName, inline: true },
   ].filter(Boolean).slice(0, DISCORD_EMBED_LIMITS.fields).map((field) => ({
     ...field,
     name: limitDiscordText(field.name, DISCORD_EMBED_LIMITS.fieldName),

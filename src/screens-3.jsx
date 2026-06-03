@@ -819,27 +819,65 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                 Target: {manualChannelId ? `#${channelName(textChannels, manualChannelId)}` : 'source/default channel'}
               </div>
-              <div style={{ background: 'var(--bg-deeper)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
-                {postContent && <div style={{ marginBottom: 10 }}>{postContent}</div>}
-                <div style={{ display: 'grid', gridTemplateColumns: '4px 1fr', gap: 12 }}>
-                  <div style={{ background: embedColor, borderRadius: 999 }}/>
-                  <div>
-                    <a href={selectedPatch.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text)', fontWeight: 800, textDecoration: 'none' }}>
+              {/* Discord-style message preview */}
+              <div style={{ background: '#111214', borderRadius: 6, padding: '12px 14px' }}>
+                {/* Post content above embed (like a Discord message) */}
+                {postContent && (
+                  <div style={{ color: '#dbdee1', fontSize: 15, lineHeight: 1.375, marginBottom: 6, wordBreak: 'break-word' }}>
+                    {postContent}
+                  </div>
+                )}
+                {/* Discord embed block */}
+                <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', background: '#2b2d31' }}>
+                  {/* Left accent bar */}
+                  <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
+                  {/* Embed body */}
+                  <div style={{ flex: 1, minWidth: 0, padding: '8px 12px 12px 12px' }}>
+                    {/* Title — Discord link blue */}
+                    <a href={selectedPatch.url} target="_blank" rel="noreferrer"
+                       style={{ display: 'block', marginTop: 6, color: '#00b0f4', fontWeight: 600, fontSize: 15, textDecoration: 'none', lineHeight: 1.375, wordBreak: 'break-word' }}>
                       {selectedPatch.title}
                     </a>
-                    <div style={{ color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.45 }}>
+                    {/* Description */}
+                    <div style={{ marginTop: 6, color: '#dbdee1', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
-                    <div style={{ display: 'flex', gap: 18, marginTop: 12, flexWrap: 'wrap' }}>
-                      <div><div style={{ color: 'var(--text-dim)', fontSize: 11 }}>Game</div><strong>{selectedPatch.game || 'Unknown'}</strong></div>
-                      <div><div style={{ color: 'var(--text-dim)', fontSize: 11 }}>Source</div><strong>{selectedPatch.sourceName || 'Official'}</strong></div>
+                    {/* Inline fields */}
+                    <div style={{ display: 'flex', gap: '8px 24px', flexWrap: 'wrap', marginTop: 2 }}>
+                      {selectedPatch.game && (
+                        <div style={{ marginTop: 8, minWidth: 0 }}>
+                          <div style={{ color: '#dbdee1', fontSize: 14, fontWeight: 700 }}>Game</div>
+                          <div style={{ color: '#dbdee1', fontSize: 14, marginTop: 2 }}>{selectedPatch.game}</div>
+                        </div>
+                      )}
+                      {selectedPatch.sourceName && (
+                        <div style={{ marginTop: 8, minWidth: 0 }}>
+                          <div style={{ color: '#dbdee1', fontSize: 14, fontWeight: 700 }}>Source</div>
+                          <div style={{ color: '#dbdee1', fontSize: 14, marginTop: 2 }}>{selectedPatch.sourceName}</div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 12 }}>
-                      {selectedPatch.publishedAt ? new Date(selectedPatch.publishedAt).toLocaleString() : 'No publish date'}
-                    </div>
+                    {/* Image */}
                     {selectedPatch.imageUrl && (
-                      <img src={selectedPatch.imageUrl} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 6, marginTop: 12 }}/>
+                      <img src={selectedPatch.imageUrl} alt=""
+                           style={{ display: 'block', width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 3, marginTop: 16 }}/>
                     )}
+                    {/* Footer: timestamp + posted badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#80848e', fontSize: 12 }}>
+                        {selectedPatch.publishedAt
+                          ? new Date(selectedPatch.publishedAt).toLocaleString()
+                          : selectedPatch.discoveredAt
+                            ? `Discovered ${new Date(selectedPatch.discoveredAt).toLocaleString()}`
+                            : ''}
+                      </span>
+                      {selectedPatch.postedAt && (
+                        <>
+                          <span style={{ color: '#4e5058', fontSize: 12 }}>·</span>
+                          <span style={{ color: '#57f287', fontSize: 12 }}>✓ Posted {new Date(selectedPatch.postedAt).toLocaleDateString()}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

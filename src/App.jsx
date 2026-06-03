@@ -238,10 +238,16 @@ function DashboardApp(props) {
   // Wenn ein Bot neu startet liefert sein Manifest kurz keine Pages (fetch schlägt fehl).
   // In diesem Fall die gecachten Pages behalten damit der Bot in der Sidebar bleibt.
   const mergeWithCache = (live) => live.map(m => {
-    if (m.manifest?.pages?.length) return m;
     const prev = cachedModules.find(c => c.id === m.id);
-    if (!prev?.manifest?.pages?.length) return m;
-    return { ...m, manifest: { ...(m.manifest || {}), pages: prev.manifest.pages } };
+    if (!prev) return m;
+    // Wenn Manifest-Fetch fehlschlägt (Bot startet neu): Pages, Avatar und
+    // displayName aus Cache bewahren damit Sidebar korrekt bleibt.
+    const pages       = m.manifest?.pages?.length       ? m.manifest.pages       : (prev.manifest?.pages       || []);
+    const bot         = m.manifest?.bot                 ?? prev.manifest?.bot     ?? null;
+    const displayName = m.manifest?.displayName         || prev.manifest?.displayName || m.id;
+    const icon        = m.manifest?.icon                || prev.manifest?.icon    || 'grid';
+    if (pages === m.manifest?.pages && bot === m.manifest?.bot) return m; // nichts geändert
+    return { ...m, manifest: { ...(m.manifest || {}), pages, bot, displayName, icon } };
   });
   const modules = modulesData ? mergeWithCache(modulesData) : cachedModules;
   useEffect(() => {

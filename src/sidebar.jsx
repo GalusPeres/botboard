@@ -218,27 +218,13 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, coll
                 title={collapsed ? 'Expand bot' : 'Collapse bot'}>
           <Icon name="chevron-down" size={12}/>
         </button>
-        {restartEnabled && status !== 'online' && onStart && (
-          <button className="bot-restart-btn" onClick={(e) => { e.stopPropagation(); onStart(botKey); }}
-                  title={'Start ' + name}>
-            <Icon name="play" size={13}/>
+        {restartEnabled && (
+          <button className={'bot-restart-btn' + (status === 'restarting' ? ' spinning' : '')}
+                  onClick={(e) => { e.stopPropagation(); onRestart(); }}
+                  title={'Restart ' + name}
+                  disabled={status === 'restarting'}>
+            <Icon name="refresh" size={13}/>
           </button>
-        )}
-        {restartEnabled && status === 'online' && (
-          <>
-            {onStop && (
-              <button className="bot-restart-btn" onClick={(e) => { e.stopPropagation(); onStop(botKey); }}
-                      title={'Stop ' + name}>
-                <Icon name="stop" size={13}/>
-              </button>
-            )}
-            <button className={'bot-restart-btn' + (status === 'restarting' ? ' spinning' : '')}
-                    onClick={(e) => { e.stopPropagation(); onRestart(); }}
-                    title={'Restart ' + name}
-                    disabled={status === 'restarting'}>
-              <Icon name="refresh" size={13}/>
-            </button>
-          </>
         )}
       </div>
       <div className="bot-group-nav" hidden={collapsed}>

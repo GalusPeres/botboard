@@ -873,7 +873,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     {postContent}
                   </div>
                 )}
-                <div style={{ display: 'flex', maxWidth: 516, background: 'var(--bg-deeper)', borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
+                <div style={{ display: 'flex', maxWidth: 516, background: '#2b2d31', borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
                   {/* Left accent bar */}
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
                   {/* Embed body — no background, sits on card bg */}
@@ -942,7 +942,6 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700 }}>{source.name}</span>
                     <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{source.game}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-deeper)', padding: '1px 5px', borderRadius: 3 }}>{source.mode || 'generic'}</span>
                   </div>
                   <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 2 }}>
                     {source.lastCheck ? `Last check ${new Date(source.lastCheck).toLocaleString()}` : 'Never checked'}

@@ -173,9 +173,7 @@ ul, ol { list-style: none; }
   overflow-y: auto;
   /* scrollbar-gutter: stable reserviert Platz immer — kein Layout-Shift */
   scrollbar-gutter: stable;
-  /* Scrollbar am äußeren Rand der Sidebar */
-  margin-right: -12px;
-  padding-right: 12px;
+  padding-right: 2px;
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -699,6 +699,17 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
   const embedColor = settings?.embedColor || '#8bd450';
   const postContent = settings?.postContent || '';
 
+  // Zeige Ladeindikator bis erste Daten da sind — verhindert kurzen Leer-Flash
+  const initialLoad = patchesLoading && settingsLoading && !latest.length && !sourceList.length;
+  if (initialLoad) {
+    return (
+      <div className="content-narrow">
+        <div className="page-head"><div><div className="page-title">Patch Control</div></div></div>
+        <div style={{ color: 'var(--text-muted)', paddingTop: 40 }}>Loading…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="content-narrow">
       <div className="page-head">

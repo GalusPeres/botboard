@@ -107,7 +107,13 @@ function connectUpstream(bot, res) {
 
 function sleep(ms, signal) {
   return new Promise((resolve) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
+    const onAbort = () => { clearTimeout(t); resolve(); };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const t = setTimeout(() => {
+      // Timer fired — remove the abort listener so it doesn't accumulate
+      // on the AbortSignal across many retries (avoids MaxListeners warning)
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
   });
 }

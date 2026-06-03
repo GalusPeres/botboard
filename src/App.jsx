@@ -629,25 +629,6 @@ function DashboardApp(props) {
   const activeGenericKind = activeMeta.module ? (activeMeta.page?.kind || activeMeta.page?.id) : '';
   const activeGenericName = activeMeta.module ? moduleDisplayName(activeMeta.module, activeMeta.parentBot) : '';
 
-  // Pre-fetch data for every extra module that is NOT sound/music.
-  // Data lives here in DashboardApp and survives navigation between that
-  // module's sub-pages, so GenericStatsScreen / GenericSettingsScreen can
-  // render instantly without their own first-fetch flash.
-  const extraModuleId = (activeMeta.module && activeMeta.parentBot !== 'sound' && activeMeta.parentBot !== 'music')
-    ? activeMeta.parentBot : null;
-  const { data: extraStats } = usePoll(
-    () => extraModuleId ? API.moduleApi.stats(extraModuleId).catch(() => null) : Promise.resolve(null),
-    5000, [extraModuleId],
-  );
-  const { data: extraSettings, reload: reloadExtraSettings } = useFetch(
-    () => extraModuleId ? API.moduleApi.settings(extraModuleId).catch(() => null) : Promise.resolve(null),
-    [extraModuleId],
-  );
-  const { data: extraSchema } = useFetch(
-    () => extraModuleId ? API.moduleApi.settingsSchema(extraModuleId).catch(() => null) : Promise.resolve(null),
-    [extraModuleId],
-  );
-
   return (
     <div className="app">
       <Sidebar route={route} setRoute={setRoute}
@@ -680,58 +661,72 @@ function DashboardApp(props) {
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
-          {/* All bot pages routed by kind — no hardcoded bot names */}
-          {activeMeta.module && activeGenericKind === 'soundboard' && (
-            <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
-              playSound={playSound} previewSound={previewSound}
-              tileSize={tweaks.tileSize} targetChannel={resolveTarget(activeMeta.parentBot)}/>
-          )}
-          {activeMeta.module && activeGenericKind === 'file-library' && (
-            <LibraryScreen sounds={sounds}
-              addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>
-          )}
-          {activeMeta.module && activeGenericKind === 'music-player' && (
-            <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
-              playerStyle={tweaks.playerStyle} playerError={playerError}/>
-          )}
-          {activeMeta.module && activeGenericKind === 'stats' && (
-            activeMeta.parentBot === 'sound' ? (
-              <StatsScreen bot="sound" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>
-            ) : activeMeta.parentBot === 'music' ? (
-              <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
-            ) : (
-              <GenericStatsScreen botId={activeMeta.parentBot} botName={activeGenericName} initialData={extraStats}/>
-            )
-          )}
-          {activeMeta.module && activeGenericKind === 'logs' && (
-            <LogsScreen bot={activeMeta.parentBot}
-              botName={activeGenericName} liveLogs={liveLogs} connection={logConnection}/>
-          )}
-          {activeMeta.module && activeGenericKind === 'settings' && (
-            activeMeta.parentBot === 'sound' ? (
-              <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
-                settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={activeGenericName}
-                restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
-            ) : activeMeta.parentBot === 'music' ? (
-              <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
-                settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={activeGenericName}
-                restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
-            ) : (
-              <GenericSettingsScreen botId={activeMeta.parentBot} botName={activeGenericName} setToast={setToast}
-                initialSettings={extraSettings} initialSchema={extraSchema} onSaved={reloadExtraSettings}/>
-            )
-          )}
-          {activeMeta.module && activeGenericKind === 'patch-watcher' && (
-            <PatchWatcherScreen botId={activeMeta.parentBot}
-              botName={activeGenericName} guildId={guildId} setToast={setToast}/>
-          )}
-          {activeMeta.module && !['soundboard','file-library','music-player','patch-watcher','stats','logs','settings'].includes(activeGenericKind) && (
-            <div className="content-narrow">
-              <div className="empty">
-                <div>No renderer for page kind "{activeGenericKind}" yet.</div>
-              </div>
-            </div>
-          )}
+          {/* Bot pages: alle Sub-Seiten eines Bots bleiben gemountet (CSS hidden).
+              Kein Unmount/Remount beim Seitenwechsel = kein Loading-Flash.
+              key=parentBot: remount nur wenn der Bot wechselt, nicht beim Seitenwechsel. */}
+          {activeMeta.module && (() => {
+            const parentBot = activeMeta.parentBot;
+            const botName  = activeGenericName;
+            const pages    = activeMeta.module?.manifest?.pages || [];
+            return (
+              <React.Fragment key={parentBot}>
+                {pages.map(page => {
+                  const kind   = page.kind || page.id;
+                  const active = activeGenericKind === kind;
+                  return (
+                    <div key={page.id} hidden={!active}>
+                      {kind === 'soundboard' && (
+                        <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
+                          playSound={playSound} previewSound={previewSound}
+                          tileSize={tweaks.tileSize} targetChannel={resolveTarget(parentBot)}/>
+                      )}
+                      {kind === 'file-library' && (
+                        <LibraryScreen sounds={sounds}
+                          addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>
+                      )}
+                      {kind === 'music-player' && (
+                        <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
+                          playerStyle={tweaks.playerStyle} playerError={playerError}/>
+                      )}
+                      {kind === 'stats' && (
+                        parentBot === 'sound' ? (
+                          <StatsScreen bot="sound" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>
+                        ) : parentBot === 'music' ? (
+                          <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
+                        ) : (
+                          <GenericStatsScreen botId={parentBot} botName={botName}/>
+                        )
+                      )}
+                      {kind === 'logs' && (
+                        <LogsScreen bot={parentBot} botName={botName} liveLogs={liveLogs} connection={logConnection}/>
+                      )}
+                      {kind === 'settings' && (
+                        parentBot === 'sound' ? (
+                          <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
+                            settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={botName}
+                            restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+                        ) : parentBot === 'music' ? (
+                          <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
+                            settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={botName}
+                            restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+                        ) : (
+                          <GenericSettingsScreen botId={parentBot} botName={botName} setToast={setToast}/>
+                        )
+                      )}
+                      {kind === 'patch-watcher' && (
+                        <PatchWatcherScreen botId={parentBot} botName={botName} guildId={guildId} setToast={setToast}/>
+                      )}
+                      {!['soundboard','file-library','music-player','stats','logs','settings','patch-watcher'].includes(kind) && (
+                        <div className="content-narrow">
+                          <div className="empty"><div>No renderer for page kind "{kind}".</div></div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })()}
         </div>
       </div>
 

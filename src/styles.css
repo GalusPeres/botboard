@@ -255,6 +255,22 @@ ul, ol { list-style: none; }
   transition: background 0.12s;
 }
 .bot-group-head:hover { background: var(--surface); }
+.bot-mark-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.bot-status-dot {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-deeper);
+  background: var(--text-dim);
+}
+.bot-status-dot.on { background: oklch(0.78 0.15 155); }
+.bot-status-dot.restarting { background: var(--amber); animation: dot-pulse 1.2s infinite; }
+.bot-status-dot.off { background: var(--text-dim); }
+
 .bot-group .bot-mark {
   width: 22px; height: 22px;
   border-radius: 5px;

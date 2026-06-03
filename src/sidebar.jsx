@@ -201,17 +201,16 @@ export const BotGroup = ({ botKey, groupCls, botIcon, name, avatar, status, coll
   return (
     <div className={'bot-group bot-group-' + groupCls + (collapsed ? ' collapsed' : '')}>
       <div className="bot-group-head" onClick={onToggle}>
-        <div className={'bot-mark ' + groupCls}>
-          {avatar
-            ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }}/>
-            : <Icon name={botIcon} size={13}/>}
+        <div className="bot-mark-wrap">
+          <div className={'bot-mark ' + groupCls}>
+            {avatar
+              ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }}/>
+              : <Icon name={botIcon} size={13}/>}
+          </div>
+          <span className={'bot-status-dot ' + dotKind}/>
         </div>
         <div className="bot-group-info">
           <div className="bot-group-name">{name}</div>
-          <div className={'bot-group-status ' + dotKind}>
-            <span className="dot"/>
-            <span>{status}</span>
-          </div>
         </div>
         <button className="bot-collapse-btn" type="button"
                 onClick={(e) => { e.stopPropagation(); onToggle(); }}

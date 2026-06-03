@@ -874,7 +874,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                   </div>
                 )}
                 {/* Discord embed — #2b2d31 background, 4px left border */}
-                <div style={{ display: 'flex', maxWidth: 516, background: '#2b2d31', borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
+                <div style={{ display: 'flex', width: '100%', maxWidth: 520, background: '#2b2d31', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"

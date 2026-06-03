@@ -242,9 +242,8 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 14px;
-  margin-top: 2px;
-  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 10px;
 }
 .bot-group-head {
   display: flex;

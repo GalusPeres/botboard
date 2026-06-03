@@ -809,7 +809,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
         </div>
       )}
 
-      <div className="grid grid-2">
+      <div className="grid grid-2 patchwatcher-grid">
         <div className="card">
           <div className="card-header">
             <div className="card-title">Posting</div>
@@ -936,7 +936,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
         </div>
       </div>
 
-      <div className="grid grid-2" style={{ marginTop: 16 }}>
+      <div className="grid grid-2 patchwatcher-grid" style={{ marginTop: 16 }}>
         <div className="card">
           <div className="card-header">
             <div className="card-title">Sources</div>

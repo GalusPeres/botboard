@@ -617,8 +617,14 @@ function patchSummary(patch) {
 function formatDiscordTimestamp(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
   const p = (n) => String(n).padStart(2, '0');
-  return `${p(date.getDate())}.${p(date.getMonth() + 1)}.${date.getFullYear()} ${p(date.getHours())}:${p(date.getMinutes())}`;
+  const time = `${p(date.getHours())}:${p(date.getMinutes())}`;
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+  if (sameDay) return `heute um ${time} Uhr`;
+  return `${p(date.getDate())}.${p(date.getMonth() + 1)}.${date.getFullYear()} ${time}`;
 }
 
 export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
@@ -881,41 +887,41 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                   </div>
                 )}
                 {/* Discord embed — exact spec: #2f3136 bg, 4px border, 432px max */}
-                <div style={{ display: 'flex', width: 'fit-content', maxWidth: 'min(400px, 100%)', background: '#2b2d31', borderRadius: 4, overflow: 'hidden', fontFamily: 'gg sans, Noto Sans, Helvetica Neue, Helvetica, Arial, sans-serif' }}>
+                <div style={{ display: 'flex', width: '100%', maxWidth: 540, background: '#2b2d31', border: '1px solid #3f4147', borderRadius: 4, overflow: 'hidden', fontFamily: 'gg sans, Noto Sans, Helvetica Neue, Helvetica, Arial, sans-serif' }}>
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
-                  <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '12px 20px 16px 16px' }}>
                     {/* Title: 1rem / 600 / #00b0f4 */}
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"
-                       style={{ display: 'block', marginTop: 6, color: '#00a8fc', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: '20px', wordBreak: 'break-word' }}>
+                       style={{ display: 'block', marginTop: 2, color: '#2f9bff', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: '20px', wordBreak: 'break-word' }}>
                       {selectedPatch.title}
                     </a>
                     {/* Description: 0.875rem / 400 / #dcddde */}
-                    <div style={{ marginTop: 6, color: '#dbdee1', fontSize: 14, lineHeight: '18px', wordBreak: 'break-word' }}>
+                    <div style={{ marginTop: 8, color: '#f2f3f5', fontSize: 16, lineHeight: '20px', wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
                     {/* Fields: name = 0.875rem 700 white, value = 0.875rem 400 #dcddde */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 10 }}>
                       {selectedPatch.game && (
-                        <div style={{ flex: '1 1 0', minWidth: 0, marginTop: 8 }}>
-                          <div style={{ color: '#f2f3f5', fontSize: 13, fontWeight: 700, lineHeight: '16px', marginBottom: 2 }}>Game</div>
-                          <div style={{ color: '#dbdee1', fontSize: 13, lineHeight: '16px' }}>{selectedPatch.game}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: '#f2f3f5', fontSize: 16, fontWeight: 700, lineHeight: '20px', marginBottom: 1 }}>Game</div>
+                          <div style={{ color: '#f2f3f5', fontSize: 16, lineHeight: '20px' }}>{selectedPatch.game}</div>
                         </div>
                       )}
                       {selectedPatch.sourceName && (
-                        <div style={{ flex: '1 1 0', minWidth: 0, marginTop: 8 }}>
-                          <div style={{ color: '#f2f3f5', fontSize: 13, fontWeight: 700, lineHeight: '16px', marginBottom: 2 }}>Source</div>
-                          <div style={{ color: '#dbdee1', fontSize: 13, lineHeight: '16px' }}>{selectedPatch.sourceName}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: '#f2f3f5', fontSize: 16, fontWeight: 700, lineHeight: '20px', marginBottom: 1 }}>Source</div>
+                          <div style={{ color: '#f2f3f5', fontSize: 16, lineHeight: '20px' }}>{selectedPatch.sourceName}</div>
                         </div>
                       )}
                     </div>
                     {/* Image: borderRadius 3px, no maxHeight clipping */}
                     {selectedPatch.imageUrl && (
                       <img src={selectedPatch.imageUrl} alt=""
-                           style={{ display: 'block', width: '100%', borderRadius: 3, marginTop: 16 }}/>
+                           style={{ display: 'block', width: '100%', borderRadius: 3, marginTop: 20 }}/>
                     )}
                     {/* Footer: 0.75rem / hsla(0,0%,100%,.6) — Discord spec */}
                     {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
-                      <div style={{ color: '#949ba4', fontSize: 12, lineHeight: '16px', marginTop: 8 }}>
+                      <div style={{ color: '#dbdee1', fontSize: 13, fontWeight: 600, lineHeight: '16px', marginTop: 14 }}>
                         {formatDiscordTimestamp(selectedPatch.publishedAt || selectedPatch.discoveredAt)}
                       </div>
                     )}

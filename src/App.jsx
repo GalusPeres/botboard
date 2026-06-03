@@ -235,10 +235,22 @@ function DashboardApp(props) {
   // Cache: extraModules wie Patchwatcher erscheinen sofort beim Refresh,
   // statt erst nach dem ersten Poll zu verschwinden und wieder aufzutauchen.
   const [cachedModules, setCachedModules] = useState(() => savedModules() || []);
-  const modules = modulesData ?? cachedModules;
+  // Wenn ein Bot neu startet liefert sein Manifest kurz keine Pages (fetch schlägt fehl).
+  // In diesem Fall die gecachten Pages behalten damit der Bot in der Sidebar bleibt.
+  const mergeWithCache = (live) => live.map(m => {
+    if (m.manifest?.pages?.length) return m;
+    const prev = cachedModules.find(c => c.id === m.id);
+    if (!prev?.manifest?.pages?.length) return m;
+    return { ...m, manifest: { ...(m.manifest || {}), pages: prev.manifest.pages } };
+  });
+  const modules = modulesData ? mergeWithCache(modulesData) : cachedModules;
   useEffect(() => {
-    if (modulesData !== null) { setCachedModules(modulesData); saveModules(modulesData); }
-  }, [modulesData]);
+    if (modulesData !== null) {
+      const merged = mergeWithCache(modulesData);
+      setCachedModules(merged);
+      saveModules(merged);
+    }
+  }, [modulesData]); // eslint-disable-line react-hooks/exhaustive-deps
   const moduleById = new Map(modules.map((module) => [module.id, module]));
 
   useEffect(() => {

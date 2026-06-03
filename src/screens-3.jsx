@@ -873,9 +873,9 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     {postContent}
                   </div>
                 )}
-                <div style={{ display: 'flex', maxWidth: 516 }}>
-                  {/* Left accent bar — rounded on left side only */}
-                  <div style={{ width: 4, flexShrink: 0, background: embedColor, borderRadius: '4px 0 0 4px' }}/>
+                <div style={{ display: 'flex', maxWidth: 516, background: 'var(--bg-deeper)', borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
+                  {/* Left accent bar */}
+                  <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
                   {/* Embed body — no background, sits on card bg */}
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
                     {/* Title — 16px, Discord link blue */}
@@ -1032,18 +1032,8 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
               <input className="input" value={sourceForm.url} placeholder="https://news.blizzard.com/…" required
                 onChange={(e) => setSourceForm((f) => ({ ...f, url: e.target.value }))}/>
             </label>
-            <label className="registry-field">
-              <span>Scraper mode</span>
-              <select className="select" value={sourceForm.mode} onChange={(e) => setSourceForm((f) => ({ ...f, mode: e.target.value }))}>
-                <option value="generic">Generic (auto-detect patch links)</option>
-                <option value="league-tags">League of Legends</option>
-                <option value="diablo-article">Diablo IV</option>
-              </select>
-            </label>
-            <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: -4 }}>
-              {sourceForm.mode === 'generic' && 'Finds any link whose text or URL contains "patch", "notes", "hotfix" or "update".'}
-              {sourceForm.mode === 'league-tags' && 'Parses the League of Legends patch notes tag page.'}
-              {sourceForm.mode === 'diablo-article' && 'Parses the Blizzard Diablo IV patch notes article page.'}
+            <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+              Paste any patch notes page URL — the bot detects the format automatically.
             </div>
             <div className="registry-form-actions">
               <button className="btn" type="button" onClick={() => setSourceFormOpen(false)}>Cancel</button>

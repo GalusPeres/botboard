@@ -178,7 +178,7 @@ ul, ol { list-style: none; }
   padding-right: 12px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 6px;
 }
 .sidebar-bots-scroll::-webkit-scrollbar { width: 5px; }
 .sidebar-bots-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -250,9 +250,9 @@ ul, ol { list-style: none; }
 .bot-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-top: 6px;
-  margin-top: 10px;
+  gap: 2px;
+  padding-top: 4px;
+  margin-top: 4px;
 }
 .bot-group-head {
   display: flex;

@@ -173,7 +173,8 @@ ul, ol { list-style: none; }
   overflow-y: auto;
   /* scrollbar-gutter: stable reserviert Platz immer — kein Layout-Shift */
   scrollbar-gutter: stable;
-  padding-right: 2px;
+  margin-right: -8px;
+  padding-right: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { botIds, hasBot, botStatus, botFetch } from '../botClient.js';
-import { restartContainer } from '../docker.js';
+import { restartContainer, stopContainer, startContainer } from '../docker.js';
 import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot } from '../botRegistry.js';
 import { config } from '../config.js';
 import { requireAdmin, requirePermission } from '../auth.js';
@@ -176,6 +176,32 @@ export default function botsRoutes() {
       res.json(result);
     } catch (err) {
       console.error('[restart]', err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  router.post('/:bot/stop', requirePermission('restartBot'), async (req, res) => {
+    const { bot } = req.params;
+    if (!hasBot(bot)) return res.status(400).json({ error: 'unknown bot' });
+    try {
+      const result = await stopContainer(bot);
+      const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
+      logActivity(`${who} → Bot gestoppt: ${bot}`);
+      res.json(result);
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  router.post('/:bot/start', requirePermission('restartBot'), async (req, res) => {
+    const { bot } = req.params;
+    if (!hasBot(bot)) return res.status(400).json({ error: 'unknown bot' });
+    try {
+      const result = await startContainer(bot);
+      const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
+      logActivity(`${who} → Bot gestartet: ${bot}`);
+      res.json(result);
+    } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
     }
   });

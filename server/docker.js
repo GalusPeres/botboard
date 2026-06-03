@@ -11,7 +11,7 @@ function client() {
   return docker;
 }
 
-export async function restartContainer(bot) {
+function requireDocker(bot) {
   if (!config.dockerRestartEnabled) {
     const error = new Error('container restart is disabled; set DOCKER_RESTART_ENABLED=true in Docker');
     error.status = 503;
@@ -19,9 +19,25 @@ export async function restartContainer(bot) {
   }
   const name = botContainer(bot);
   if (!name) throw new Error(`no container configured for bot: ${bot}`);
-  const container = client().getContainer(name);
+  return { name, container: client().getContainer(name) };
+}
+
+export async function restartContainer(bot) {
+  const { name, container } = requireDocker(bot);
   await container.restart({ t: 5 });
   return { container: name, restarted: true };
+}
+
+export async function stopContainer(bot) {
+  const { name, container } = requireDocker(bot);
+  await container.stop({ t: 5 });
+  return { container: name, stopped: true };
+}
+
+export async function startContainer(bot) {
+  const { name, container } = requireDocker(bot);
+  await container.start();
+  return { container: name, started: true };
 }
 
 export async function listMatchingContainers() {

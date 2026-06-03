@@ -45,6 +45,8 @@ export const bots = {
   updateRegistry: (bot, patch) => api(`/api/bots/registry/${encodeURIComponent(bot)}`, { method: 'PUT', body: patch }),
   deleteRegistry: (bot) => api(`/api/bots/registry/${encodeURIComponent(bot)}`, { method: 'DELETE' }),
   restart: (bot) => api(`/api/bots/${bot}/restart`, { method: 'POST' }),
+  stop:    (bot) => api(`/api/bots/${bot}/stop`,    { method: 'POST' }),
+  start:   (bot) => api(`/api/bots/${bot}/start`,   { method: 'POST' }),
   servers: () => api('/api/bots/servers'),
 };
 

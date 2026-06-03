@@ -544,13 +544,27 @@ function DashboardApp(props) {
     previewAudioRef.current?.pause();
   }, []);
 
+  const stopBot = async (bot) => {
+    const label = displayNames[bot] || bot;
+    setToast({ msg: `Stopping ${label}…`, id: Date.now() });
+    try {
+      await API.bots.stop(bot);
+      setTimeout(() => { reloadStatus(); reloadModules(); }, 1500);
+    } catch (err) { setToast({ msg: `Stop failed: ${err.message}`, id: Date.now() }); }
+  };
+  const startBot = async (bot) => {
+    const label = displayNames[bot] || bot;
+    setToast({ msg: `Starting ${label}…`, id: Date.now() });
+    try {
+      await API.bots.start(bot);
+      setTimeout(() => { reloadStatus(); reloadModules(); }, 3000);
+    } catch (err) { setToast({ msg: `Start failed: ${err.message}`, id: Date.now() }); }
+  };
   const restartBot = async (bot) => {
-    const apiKey = bot; // already module ID: 'sound', 'music', 'patchwatcher', …
-    if (!apiKey) return;
     const label = displayNames[bot] || bot;
     setToast({ msg: `Restarting ${label}...`, id: Date.now() });
     try {
-      await API.bots.restart(apiKey);
+      await API.bots.restart(bot);
       setTimeout(() => { reloadStatus(); reloadModules(); setToast({ msg: `${label} restart requested`, id: Date.now() }); }, 1500);
     } catch (err) {
       setToast({ msg: `Restart failed: ${err.message}`, id: Date.now() });
@@ -712,15 +726,18 @@ function DashboardApp(props) {
                     parentBot === 'sound' ? (
                       <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
                         settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={botName}
-                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}
+                        onStop={stopBot} onStart={startBot}/>
                     ) : parentBot === 'music' ? (
                       <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
                         settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={botName}
-                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}
+                        onStop={stopBot} onStart={startBot}/>
                     ) : (
                       <GenericSettingsScreen botId={parentBot} botName={botName} setToast={setToast}
                         botStatus={botStatus[parentBot]} restartEnabled={restartEnabled && !!perms.restartBot}
-                        onRestart={() => setRestartConfirm(parentBot)}/>
+                        onRestart={() => setRestartConfirm(parentBot)}
+                        onStop={stopBot} onStart={startBot}/>
                     )
                   )}
                   {kind === 'patch-watcher' && (

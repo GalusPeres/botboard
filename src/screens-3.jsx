@@ -217,21 +217,37 @@ const Row = ({ label, help, children }) => (
   </div>
 );
 
-const SettingsHeader = ({ title, subtitle, botStatus, restartEnabled, botKey, onRestart, onReset, resetting, resetDisabled }) => (
+const SettingsHeader = ({ title, subtitle, botStatus, restartEnabled, botKey, onRestart, onStop, onStart, onReset, resetting, resetDisabled }) => (
   <div className="page-head">
     <div>
       <div className="page-title">{title}</div>
       <div className="page-sub">{subtitle}</div>
     </div>
     <div className="page-actions">
-      <Tag kind={botStatus === 'online' ? 'success' : 'error'}><span className="dot"/> {botStatus}</Tag>
-      <button className="btn btn-sm" type="button" onClick={onReset} disabled={resetting || resetDisabled}>
-        <Icon name="refresh" size={13}/> {resetting ? 'Resetting...' : 'Reset page'}
-      </button>
-      {restartEnabled && (
-        <button className="btn btn-sm" type="button" onClick={() => onRestart(botKey)}>
-          <Icon name="refresh" size={13}/> Restart
+      <Tag kind={botStatus === 'online' ? 'success' : 'error'}><span className="dot"/> {botStatus || 'offline'}</Tag>
+      {onReset && (
+        <button className="btn btn-sm" type="button" onClick={onReset} disabled={resetting || resetDisabled}>
+          <Icon name="refresh" size={13}/> {resetting ? 'Resetting...' : 'Reset page'}
         </button>
+      )}
+      {restartEnabled && botStatus !== 'online' && onStart && (
+        <button className="btn btn-sm btn-primary" type="button" onClick={() => onStart(botKey)}>
+          <Icon name="play" size={13}/> Start
+        </button>
+      )}
+      {restartEnabled && botStatus === 'online' && (
+        <>
+          {onStop && (
+            <button className="btn btn-sm" type="button" onClick={() => onStop(botKey)}>
+              <Icon name="stop" size={13}/> Stop
+            </button>
+          )}
+          {onRestart && (
+            <button className="btn btn-sm" type="button" onClick={() => onRestart(botKey)}>
+              <Icon name="refresh" size={13}/> Restart
+            </button>
+          )}
+        </>
       )}
     </div>
   </div>
@@ -261,14 +277,14 @@ const AutoBoolean = ({ field, value, setField, commit, pending }) => (
   </div>
 );
 
-export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Sound Bot', restartEnabled, onRestart }) => {
+export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Sound Bot', restartEnabled, onRestart, onStop, onStart }) => {
   const fields = ['sbPrefix', 'sbMaxMb', 'sbMaxName', 'sbAutoLeave'];
   const { draft, setField, pending, feedback, commit, reset } = useEditableSettings(settings, fields, onSave, settingsLoaded);
 
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey="sound" onRestart={onRestart}
+        botStatus={botStatus} restartEnabled={restartEnabled} botKey="sound" onRestart={onRestart} onStop={onStop} onStart={onStart}
         onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
       {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">
@@ -289,7 +305,7 @@ export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botSt
   );
 };
 
-export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Music Bot', restartEnabled, onRestart }) => {
+export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Music Bot', restartEnabled, onRestart, onStop, onStart }) => {
   const fields = [
     'mbPrefix', 'mbUsername', 'mbLogLevel', 'mbSearch', 'mbVol', 'mbMaxQueue', 'mbAutoDc',
     'mbConnTimeout', 'mbCooldown', 'mbRetryDelay', 'mbRetryCount', 'mbMaxPlaylist', 'mbMaxResults',
@@ -311,7 +327,7 @@ export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botSta
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName} and external Lavalink.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey="music" onRestart={onRestart}
+        botStatus={botStatus} restartEnabled={restartEnabled} botKey="music" onRestart={onRestart} onStop={onStop} onStart={onStart}
         onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
       {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">
@@ -491,7 +507,7 @@ export const GenericStatsScreen = ({ botId, botName }) => {
   );
 };
 
-export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, restartEnabled, onRestart }) => {
+export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, restartEnabled, onRestart, onStop, onStart }) => {
   const { data: schema, error: schemaError } = useFetch(
     () => API.moduleApi.settingsSchema(botId),
     [botId],
@@ -554,7 +570,7 @@ export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, res
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey={botId} onRestart={onRestart}
+        botStatus={botStatus} restartEnabled={restartEnabled} botKey={botId} onRestart={onRestart} onStop={onStop} onStart={onStart}
         onReset={null} resetting={false} resetDisabled={true}/>
       {(schemaError || settingsError) && <div className="settings-notice registry-error">Failed: {(schemaError || settingsError)?.message}</div>}
       {!schema && !schemaError && <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading…</div>}

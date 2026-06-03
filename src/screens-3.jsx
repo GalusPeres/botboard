@@ -13,6 +13,14 @@ const LOG_LEVELS = [
   { value: 'debug', label: 'Debug' },
 ];
 
+const DISCORD_EMBED_LIMITS = {
+  title: 256,
+  description: 4096,
+  fieldName: 256,
+  fieldValue: 1024,
+  fields: 25,
+};
+
 const LevelDropdown = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -614,6 +622,32 @@ function patchSummary(patch) {
   return patch?.summary || `New ${patch?.game || 'game'} patch notes are available.`;
 }
 
+function limitDiscordText(value, max) {
+  const text = String(value || '').trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+function buildDiscordEmbedPreview(patch, source) {
+  if (!patch) return null;
+  const fields = [
+    patch.game && { name: 'Game', value: patch.game, inline: true },
+    patch.sourceName && { name: 'Source', value: patch.sourceName, inline: true },
+  ].filter(Boolean).slice(0, DISCORD_EMBED_LIMITS.fields).map((field) => ({
+    ...field,
+    name: limitDiscordText(field.name, DISCORD_EMBED_LIMITS.fieldName),
+    value: limitDiscordText(field.value, DISCORD_EMBED_LIMITS.fieldValue),
+  }));
+  return {
+    title: limitDiscordText(patch.title, DISCORD_EMBED_LIMITS.title),
+    url: patch.url,
+    description: limitDiscordText(patchSummary(patch), DISCORD_EMBED_LIMITS.description),
+    timestamp: patch.publishedAt || patch.discoveredAt || '',
+    imageUrl: patch.imageUrl || source?.imageUrl || '',
+    fields,
+  };
+}
+
 function patchDateValue(patch) {
   return Date.parse(patch?.publishedAt || patch?.discoveredAt || 0) || 0;
 }
@@ -671,7 +705,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
   const textChannels = guild?.textChannels || [];
   const selectedPatch = latest.find((patch) => patch.id === selectedPatchId) || latest[0] || null;
   const selectedSource = selectedPatch ? sourceList.find((source) => source.id === selectedPatch.sourceId) : null;
-  const selectedImageUrl = selectedPatch?.imageUrl || selectedSource?.imageUrl || '';
+  const previewEmbed = buildDiscordEmbedPreview(selectedPatch, selectedSource);
 
   useEffect(() => {
     if (!selectedPatchId && latest[0]?.id) setSelectedPatchId(latest[0].id);
@@ -882,8 +916,8 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
 
         <div className="card">
           <div className="card-header"><div className="card-title">Discord Preview</div></div>
-          {!selectedPatch && <div style={{ color: 'var(--text-muted)' }}>No patch selected yet.</div>}
-          {selectedPatch && (
+          {!previewEmbed && <div style={{ color: 'var(--text-muted)' }}>No patch selected yet.</div>}
+          {previewEmbed && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <select className="select" value={selectedPatch.id} onChange={(event) => setSelectedPatchId(event.target.value)}>
                 {latest.slice(0, 20).map((patch) => <option key={patch.id} value={patch.id}>{patch.title}</option>)}
@@ -891,48 +925,37 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                 Target: {manualChannelId ? `#${channelName(textChannels, manualChannelId)}` : 'source/default channel'}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div className="discord-preview-stage">
                 {postContent && (
-                  <div style={{ width: '100%', maxWidth: 520, color: '#dbdee1', fontSize: 14, lineHeight: '18px', marginBottom: 4, wordBreak: 'break-word' }}>
+                  <div className="discord-preview-content">
                     {postContent}
                   </div>
                 )}
-                <div style={{ display: 'flex', width: '100%', maxWidth: 520, background: '#2b2d31', border: '1px solid #3f4147', borderRadius: 4, overflow: 'hidden', fontFamily: 'gg sans, Noto Sans, Helvetica Neue, Helvetica, Arial, sans-serif' }}>
-                  <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
-                  <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 16px 12px' }}>
-                    {/* Title: 1rem / 600 / #00b0f4 */}
-                    <a href={selectedPatch.url} target="_blank" rel="noreferrer"
-                       style={{ display: 'block', marginTop: 2, color: '#2f9bff', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: '20px', wordBreak: 'break-word' }}>
-                      {selectedPatch.title}
+                <div className="discord-embed-preview">
+                  <div className="discord-embed-accent" style={{ background: embedColor }}/>
+                  <div className="discord-embed-body">
+                    <a className="discord-embed-title" href={previewEmbed.url} target="_blank" rel="noreferrer">
+                      {previewEmbed.title}
                     </a>
-                    {/* Description: 0.875rem / 400 / #dcddde */}
-                    <div style={{ marginTop: 8, color: '#f2f3f5', fontSize: 14, lineHeight: '18px', wordBreak: 'break-word' }}>
-                      {patchSummary(selectedPatch)}
+                    <div className="discord-embed-description">
+                      {previewEmbed.description}
                     </div>
-                    {/* Fields: name = 0.875rem 700 white, value = 0.875rem 400 #dcddde */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 10 }}>
-                      {selectedPatch.game && (
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#f2f3f5', fontSize: 14, fontWeight: 700, lineHeight: '18px', marginBottom: 1 }}>Game</div>
-                          <div style={{ color: '#f2f3f5', fontSize: 14, lineHeight: '18px' }}>{selectedPatch.game}</div>
-                        </div>
-                      )}
-                      {selectedPatch.sourceName && (
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#f2f3f5', fontSize: 14, fontWeight: 700, lineHeight: '18px', marginBottom: 1 }}>Source</div>
-                          <div style={{ color: '#f2f3f5', fontSize: 14, lineHeight: '18px' }}>{selectedPatch.sourceName}</div>
-                        </div>
-                      )}
-                    </div>
-                    {/* Image: borderRadius 3px, no maxHeight clipping */}
-                    {selectedImageUrl && (
-                      <img src={selectedImageUrl} alt=""
-                           style={{ display: 'block', width: '100%', borderRadius: 3, marginTop: 20 }}/>
+                    {previewEmbed.fields.length > 0 && (
+                      <div className="discord-embed-fields">
+                        {previewEmbed.fields.map((field) => (
+                          <div className="discord-embed-field" key={field.name}>
+                            <div className="discord-embed-field-name">{field.name}</div>
+                            <div className="discord-embed-field-value">{field.value}</div>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                    {/* Footer: 0.75rem / hsla(0,0%,100%,.6) — Discord spec */}
-                    {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
-                      <div style={{ color: '#dbdee1', fontSize: 12, fontWeight: 600, lineHeight: '16px', marginTop: 14 }}>
-                        {formatDiscordTimestamp(selectedPatch.publishedAt || selectedPatch.discoveredAt)}
+                    {previewEmbed.imageUrl && (
+                      <img className="discord-embed-image" src={previewEmbed.imageUrl} alt=""/>
+                    )}
+                    {previewEmbed.timestamp && (
+                      <div className="discord-embed-timestamp">
+                        {formatDiscordTimestamp(previewEmbed.timestamp)}
                       </div>
                     )}
                   </div>

@@ -850,11 +850,11 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                 Target: {manualChannelId ? `#${channelName(textChannels, manualChannelId)}` : 'source/default channel'}
               </div>
-              {/* Discord-style message preview */}
-              <div style={{ background: '#111214', borderRadius: 6, padding: '12px 14px' }}>
+              {/* Discord-style message preview — no outer wrapper */}
+              <div>
                 {/* Post content above embed (like a Discord message) */}
                 {postContent && (
-                  <div style={{ color: '#dbdee1', fontSize: 15, lineHeight: 1.375, marginBottom: 6, wordBreak: 'break-word' }}>
+                  <div style={{ color: '#dbdee1', fontSize: 15, lineHeight: 1.375, marginBottom: 4, wordBreak: 'break-word' }}>
                     {postContent}
                   </div>
                 )}

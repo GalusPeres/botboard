@@ -614,6 +614,16 @@ function patchSummary(patch) {
   return patch?.summary || `New ${patch?.game || 'game'} patch notes are available.`;
 }
 
+function patchDateValue(patch) {
+  return Date.parse(patch?.publishedAt || patch?.discoveredAt || 0) || 0;
+}
+
+function sortPatchesNewestFirst(a, b) {
+  const dateDiff = patchDateValue(b) - patchDateValue(a);
+  if (dateDiff) return dateDiff;
+  return (Date.parse(b?.discoveredAt || 0) || 0) - (Date.parse(a?.discoveredAt || 0) || 0);
+}
+
 function formatDiscordTimestamp(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -656,10 +666,12 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
   const [sourceForm, setSourceForm] = useState(EMPTY_SOURCE_FORM);
   const [editingSource, setEditingSource] = useState(null); // null = add new, string id = edit existing
   const [savingSource, setSavingSource] = useState(false);
-  const latest = patches || [];
+  const latest = [...(patches || [])].sort(sortPatchesNewestFirst);
   const sourceList = sources || [];
   const textChannels = guild?.textChannels || [];
   const selectedPatch = latest.find((patch) => patch.id === selectedPatchId) || latest[0] || null;
+  const selectedSource = selectedPatch ? sourceList.find((source) => source.id === selectedPatch.sourceId) : null;
+  const selectedImageUrl = selectedPatch?.imageUrl || selectedSource?.imageUrl || '';
 
   useEffect(() => {
     if (!selectedPatchId && latest[0]?.id) setSelectedPatchId(latest[0].id);
@@ -879,49 +891,47 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                 Target: {manualChannelId ? `#${channelName(textChannels, manualChannelId)}` : 'source/default channel'}
               </div>
-              {/* Discord embed preview — no outer wrapper, embed sits directly in card */}
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {postContent && (
-                  <div style={{ color: '#dbdee1', fontSize: 16, lineHeight: 1.375, marginBottom: 4, wordBreak: 'break-word' }}>
+                  <div style={{ width: '100%', maxWidth: 520, color: '#dbdee1', fontSize: 14, lineHeight: '18px', marginBottom: 4, wordBreak: 'break-word' }}>
                     {postContent}
                   </div>
                 )}
-                {/* Discord embed — exact spec: #2f3136 bg, 4px border, 432px max */}
-                <div style={{ display: 'flex', width: '100%', maxWidth: 540, background: '#2b2d31', border: '1px solid #3f4147', borderRadius: 4, overflow: 'hidden', fontFamily: 'gg sans, Noto Sans, Helvetica Neue, Helvetica, Arial, sans-serif' }}>
+                <div style={{ display: 'flex', width: '100%', maxWidth: 520, background: '#2b2d31', border: '1px solid #3f4147', borderRadius: 4, overflow: 'hidden', fontFamily: 'gg sans, Noto Sans, Helvetica Neue, Helvetica, Arial, sans-serif' }}>
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
-                  <div style={{ flex: 1, minWidth: 0, padding: '12px 20px 16px 16px' }}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 16px 12px' }}>
                     {/* Title: 1rem / 600 / #00b0f4 */}
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"
                        style={{ display: 'block', marginTop: 2, color: '#2f9bff', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: '20px', wordBreak: 'break-word' }}>
                       {selectedPatch.title}
                     </a>
                     {/* Description: 0.875rem / 400 / #dcddde */}
-                    <div style={{ marginTop: 8, color: '#f2f3f5', fontSize: 16, lineHeight: '20px', wordBreak: 'break-word' }}>
+                    <div style={{ marginTop: 8, color: '#f2f3f5', fontSize: 14, lineHeight: '18px', wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
                     {/* Fields: name = 0.875rem 700 white, value = 0.875rem 400 #dcddde */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 10 }}>
                       {selectedPatch.game && (
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#f2f3f5', fontSize: 16, fontWeight: 700, lineHeight: '20px', marginBottom: 1 }}>Game</div>
-                          <div style={{ color: '#f2f3f5', fontSize: 16, lineHeight: '20px' }}>{selectedPatch.game}</div>
+                          <div style={{ color: '#f2f3f5', fontSize: 14, fontWeight: 700, lineHeight: '18px', marginBottom: 1 }}>Game</div>
+                          <div style={{ color: '#f2f3f5', fontSize: 14, lineHeight: '18px' }}>{selectedPatch.game}</div>
                         </div>
                       )}
                       {selectedPatch.sourceName && (
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#f2f3f5', fontSize: 16, fontWeight: 700, lineHeight: '20px', marginBottom: 1 }}>Source</div>
-                          <div style={{ color: '#f2f3f5', fontSize: 16, lineHeight: '20px' }}>{selectedPatch.sourceName}</div>
+                          <div style={{ color: '#f2f3f5', fontSize: 14, fontWeight: 700, lineHeight: '18px', marginBottom: 1 }}>Source</div>
+                          <div style={{ color: '#f2f3f5', fontSize: 14, lineHeight: '18px' }}>{selectedPatch.sourceName}</div>
                         </div>
                       )}
                     </div>
                     {/* Image: borderRadius 3px, no maxHeight clipping */}
-                    {selectedPatch.imageUrl && (
-                      <img src={selectedPatch.imageUrl} alt=""
+                    {selectedImageUrl && (
+                      <img src={selectedImageUrl} alt=""
                            style={{ display: 'block', width: '100%', borderRadius: 3, marginTop: 20 }}/>
                     )}
                     {/* Footer: 0.75rem / hsla(0,0%,100%,.6) — Discord spec */}
                     {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
-                      <div style={{ color: '#dbdee1', fontSize: 13, fontWeight: 600, lineHeight: '16px', marginTop: 14 }}>
+                      <div style={{ color: '#dbdee1', fontSize: 12, fontWeight: 600, lineHeight: '16px', marginTop: 14 }}>
                         {formatDiscordTimestamp(selectedPatch.publishedAt || selectedPatch.discoveredAt)}
                       </div>
                     )}

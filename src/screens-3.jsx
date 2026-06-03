@@ -638,6 +638,10 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
   const [pending, setPending] = useState('');
   const [selectedPatchId, setSelectedPatchId] = useState('');
   const [manualChannelId, setManualChannelId] = useState('');
+  const EMPTY_SOURCE_FORM = { name: '', game: '', url: '', mode: 'generic' };
+  const [sourceFormOpen, setSourceFormOpen] = useState(false);
+  const [sourceForm, setSourceForm] = useState(EMPTY_SOURCE_FORM);
+  const [savingSource, setSavingSource] = useState(false);
   const latest = patches || [];
   const sourceList = sources || [];
   const textChannels = guild?.textChannels || [];
@@ -699,6 +703,33 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
       setToast?.({ id: Date.now(), msg: `${botName}: save failed: ${err.message}` });
     } finally {
       setPending('');
+    }
+  };
+
+  const addSourceFn = async (e) => {
+    e.preventDefault();
+    setSavingSource(true);
+    try {
+      await API.moduleApi.addSource(botId, sourceForm);
+      await reloadSources();
+      setSourceFormOpen(false);
+      setSourceForm(EMPTY_SOURCE_FORM);
+      setToast?.({ id: Date.now(), msg: `Source "${sourceForm.name}" added` });
+    } catch (err) {
+      setToast?.({ id: Date.now(), msg: `Add source failed: ${err.message}` });
+    } finally {
+      setSavingSource(false);
+    }
+  };
+
+  const deleteSourceFn = async (source) => {
+    if (!window.confirm(`Remove "${source.name}"?`)) return;
+    try {
+      await API.moduleApi.deleteSource(botId, source.id);
+      await reloadSources();
+      setToast?.({ id: Date.now(), msg: `Source "${source.name}" removed` });
+    } catch (err) {
+      setToast?.({ id: Date.now(), msg: `Remove failed: ${err.message}` });
     }
   };
 
@@ -883,19 +914,28 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
 
       <div className="grid grid-2" style={{ marginTop: 16 }}>
         <div className="card">
-          <div className="card-header"><div className="card-title">Sources</div></div>
+          <div className="card-header">
+            <div className="card-title">Sources</div>
+            <button className="btn btn-sm btn-primary" type="button" onClick={() => { setSourceForm(EMPTY_SOURCE_FORM); setSourceFormOpen(true); }}>
+              <Icon name="plus" size={12}/> Add
+            </button>
+          </div>
           {sourcesLoading && <div style={{ color: 'var(--text-muted)' }}>Loading sources...</div>}
-          {!sourcesLoading && sourceList.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No sources configured.</div>}
+          {!sourcesLoading && sourceList.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No sources yet. Add one above.</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {sourceList.map((source) => (
-              <div key={source.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+              <div key={source.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700 }}>{source.name}</div>
-                  <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
-                    {source.lastCheck ? `Last check ${new Date(source.lastCheck).toLocaleString()}` : 'Never checked'}
-                    {source.lastError ? ` - ${source.lastError}` : ''}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700 }}>{source.name}</span>
+                    <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>{source.game}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-deeper)', padding: '1px 5px', borderRadius: 3 }}>{source.mode || 'generic'}</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+                  <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 2 }}>
+                    {source.lastCheck ? `Last check ${new Date(source.lastCheck).toLocaleString()}` : 'Never checked'}
+                    {source.lastError ? ` · ${source.lastError}` : ''}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                     <select className="select" value={source.channelId || ''} disabled={pending === `source:${source.id}`}
                       onChange={(event) => updateSource(source, { channelId: event.target.value })}>
                       <option value="">Default channel</option>
@@ -909,12 +949,19 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                       onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}/>
                   </div>
                 </div>
-                <Tag kind={source.lastStatus === 'error' ? 'error' : source.enabled ? 'success' : 'info'}>
-                  {source.enabled ? (source.lastStatus || 'enabled') : 'disabled'}
-                </Tag>
-                <button className="btn btn-sm btn-ghost" type="button" onClick={() => toggleSource(source)}>
-                  {source.enabled ? 'Disable' : 'Enable'}
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                  <Tag kind={source.lastStatus === 'error' ? 'error' : source.enabled ? 'success' : 'info'}>
+                    {source.enabled ? (source.lastStatus || 'ok') : 'disabled'}
+                  </Tag>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button className="btn btn-sm btn-ghost" type="button" onClick={() => toggleSource(source)}>
+                      {source.enabled ? 'Disable' : 'Enable'}
+                    </button>
+                    <button className="btn btn-sm btn-ghost" type="button" title="Remove source" onClick={() => deleteSourceFn(source)}>
+                      <Icon name="trash" size={12}/>
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -948,6 +995,49 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
           </div>
         </div>
       </div>
+
+      {/* Add Source modal */}
+      {sourceFormOpen && (
+        <div className="modal-backdrop" onClick={() => setSourceFormOpen(false)}>
+          <form className="modal registry-modal" onSubmit={addSourceFn} onClick={(e) => e.stopPropagation()}>
+            <h3>Add source</h3>
+            <label className="registry-field">
+              <span>Name</span>
+              <input className="input" value={sourceForm.name} placeholder="Diablo IV" required autoFocus
+                onChange={(e) => setSourceForm((f) => ({ ...f, name: e.target.value }))}/>
+            </label>
+            <label className="registry-field">
+              <span>Game</span>
+              <input className="input" value={sourceForm.game} placeholder="Diablo IV"
+                onChange={(e) => setSourceForm((f) => ({ ...f, game: e.target.value }))}/>
+            </label>
+            <label className="registry-field">
+              <span>URL</span>
+              <input className="input" value={sourceForm.url} placeholder="https://news.blizzard.com/…" required
+                onChange={(e) => setSourceForm((f) => ({ ...f, url: e.target.value }))}/>
+            </label>
+            <label className="registry-field">
+              <span>Scraper mode</span>
+              <select className="select" value={sourceForm.mode} onChange={(e) => setSourceForm((f) => ({ ...f, mode: e.target.value }))}>
+                <option value="generic">Generic (auto-detect patch links)</option>
+                <option value="league-tags">League of Legends</option>
+                <option value="diablo-article">Diablo IV</option>
+              </select>
+            </label>
+            <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: -4 }}>
+              {sourceForm.mode === 'generic' && 'Finds any link whose text or URL contains "patch", "notes", "hotfix" or "update".'}
+              {sourceForm.mode === 'league-tags' && 'Parses the League of Legends patch notes tag page.'}
+              {sourceForm.mode === 'diablo-article' && 'Parses the Blizzard Diablo IV patch notes article page.'}
+            </div>
+            <div className="registry-form-actions">
+              <button className="btn" type="button" onClick={() => setSourceFormOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" type="submit" disabled={savingSource}>
+                <Icon name="plus" size={13}/> {savingSource ? 'Adding…' : 'Add source'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

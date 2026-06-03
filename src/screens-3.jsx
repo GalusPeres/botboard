@@ -866,15 +866,13 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                 Target: {manualChannelId ? `#${channelName(textChannels, manualChannelId)}` : 'source/default channel'}
               </div>
-              {/* Discord message area context + embed */}
-              <div style={{ background: '#313338', borderRadius: 4, padding: '8px 16px 8px 12px' }}>
-                {/* Post content above embed — like a real Discord message */}
+              {/* Discord embed preview — no outer wrapper, embed sits directly in card */}
+              <div>
                 {postContent && (
                   <div style={{ color: '#dbdee1', fontSize: 16, lineHeight: 1.375, marginBottom: 4, wordBreak: 'break-word' }}>
                     {postContent}
                   </div>
                 )}
-                {/* Discord embed */}
                 <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', background: '#2b2d31', maxWidth: 516 }}>
                   {/* Left accent bar — 4px, full height */}
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>

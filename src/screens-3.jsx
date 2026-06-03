@@ -863,7 +863,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
           </div>
           {settingsLoading && <div style={{ color: 'var(--text-muted)' }}>Loading posting settings...</div>}
           {settings && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="patchwatcher-settings">
               <Row label="Default channel" help="Used when a source has no own channel.">
                 <select className="select" value={settings.defaultChannelId || ''} disabled={pending === 'defaultChannelId'}
                   onChange={(event) => saveSetting('defaultChannelId', event.target.value)}>
@@ -981,7 +981,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
           {!sourcesLoading && sourceList.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No sources yet. Add one above.</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {sourceList.map((source) => (
-              <div key={source.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+              <div key={source.id} className="patch-source-row">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700 }}>{source.name}</span>
@@ -991,7 +991,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     {source.lastCheck ? `Last check ${new Date(source.lastCheck).toLocaleString()}` : 'Never checked'}
                     {source.lastError ? ` · ${source.lastError}` : ''}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                  <div className="patch-source-controls">
                     <select className="select" value={source.channelId || ''} disabled={pending === `source:${source.id}`}
                       onChange={(event) => updateSource(source, { channelId: event.target.value })}>
                       <option value="">Default channel</option>
@@ -1005,7 +1005,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                       onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}/>
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                <div className="patch-source-actions">
                   <Tag kind={source.lastStatus === 'error' ? 'error' : source.enabled ? 'success' : 'info'}>
                     {source.enabled ? (source.lastStatus || 'ok') : 'disabled'}
                   </Tag>

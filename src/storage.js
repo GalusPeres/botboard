@@ -53,6 +53,25 @@ export function saveVoiceTargets(guildId, targets) {
   } catch {}
 }
 
+// Registered bot modules (manifest + status) — cached so extra bots like
+// PatchWatcher appear immediately on refresh without waiting for the first poll.
+const MODULES_KEY = 'botboard:modules';
+
+export function savedModules() {
+  try {
+    const raw = window.localStorage.getItem(MODULES_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveModules(modules) {
+  try {
+    window.localStorage.setItem(MODULES_KEY, JSON.stringify(modules));
+  } catch {}
+}
+
 // Bot identity (names + avatar URLs) — cached so the first render after a
 // refresh shows the correct names/avatars without waiting for the status poll.
 const BOT_INFO_KEY = 'botboard:bot-info';

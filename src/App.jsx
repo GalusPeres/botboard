@@ -14,7 +14,7 @@ import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './
 import * as API from './api.js';
 import { useFetch, usePoll, useSSE, useHashRoute } from './hooks.js';
 import { adaptTrack, adaptSound, normalizeLog, msToClock, formatBytes, relativeTime } from './format.js';
-import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo } from './storage.js';
+import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo, savedModules, saveModules } from './storage.js';
 import { SETTING_MAP_MUSIC, SETTING_MAP_SOUND, mapSettingsPatch, mergeSettings } from './settings-map.js';
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -232,7 +232,13 @@ function DashboardApp(props) {
   const previewAudioRef = useRef(null);
   const { data: serverOptions } = useFetch(API.bots.servers, [guildId]);
   const { data: modulesData, reload: reloadModules } = usePoll(API.bots.modules, POLL_STATUS_MS, [guildId]);
-  const modules = modulesData || [];
+  // Cache: extraModules wie Patchwatcher erscheinen sofort beim Refresh,
+  // statt erst nach dem ersten Poll zu verschwinden und wieder aufzutauchen.
+  const [cachedModules, setCachedModules] = useState(() => savedModules() || []);
+  const modules = modulesData ?? cachedModules;
+  useEffect(() => {
+    if (modulesData !== null) { setCachedModules(modulesData); saveModules(modulesData); }
+  }, [modulesData]);
   const moduleById = new Map(modules.map((module) => [module.id, module]));
 
   useEffect(() => {

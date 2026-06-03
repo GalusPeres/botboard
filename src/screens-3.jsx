@@ -874,7 +874,7 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                   </div>
                 )}
                 {/* Discord embed — #2b2d31 background, 4px left border */}
-                <div style={{ display: 'flex', width: '100%', maxWidth: 520, background: '#2b2d31', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', width: '100%', maxWidth: 520, background: '#2f3136', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
                   <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"
@@ -905,12 +905,12 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                            style={{ display: 'block', width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 4, marginTop: 16 }}/>
                     )}
                     {/* Footer — no seconds, Discord-style timestamp */}
-                    {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
-                      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 8 }}>
-                        {new Date(selectedPatch.publishedAt || selectedPatch.discoveredAt)
-                          .toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    )}
+                    {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (() => {
+                      const d = new Date(selectedPatch.publishedAt || selectedPatch.discoveredAt);
+                      const p = (n) => String(n).padStart(2, '0');
+                      const ts = `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+                      return <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 8 }}>{ts}</div>;
+                    })()}
                   </div>
                 </div>
               </div>

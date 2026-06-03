@@ -637,8 +637,6 @@ function DashboardApp(props) {
                user={user}
                soundsCount={soundsCountForBadge}
                onLogout={onLogout}
-               botStatus={botStatus}
-               botInfo={botInfo}
                modules={modules}
                restartEnabled={restartEnabled}
                onRestart={(bot) => setRestartConfirm(bot)}

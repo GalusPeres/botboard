@@ -873,43 +873,45 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     {postContent}
                   </div>
                 )}
-                {/* Discord embed — #2b2d31 background, 4px left border */}
-                <div style={{ display: 'flex', width: '100%', maxWidth: 520, background: '#2f3136', borderRadius: 4, overflow: 'hidden' }}>
+                {/* Discord embed — exact spec: #2f3136 bg, 4px border, 432px max */}
+                <div style={{ display: 'flex', width: '100%', maxWidth: 432, background: '#2f3136', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ width: 4, flexShrink: 0, background: embedColor }}/>
-                  <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 12px 12px' }}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '8px 16px 16px 12px' }}>
+                    {/* Title: 1rem / 600 / #00b0f4 */}
                     <a href={selectedPatch.url} target="_blank" rel="noreferrer"
                        style={{ display: 'block', marginTop: 6, color: '#00b0f4', fontWeight: 600, fontSize: 16, textDecoration: 'none', lineHeight: 1.375, wordBreak: 'break-word' }}>
                       {selectedPatch.title}
                     </a>
-                    <div style={{ marginTop: 6, color: '#dcddde', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                    {/* Description: 0.875rem / 400 / #dcddde */}
+                    <div style={{ marginTop: 6, color: '#dcddde', fontSize: 14, lineHeight: 1.375, wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
-                    {/* Inline fields — flex:1 1 0 per field = equal width, no fixed sizes */}
+                    {/* Fields: name = 0.875rem 700 white, value = 0.875rem 400 #dcddde */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 4 }}>
                       {selectedPatch.game && (
                         <div style={{ flex: '1 1 0', minWidth: 0, marginTop: 8, paddingRight: 8 }}>
-                          <div style={{ color: '#dcddde', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Game</div>
+                          <div style={{ color: '#ffffff', fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Game</div>
                           <div style={{ color: '#dcddde', fontSize: 14 }}>{selectedPatch.game}</div>
                         </div>
                       )}
                       {selectedPatch.sourceName && (
                         <div style={{ flex: '1 1 0', minWidth: 0, marginTop: 8 }}>
-                          <div style={{ color: '#dcddde', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Source</div>
+                          <div style={{ color: '#ffffff', fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Source</div>
                           <div style={{ color: '#dcddde', fontSize: 14 }}>{selectedPatch.sourceName}</div>
                         </div>
                       )}
                     </div>
-                    {/* Image — 4px radius like Discord */}
+                    {/* Image: borderRadius 3px, no maxHeight clipping */}
                     {selectedPatch.imageUrl && (
                       <img src={selectedPatch.imageUrl} alt=""
-                           style={{ display: 'block', width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 4, marginTop: 16 }}/>
+                           style={{ display: 'block', width: '100%', borderRadius: 3, marginTop: 16 }}/>
                     )}
-                    {/* Footer — no seconds, Discord-style timestamp */}
+                    {/* Footer: 0.75rem / hsla(0,0%,100%,.6) — Discord spec */}
                     {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (() => {
                       const d = new Date(selectedPatch.publishedAt || selectedPatch.discoveredAt);
                       const p = (n) => String(n).padStart(2, '0');
                       const ts = `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-                      return <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 8 }}>{ts}</div>;
+                      return <div style={{ color: 'hsla(0,0%,100%,.6)', fontSize: 12, marginTop: 8 }}>{ts}</div>;
                     })()}
                   </div>
                 </div>

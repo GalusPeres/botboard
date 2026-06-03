@@ -842,16 +842,16 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                     <div style={{ marginTop: 6, color: '#dbdee1', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word' }}>
                       {patchSummary(selectedPatch)}
                     </div>
-                    {/* Inline fields */}
-                    <div style={{ display: 'flex', gap: '8px 24px', flexWrap: 'wrap', marginTop: 2 }}>
+                    {/* Inline fields — 2-column grid like Discord */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', gap: '0 32px', marginTop: 8 }}>
                       {selectedPatch.game && (
-                        <div style={{ marginTop: 8, minWidth: 0 }}>
+                        <div>
                           <div style={{ color: '#dbdee1', fontSize: 14, fontWeight: 700 }}>Game</div>
                           <div style={{ color: '#dbdee1', fontSize: 14, marginTop: 2 }}>{selectedPatch.game}</div>
                         </div>
                       )}
                       {selectedPatch.sourceName && (
-                        <div style={{ marginTop: 8, minWidth: 0 }}>
+                        <div>
                           <div style={{ color: '#dbdee1', fontSize: 14, fontWeight: 700 }}>Source</div>
                           <div style={{ color: '#dbdee1', fontSize: 14, marginTop: 2 }}>{selectedPatch.sourceName}</div>
                         </div>
@@ -862,22 +862,14 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
                       <img src={selectedPatch.imageUrl} alt=""
                            style={{ display: 'block', width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 3, marginTop: 16 }}/>
                     )}
-                    {/* Footer: timestamp + posted badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#80848e', fontSize: 12 }}>
+                    {/* Footer — timestamp only, no Botboard metadata in the preview */}
+                    {(selectedPatch.publishedAt || selectedPatch.discoveredAt) && (
+                      <div style={{ color: '#949ba4', fontSize: 12, marginTop: 8 }}>
                         {selectedPatch.publishedAt
                           ? new Date(selectedPatch.publishedAt).toLocaleString()
-                          : selectedPatch.discoveredAt
-                            ? `Discovered ${new Date(selectedPatch.discoveredAt).toLocaleString()}`
-                            : ''}
-                      </span>
-                      {selectedPatch.postedAt && (
-                        <>
-                          <span style={{ color: '#4e5058', fontSize: 12 }}>·</span>
-                          <span style={{ color: '#57f287', fontSize: 12 }}>✓ Posted {new Date(selectedPatch.postedAt).toLocaleDateString()}</span>
-                        </>
-                      )}
-                    </div>
+                          : `Discovered ${new Date(selectedPatch.discoveredAt).toLocaleString()}`}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

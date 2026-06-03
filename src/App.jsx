@@ -661,72 +661,68 @@ function DashboardApp(props) {
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
-          {/* Bot pages: alle Sub-Seiten eines Bots bleiben gemountet (CSS hidden).
-              Kein Unmount/Remount beim Seitenwechsel = kein Loading-Flash.
-              key=parentBot: remount nur wenn der Bot wechselt, nicht beim Seitenwechsel. */}
-          {activeMeta.module && (() => {
-            const parentBot = activeMeta.parentBot;
-            const botName  = activeGenericName;
-            const pages    = activeMeta.module?.manifest?.pages || [];
-            return (
-              <React.Fragment key={parentBot}>
-                {pages.map(page => {
-                  const kind   = page.kind || page.id;
-                  const active = activeGenericKind === kind;
-                  return (
-                    <div key={page.id} hidden={!active}>
-                      {kind === 'soundboard' && (
-                        <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
-                          playSound={playSound} previewSound={previewSound}
-                          tileSize={tweaks.tileSize} targetChannel={resolveTarget(parentBot)}/>
-                      )}
-                      {kind === 'file-library' && (
-                        <LibraryScreen sounds={sounds}
-                          addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>
-                      )}
-                      {kind === 'music-player' && (
-                        <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
-                          playerStyle={tweaks.playerStyle} playerError={playerError}/>
-                      )}
-                      {kind === 'stats' && (
-                        parentBot === 'sound' ? (
-                          <StatsScreen bot="sound" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>
-                        ) : parentBot === 'music' ? (
-                          <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
-                        ) : (
-                          <GenericStatsScreen botId={parentBot} botName={botName}/>
-                        )
-                      )}
-                      {kind === 'logs' && (
-                        <LogsScreen bot={parentBot} botName={botName} liveLogs={liveLogs} connection={logConnection}/>
-                      )}
-                      {kind === 'settings' && (
-                        parentBot === 'sound' ? (
-                          <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
-                            settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={botName}
-                            restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
-                        ) : parentBot === 'music' ? (
-                          <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
-                            settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={botName}
-                            restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
-                        ) : (
-                          <GenericSettingsScreen botId={parentBot} botName={botName} setToast={setToast}/>
-                        )
-                      )}
-                      {kind === 'patch-watcher' && (
-                        <PatchWatcherScreen botId={parentBot} botName={botName} guildId={guildId} setToast={setToast}/>
-                      )}
-                      {!['soundboard','file-library','music-player','stats','logs','settings','patch-watcher'].includes(kind) && (
-                        <div className="content-narrow">
-                          <div className="empty"><div>No renderer for page kind "{kind}".</div></div>
-                        </div>
-                      )}
+          {/* Alle Bots + alle ihre Seiten immer gemountet, nur das Aktive sichtbar.
+              Kein Remount beim Bot- ODER Seitenwechsel = null Flash. */}
+          {modules.flatMap(module => {
+            const parentBot = module.id;
+            const botName   = moduleDisplayName(module, parentBot);
+            return (module.manifest?.pages || []).map(page => {
+              const kind    = page.kind || page.id;
+              const visible = activeMeta.parentBot === parentBot && activeGenericKind === kind;
+              return (
+                <div key={`${parentBot}/${page.id}`} hidden={!visible}>
+                  {kind === 'soundboard' && (
+                    <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
+                      playSound={playSound} previewSound={previewSound}
+                      tileSize={tweaks.tileSize} targetChannel={resolveTarget(parentBot)}/>
+                  )}
+                  {kind === 'file-library' && (
+                    <LibraryScreen sounds={sounds}
+                      addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>
+                  )}
+                  {kind === 'music-player' && (
+                    <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
+                      playerStyle={tweaks.playerStyle} playerError={playerError}/>
+                  )}
+                  {kind === 'stats' && (
+                    parentBot === 'sound' ? (
+                      <StatsScreen bot="sound" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>
+                    ) : parentBot === 'music' ? (
+                      <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
+                    ) : (
+                      <GenericStatsScreen botId={parentBot} botName={botName}/>
+                    )
+                  )}
+                  {kind === 'logs' && (
+                    <LogsScreen bot={parentBot} botName={botName} liveLogs={liveLogs} connection={logConnection}/>
+                  )}
+                  {kind === 'settings' && (
+                    parentBot === 'sound' ? (
+                      <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
+                        settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={botName}
+                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+                    ) : parentBot === 'music' ? (
+                      <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
+                        settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={botName}
+                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}/>
+                    ) : (
+                      <GenericSettingsScreen botId={parentBot} botName={botName} setToast={setToast}
+                        botStatus={botStatus[parentBot]} restartEnabled={restartEnabled && !!perms.restartBot}
+                        onRestart={() => setRestartConfirm(parentBot)}/>
+                    )
+                  )}
+                  {kind === 'patch-watcher' && (
+                    <PatchWatcherScreen botId={parentBot} botName={botName} guildId={guildId} setToast={setToast}/>
+                  )}
+                  {!['soundboard','file-library','music-player','stats','logs','settings','patch-watcher'].includes(kind) && (
+                    <div className="content-narrow">
+                      <div className="empty"><div>No renderer for page kind "{kind}".</div></div>
                     </div>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })()}
+                  )}
+                </div>
+              );
+            });
+          })}
         </div>
       </div>
 

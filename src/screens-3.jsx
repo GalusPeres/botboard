@@ -491,7 +491,7 @@ export const GenericStatsScreen = ({ botId, botName }) => {
   );
 };
 
-export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
+export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, restartEnabled, onRestart }) => {
   const { data: schema, error: schemaError } = useFetch(
     () => API.moduleApi.settingsSchema(botId),
     [botId],
@@ -553,12 +553,10 @@ export const GenericSettingsScreen = ({ botId, botName, setToast }) => {
 
   return (
     <div className="content-narrow">
-      <div className="page-head">
-        <div>
-          <div className="page-title">Settings</div>
-        </div>
-      </div>
-      {(schemaError || settingsError) && null}
+      <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
+        botStatus={botStatus} restartEnabled={restartEnabled} botKey={botId} onRestart={onRestart}
+        onReset={null} resetting={false} resetDisabled={true}/>
+      {(schemaError || settingsError) && <div className="settings-notice registry-error">Failed: {(schemaError || settingsError)?.message}</div>}
       {!schema && !schemaError && <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading…</div>}
       {(schemaError || settingsError) && (
         <div className="settings-notice registry-error">

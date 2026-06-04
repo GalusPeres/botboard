@@ -217,7 +217,7 @@ ul, ol { list-style: none; }
   content: '';
   display: block;
   height: 1px;
-  margin-inline: 10px;
+  margin-inline: 0;
   background: var(--border);
 }
 .sidebar-section-group.section-general::after {

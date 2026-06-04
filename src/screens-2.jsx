@@ -190,7 +190,16 @@ const AddTrack = ({ addTrack, searchTracks }) => {
           onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(event) => { if (event.key === 'Enter') submit(); }}
-          placeholder="Search track or paste a URL…" autoComplete="off"/>
+          placeholder="Search or URL..."
+          type="search"
+          name="botboard-music-search"
+          autoComplete="new-password"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck="false"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-form-type="other"/>
       </div>
       {showPop && (
         <div className="track-results-pop">
@@ -590,7 +599,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
         <div className="page-actions media-head-search">
           <div className="lib-search">
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
-            <input placeholder="Filter…" value={search} autoComplete="off"
+            <input placeholder="Search..." value={search} autoComplete="off"
               onChange={e => setSearch(e.target.value)}/>
           </div>
         </div>

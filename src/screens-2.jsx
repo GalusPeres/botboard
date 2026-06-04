@@ -190,7 +190,7 @@ const AddTrack = ({ addTrack, searchTracks }) => {
   return (
     <div className="track-search-inline" ref={wrapRef}>
       <div className="lib-search">
-        <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
+        <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
         <input value={query}
           onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -791,7 +791,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
             {sorted.map(s => (
               <div key={s.name} style={{ display: 'contents' }}>
                 <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '10px 12px' }}>
                   <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }} onClick={() => previewSound && previewSound(s)} title="Preview">
                     <Icon name="headphones" size={13}/>
                   </button>

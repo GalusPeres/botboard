@@ -54,11 +54,15 @@ function useIsMobile() {
   return mobile;
 }
 
-function RolesTable({ users, currentUserId, onToggle, busy }) {
+function RolesTable({ users, currentUserId, onToggle, busy, loading }) {
   const isMobile = useIsMobile();
-  if (users.length === 0) return (
-    <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '12px 0' }}>None yet.</div>
-  );
+  if (users.length === 0) {
+    // Noch am Laden → kein "None yet."-Flash, bevor die Nutzer ankommen.
+    if (loading) return null;
+    return (
+      <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '12px 0' }}>None yet.</div>
+    );
+  }
 
   if (isMobile) {
     return (
@@ -149,7 +153,7 @@ function RolesTable({ users, currentUserId, onToggle, busy }) {
 }
 
 export function AdminScreen({ currentUserId }) {
-  const { data: fetchedUsers, reload } = useFetch(() => API.users.list(), []);
+  const { data: fetchedUsers, reload, loading } = useFetch(() => API.users.list(), []);
   const [users, setUsers] = useState(null);
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
@@ -184,10 +188,10 @@ export function AdminScreen({ currentUserId }) {
       </div>
 
       <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin</div>
-      <RolesTable users={admins} currentUserId={currentUserId} onToggle={togglePermission} busy={busy}/>
+      <RolesTable users={admins} currentUserId={currentUserId} onToggle={togglePermission} busy={busy} loading={loading}/>
 
       <div style={{ marginBottom: 8, marginTop: 24, fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>User</div>
-      <RolesTable users={regularUsers} currentUserId={currentUserId} onToggle={togglePermission} busy={busy}/>
+      <RolesTable users={regularUsers} currentUserId={currentUserId} onToggle={togglePermission} busy={busy} loading={loading}/>
 
       {toast && <div className="toast">{toast}</div>}
     </div>

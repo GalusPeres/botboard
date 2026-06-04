@@ -725,10 +725,21 @@ function DashboardApp(props) {
             botInfo={botInfo} statusData={statusData} liveLogs={liveLogs}
             sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}
             permissions={perms}/>}
-          {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); updateModuleOrder([]); }}
-            restartEnabled={restartEnabled && !!perms.restartBot}
-            onRestart={restartBot} onStop={stopBot} onStart={startBot}/>}
-          {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
+          {/* Immer gemountet, nur per hidden umgeschaltet — kein Remount beim
+              Wechsel = kein Lade-Flash (wie bei den Bot-Seiten). Per Permission
+              gegated, damit kein unnötiger Fetch für Unberechtigte läuft. */}
+          {!!perms.botModules && (
+            <div hidden={route !== 'bot-modules'}>
+              <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); updateModuleOrder([]); }}
+                restartEnabled={restartEnabled && !!perms.restartBot}
+                onRestart={restartBot} onStop={stopBot} onStart={startBot}/>
+            </div>
+          )}
+          {!!perms.userManagement && (
+            <div hidden={route !== 'admin'}>
+              <AdminScreen currentUserId={user?.id} server={server}/>
+            </div>
+          )}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
           {route === 'manage-navigation' && <NavigationSettingsScreen modules={sortedModules} moduleOrder={moduleOrder} onChangeOrder={updateModuleOrder}/>}

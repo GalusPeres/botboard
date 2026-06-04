@@ -1232,12 +1232,13 @@ ul, ol { list-style: none; }
 }
 .library-mobile-head {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 86px 104px;
+  /* Erste Spalte = Button-Breite (28px); gleicher 12px-Rand links wie rechts,
+     dadurch sitzt das Vorhör-Icon genauso weit vom Rand wie das Lösch-Icon.
+     Dateiname landet bei 12+28+12=52px — identisch zur vollen Tabelle. */
+  grid-template-columns: 28px minmax(0, 1fr) 86px 104px;
   align-items: center;
   column-gap: 12px;
-  /* Linker Einzug kommt aus der 40px-Spalte (wie in der vollen Tabelle),
-     damit der Spaltenanfang beim Breakpoint nicht springt. */
-  padding: 10px 12px 10px 0;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -1248,13 +1249,11 @@ ul, ol { list-style: none; }
 }
 .library-mobile-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 86px 104px;
+  grid-template-columns: 28px minmax(0, 1fr) 86px 104px;
   align-items: center;
   column-gap: 12px;
-  padding: 10px 12px 10px 0;
+  padding: 10px 12px;
 }
-/* Vorschau-Button in der ersten Spalte zentrieren — wie in der vollen Tabelle */
-.library-mobile-row > .btn:first-child { justify-self: center; }
 .library-mobile-head span:nth-child(3),
 .library-mobile-row > span {
   text-align: right;

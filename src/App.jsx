@@ -883,26 +883,45 @@ const BotboardSettingsScreen = ({ server, modules }) => (
     <div className="page-head">
       <div>
         <div className="page-title">Settings</div>
+        <div className="page-sub">Botboard settings for this Discord server.</div>
       </div>
     </div>
-    <div className="grid-2">
+    <div className="grid-2 botboard-settings-grid">
       <div className="card">
         <div className="card-header"><div className="card-title">Server</div></div>
-        <div className="settings-list compact">
-          <div><span>Name</span><strong>{server?.name || 'Unknown'}</strong></div>
-          <div><span>Members</span><strong>{server?.members ?? '-'}</strong></div>
-          <div><span>Modules</span><strong>{modules.length}</strong></div>
-        </div>
+        <ManageSettingsRow label="Server name" help="Selected Discord server.">
+          <span className="settings-value">{server?.name || 'Unknown'}</span>
+        </ManageSettingsRow>
+        <ManageSettingsRow label="Members" help="Member count reported by Discord.">
+          <span className="settings-value">{server?.members ?? '-'}</span>
+        </ManageSettingsRow>
+        <ManageSettingsRow label="Active modules" help="Bots visible for this server.">
+          <span className="settings-value">{modules.length}</span>
+        </ManageSettingsRow>
       </div>
       <div className="card">
         <div className="card-header"><div className="card-title">Botboard</div></div>
-        <div className="settings-list compact">
-          <div><span>Navigation</span><strong>per server</strong></div>
-          <div><span>General</span><strong>fixed</strong></div>
-          <div><span>Manage</span><strong>fixed bottom</strong></div>
-        </div>
+        <ManageSettingsRow label="Sidebar order" help="Configured on the Navigation page.">
+          <span className="tag info">Per server</span>
+        </ManageSettingsRow>
+        <ManageSettingsRow label="General section" help="Overview and Live Logs stay visible above the scroll area.">
+          <span className="tag success">Always visible</span>
+        </ManageSettingsRow>
+        <ManageSettingsRow label="Manage section" help="Administration stays below the module list.">
+          <span className="tag success">Pinned bottom</span>
+        </ManageSettingsRow>
       </div>
     </div>
+  </div>
+);
+
+const ManageSettingsRow = ({ label, help, children }) => (
+  <div className="settings-row manage-settings-row">
+    <div className="settings-label-col">
+      <div className="settings-label">{label}</div>
+      {help && <div className="settings-help">{help}</div>}
+    </div>
+    <div className="settings-control">{children}</div>
   </div>
 );
 

@@ -1499,7 +1499,11 @@ ul, ol { list-style: none; }
 .page-actions { display: flex; gap: 8px; align-items: center; }
 
 /* Grid helpers */
-.grid { display: grid; gap: 16px; align-items: stretch; }
+.grid, .grid-2, .grid-3, .grid-4 {
+  display: grid;
+  gap: 16px;
+  align-items: stretch;
+}
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); }
@@ -1529,6 +1533,25 @@ ul, ol { list-style: none; }
 .patchwatcher-settings .settings-control .input,
 .patchwatcher-settings .settings-control .select {
   width: 100%;
+}
+
+.botboard-settings-grid {
+  gap: 18px;
+}
+.manage-settings-row {
+  grid-template-columns: minmax(220px, 0.75fr) minmax(180px, 1fr);
+}
+.manage-settings-row .settings-control {
+  max-width: none;
+  justify-self: end;
+  text-align: right;
+}
+.settings-value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  font-weight: 700;
+  color: var(--text);
 }
 .patch-source-row {
   display: flex;

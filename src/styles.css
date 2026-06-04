@@ -1218,7 +1218,7 @@ ul, ol { list-style: none; }
 }
 .library-mobile-head {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 44px 84px;
+  grid-template-columns: 34px minmax(0, 1fr) 64px 82px;
   align-items: center;
   gap: 6px;
   padding: 11px 8px 9px;
@@ -1232,10 +1232,17 @@ ul, ol { list-style: none; }
 }
 .library-mobile-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 44px 84px;
+  grid-template-columns: 34px minmax(0, 1fr) 64px 82px;
   align-items: center;
   gap: 6px;
   padding: 9px 8px;
+}
+.library-mobile-head span:nth-child(3),
+.library-mobile-row > span {
+  text-align: right;
+}
+.library-mobile-row > div:last-child {
+  justify-content: flex-end;
 }
 
 .table {

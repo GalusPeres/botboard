@@ -191,14 +191,14 @@ const AddTrack = ({ addTrack, searchTracks }) => {
           onFocus={() => setOpen(true)}
           onKeyDown={(event) => { if (event.key === 'Enter') submit(); }}
           placeholder="Search or URL..."
-          type="search"
-          name="botboard-music-search"
-          autoComplete="new-password"
+          autoComplete="off"
           autoCorrect="off"
           autoCapitalize="none"
           spellCheck="false"
+          aria-autocomplete="none"
           data-lpignore="true"
           data-1p-ignore="true"
+          data-bwignore="true"
           data-form-type="other"/>
       </div>
       {showPop && (
@@ -600,14 +600,11 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
           <div className="lib-search">
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
             <input placeholder="Search..." value={search}
-              type="search"
-              name="bb-lib-q"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck="false"
-              readOnly
-              onFocus={(event) => event.currentTarget.removeAttribute('readonly')}
+              aria-autocomplete="none"
               data-lpignore="true"
               data-1p-ignore="true"
               data-bwignore="true"

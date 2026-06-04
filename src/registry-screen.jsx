@@ -211,9 +211,22 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
         </div>
       )}
       {!loading && bots.length > 0 && (
-        <div className="registry-list">
-          {bots.map((bot) => (
+        <div className="registry-list registry-list-single">
+          {bots.map((bot, idx) => (
             <div className="registry-row" key={bot.id}>
+              {/* Order arrows */}
+              <div className="registry-row-order">
+                <button className="btn-icon btn-ghost btn-sm" type="button" title="Move up"
+                  disabled={idx === 0}
+                  onClick={async () => { await API.bots.reorderRegistry(bot.id, 'up'); await load(); onChanged?.(); }}>
+                  <Icon name="chevron-up" size={13}/>
+                </button>
+                <button className="btn-icon btn-ghost btn-sm" type="button" title="Move down"
+                  disabled={idx === bots.length - 1}
+                  onClick={async () => { await API.bots.reorderRegistry(bot.id, 'down'); await load(); onChanged?.(); }}>
+                  <Icon name="chevron-down" size={13}/>
+                </button>
+              </div>
               <div className="registry-row-mark">
                 {bot.module?.manifest?.bot?.avatar
                   ? <img src={bot.module.manifest.bot.avatar} alt=""/>

@@ -127,10 +127,37 @@ export function botContainer(id) {
 }
 
 export function registrySnapshot() {
-  return {
-    registryPath: registryPath(),
-    bots: Object.values(botConfigs({ includeDisabled: true })),
-  };
+  const bots = Object.values(botConfigs({ includeDisabled: true }));
+  const order = readRegistryDocument().order || [];
+  if (order.length) {
+    bots.sort((a, b) => {
+      const ai = order.indexOf(a.id);
+      const bi = order.indexOf(b.id);
+      if (ai < 0 && bi < 0) return 0;
+      if (ai < 0) return 1;
+      if (bi < 0) return -1;
+      return ai - bi;
+    });
+  }
+  return { registryPath: registryPath(), bots };
+}
+
+export function reorderRegistryBot(id, direction) {
+  validateId(id);
+  const doc = readRegistryDocument();
+  const allIds = Object.keys(botConfigs({ includeDisabled: true }));
+  let order = Array.isArray(doc.order) ? [...doc.order] : [...allIds];
+  // Ensure all known bots are represented
+  for (const bid of allIds) {
+    if (!order.includes(bid)) order.push(bid);
+  }
+  const idx = order.indexOf(id);
+  if (idx < 0) return;
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= order.length) return;
+  [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+  doc.order = order;
+  writeRegistryDocument(doc);
 }
 
 export function upsertRegistryBot(id, input) {

@@ -44,6 +44,7 @@ export const bots = {
   addRegistry: (bot) => api('/api/bots/registry', { method: 'POST', body: bot }),
   updateRegistry: (bot, patch) => api(`/api/bots/registry/${encodeURIComponent(bot)}`, { method: 'PUT', body: patch }),
   deleteRegistry: (bot) => api(`/api/bots/registry/${encodeURIComponent(bot)}`, { method: 'DELETE' }),
+  reorderRegistry: (id, direction) => api('/api/bots/registry/reorder', { method: 'POST', body: { id, direction } }),
   restart: (bot) => api(`/api/bots/${bot}/restart`, { method: 'POST' }),
   stop:    (bot) => api(`/api/bots/${bot}/stop`,    { method: 'POST' }),
   start:   (bot) => api(`/api/bots/${bot}/start`,   { method: 'POST' }),

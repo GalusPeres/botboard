@@ -13,7 +13,6 @@ export const ROUTES = {
   'bot-modules':   { title: 'Bots',        group: 'manage' },
   'admin':         { title: 'Roles',       group: 'manage' },
   'botboard-logs': { title: 'Live Logs',   group: 'gen' },
-  'manage-navigation': { title: 'Navigation', group: 'manage' },
   'manage-settings':   { title: 'Settings',   group: 'manage' },
 };
 
@@ -179,7 +178,6 @@ export const Sidebar = ({
         >
           {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
           {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-          {permissions.userManagement && <NavItem id="manage-navigation" route={route} setRoute={setRoute} icon="list" label="Navigation"/>}
           {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
         </SidebarSection>
       )}

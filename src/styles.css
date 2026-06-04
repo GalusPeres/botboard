@@ -1214,10 +1214,22 @@ ul, ol { list-style: none; }
   gap: 12px;
   margin-bottom: 14px;
 }
-.registry-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.registry-list { display: flex; flex-direction: column; gap: 0; }
+.registry-list-single .registry-row { border: none; border-bottom: 1px solid var(--border); border-radius: 0; }
+.registry-list-single .registry-row:last-child { border-bottom: none; }
+.registry-row-order {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+}
+.registry-row-order .btn-icon { padding: 2px; opacity: 0.4; line-height: 1; }
+.registry-row-order .btn-icon:not([disabled]):hover { opacity: 1; }
+.registry-row-order .btn-icon[disabled] { opacity: 0.15; cursor: default; }
 .registry-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 26px 42px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 12px;

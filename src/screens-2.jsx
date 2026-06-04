@@ -543,9 +543,9 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
   const [uploadFile, setUploadFile] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 640);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth <= 640);
+    const handler = () => setIsMobile(window.innerWidth <= 900);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);

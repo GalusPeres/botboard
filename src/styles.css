@@ -165,9 +165,53 @@ ul, ol { list-style: none; }
 
 /* Nav sections */
 .nav-section { display: flex; flex-direction: column; gap: 1px; }
-.sidebar-general {
+.sidebar-general,
+.sidebar-section-group.fixed {
   flex-shrink: 0;
 }
+.sidebar-section-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+  margin-top: 4px;
+}
+.sidebar-section-group.fixed {
+  padding-top: 0;
+  margin-top: 0;
+}
+.sidebar-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 10px 6px 8px;
+  border-radius: var(--r-sm);
+}
+.sidebar-section-head.collapsible {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.sidebar-section-head.collapsible:hover { background: var(--surface); }
+.sidebar-section-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-section-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 10px;
+}
+.sidebar-section-nav[hidden] { display: none; }
+.sidebar-section-group.collapsed .bot-collapse-btn { transform: rotate(-90deg); }
 .sidebar-bots-scroll {
   flex: 1;
   min-height: 0;

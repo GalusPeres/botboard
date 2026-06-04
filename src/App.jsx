@@ -59,7 +59,7 @@ export default function App() {
   const perms = user?.permissions || {};
   const setRoute = (next) => {
     if (['bot-modules'].includes(next) && !perms.botModules) return;
-    if (['admin', 'botboard-logs'].includes(next) && !perms.userManagement) return;
+    if (['admin', 'botboard-logs', 'manage-navigation', 'manage-settings'].includes(next) && !perms.userManagement) return;
     if (String(next).endsWith('/settings') && !perms.settings) return;
     setRouteRaw(next);
   };
@@ -82,7 +82,13 @@ export default function App() {
   }, [stage]);
 
   // If the current route requires a permission that was just revoked, go to overview.
-  const ROUTE_PERM = { 'bot-modules': 'botModules', 'admin': 'userManagement', 'botboard-logs': 'userManagement' };
+  const ROUTE_PERM = {
+    'bot-modules': 'botModules',
+    'admin': 'userManagement',
+    'botboard-logs': 'userManagement',
+    'manage-navigation': 'userManagement',
+    'manage-settings': 'userManagement',
+  };
   useEffect(() => {
     const required = ROUTE_PERM[route] || (String(route).endsWith('/settings') ? 'settings' : null);
     if (required && perms[required] === false) setRouteRaw('overview');
@@ -696,6 +702,8 @@ function DashboardApp(props) {
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
+          {route === 'manage-navigation' && <ManagePlaceholder title="Navigation" cardTitle="Sidebar" emptyText="No custom order yet."/>}
+          {route === 'manage-settings' && <ManagePlaceholder title="Settings" cardTitle="Server" emptyText="No server settings yet."/>}
           {/* Alle Bots + alle ihre Seiten immer gemountet, nur das Aktive sichtbar.
               Kein Remount beim Bot- ODER Seitenwechsel = null Flash. */}
           {modules.flatMap(module => {
@@ -799,8 +807,21 @@ function DashboardApp(props) {
   );
 }
 
-// Mapping between the UI's flat settings keys (sbPrefix, mbVol, …) and the
-// per-bot API config. Keep this in one place so the screens stay dumb.
+const ManagePlaceholder = ({ title, cardTitle, emptyText }) => (
+  <div className="content-narrow">
+    <div className="page-head">
+      <div>
+        <div className="page-title">{title}</div>
+      </div>
+    </div>
+    <div className="card">
+      <div className="card-header"><div className="card-title">{cardTitle}</div></div>
+      <div className="empty" style={{ padding: '42px 20px' }}>
+        <div>{emptyText}</div>
+      </div>
+    </div>
+  </div>
+);
 
 const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) => {
   const names = { sound: dynamicNames.sound || 'Sound Bot', music: dynamicNames.music || 'Music Bot', all: 'both bots' };

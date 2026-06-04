@@ -10,9 +10,11 @@ import { useCloseOnOutside } from './hooks.js';
 // Only truly static routes (no bot association)
 export const ROUTES = {
   overview:        { title: 'Overview',    group: 'gen' },
-  'bot-modules':   { title: 'Bot Modules', group: 'gen' },
-  'admin':         { title: 'Roles',       group: 'gen' },
+  'bot-modules':   { title: 'Bot Modules', group: 'manage' },
+  'admin':         { title: 'Roles',       group: 'manage' },
   'botboard-logs': { title: 'Live Logs',   group: 'gen' },
+  'manage-navigation': { title: 'Navigation', group: 'manage' },
+  'manage-settings':   { title: 'Settings',   group: 'manage' },
 };
 
 // CSS accent class from manifest type
@@ -120,13 +122,10 @@ export const Sidebar = ({
 
       <ServerDropdown server={server} servers={servers} onChangeServer={onChangeServer}/>
 
-      <div className="nav-section sidebar-general">
-        <div className="nav-label">General</div>
-        <NavItem id="overview"      route={route} setRoute={setRoute} icon="home"  label="Overview"/>
-        {permissions.botModules      && <NavItem id="bot-modules"   route={route} setRoute={setRoute} icon="bot"   label="Bots"/>}
-        {permissions.userManagement  && <NavItem id="admin"         route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-        {permissions.userManagement  && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs"  label="Live Logs"/>}
-      </div>
+      <SidebarSection name="General" fixed>
+        <NavItem id="overview" route={route} setRoute={setRoute} icon="home" label="Overview"/>
+        {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
+      </SidebarSection>
 
       <div className="sidebar-bots-scroll">
         {visibleModules.map((module) => {
@@ -165,6 +164,18 @@ export const Sidebar = ({
             </BotGroup>
           );
         })}
+        {(permissions.botModules || permissions.userManagement) && (
+          <SidebarSection
+            name="Manage"
+            collapsed={!!collapsedGroups.__manage}
+            onToggle={() => toggleGroup('__manage')}
+          >
+            {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
+            {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+            {permissions.userManagement && <NavItem id="manage-navigation" route={route} setRoute={setRoute} icon="list" label="Navigation"/>}
+            {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
+          </SidebarSection>
+        )}
       </div>
 
       <div className="sidebar-user">
@@ -180,6 +191,30 @@ export const Sidebar = ({
         </button>
       </div>
     </aside>
+  );
+};
+
+export const SidebarSection = ({ name, fixed = false, collapsed = false, onToggle, children }) => {
+  const collapsible = typeof onToggle === 'function';
+  return (
+    <div className={'sidebar-section-group' + (fixed ? ' fixed' : '') + (collapsed ? ' collapsed' : '')}>
+      <div
+        className={'sidebar-section-head' + (collapsible ? ' collapsible' : '')}
+        onClick={collapsible ? onToggle : undefined}
+      >
+        <div className="sidebar-section-name">{name}</div>
+        {collapsible && (
+          <button className="bot-collapse-btn" type="button"
+                  onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                  title={collapsed ? `Expand ${name}` : `Collapse ${name}`}>
+            <Icon name="chevron-down" size={12}/>
+          </button>
+        )}
+      </div>
+      <div className="sidebar-section-nav" hidden={collapsed}>
+        {children}
+      </div>
+    </div>
   );
 };
 

@@ -221,10 +221,16 @@ ul, ol { list-style: none; }
   background: var(--border);
 }
 .sidebar-section-group.section-general::after {
-  margin-block: 12px;
+  margin-top: 8px;
+  margin-bottom: -6px;
 }
 .sidebar-section-group.section-manage::before {
-  margin-block: 12px;
+  margin-top: -6px;
+  margin-bottom: 8px;
+}
+.sidebar-bots-scroll > .bot-group:first-child {
+  margin-top: 0;
+  padding-top: 0;
 }
 .sidebar-bots-scroll {
   flex: 1;

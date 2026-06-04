@@ -758,7 +758,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
       {/* ===== DESKTOP: volle Tabelle ===== */}
       {!isMobile && (
         <div style={{ overflowX: 'auto', borderRadius: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 520, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: permissions.soundLibrary ? 706 : 650, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
             <div/>
             <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} style={{ paddingLeft: 4 }}/>
             <SortHeader col="duration" label="Length"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>

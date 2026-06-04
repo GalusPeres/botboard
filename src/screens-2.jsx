@@ -599,7 +599,16 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
         <div className="page-actions media-head-search">
           <div className="lib-search">
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
-            <input placeholder="Search..." value={search} autoComplete="off"
+            <input placeholder="Search..." value={search}
+              type="search"
+              name="botboard-library-search"
+              autoComplete="new-password"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck="false"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-form-type="other"
               onChange={e => setSearch(e.target.value)}/>
           </div>
         </div>
@@ -674,15 +683,25 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
             default:         return null;
           }
         };
+        const extraLabel = {
+          plays: 'Plays',
+          added: 'Added',
+          size: 'Size',
+          duration: 'Length',
+        }[sortBy] || '';
         return (
           <>
-            <div style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+            <div className="library-mobile-list">
+              <div className="library-mobile-head">
+                <span>Filename</span>
+                {extraLabel && <span>{extraLabel}</span>}
+              </div>
               {sorted.map((s, i) => {
                 const extra = extraVal(s);
                 return (
                   <div key={s.name}>
                     {i > 0 && <div style={{ height: 1, background: 'var(--border)', opacity: 0.4 }}/>}
-                    <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr auto auto', alignItems: 'center', gap: 6, padding: '9px 10px 9px 0' }}>
+                    <div className="library-mobile-row">
                       <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }}
                         onClick={() => previewSound && previewSound(s)} title="Preview">
                         <Icon name="headphones" size={13}/>

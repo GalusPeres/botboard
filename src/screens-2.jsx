@@ -601,13 +601,16 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
             <input placeholder="Search..." value={search}
               type="search"
-              name="botboard-library-search"
-              autoComplete="new-password"
+              name="bb-lib-q"
+              autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck="false"
+              readOnly
+              onFocus={(event) => event.currentTarget.removeAttribute('readonly')}
               data-lpignore="true"
               data-1p-ignore="true"
+              data-bwignore="true"
               data-form-type="other"
               onChange={e => setSearch(e.target.value)}/>
           </div>
@@ -693,8 +696,10 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
           <>
             <div className="library-mobile-list">
               <div className="library-mobile-head">
+                <span/>
                 <span>Filename</span>
                 {extraLabel && <span>{extraLabel}</span>}
+                <span/>
               </div>
               {sorted.map((s, i) => {
                 const extra = extraVal(s);

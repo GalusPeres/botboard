@@ -1,7 +1,7 @@
 // Main App — login flow, route table, live data wiring.
 // All mutating actions go through src/api.js; reads are either one-shot
 // (useFetch) or periodic (usePoll). Logs come in via SSE.
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Sidebar, Topbar, MobileMoreSheet, routeMeta } from './sidebar.jsx';
 import { Icon } from './components.jsx';
 import { LoginScreen, ServerSelectScreen, OverviewScreen } from './screens-1.jsx';
@@ -14,7 +14,7 @@ import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './
 import * as API from './api.js';
 import { useFetch, usePoll, useSSE, useHashRoute } from './hooks.js';
 import { adaptTrack, adaptSound, normalizeLog, msToClock, formatBytes, relativeTime } from './format.js';
-import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo, savedModules, saveModules } from './storage.js';
+import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo, savedModules, saveModules, savedModuleOrder, saveModuleOrder } from './storage.js';
 import { SETTING_MAP_MUSIC, SETTING_MAP_SOUND, mapSettingsPatch, mergeSettings } from './settings-map.js';
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -256,6 +256,7 @@ function DashboardApp(props) {
     return { ...m, manifest: { ...(m.manifest || {}), pages, bot, displayName, icon } };
   });
   const modules = modulesData ? mergeWithCache(modulesData) : cachedModules;
+  const [moduleOrder, setModuleOrder] = useState(() => savedModuleOrder(guildId));
   useEffect(() => {
     if (modulesData !== null) {
       const merged = mergeWithCache(modulesData);
@@ -263,7 +264,24 @@ function DashboardApp(props) {
       saveModules(merged);
     }
   }, [modulesData]); // eslint-disable-line react-hooks/exhaustive-deps
-  const moduleById = new Map(modules.map((module) => [module.id, module]));
+  useEffect(() => {
+    setModuleOrder(savedModuleOrder(guildId));
+  }, [guildId]);
+  const sortedModules = useMemo(() => {
+    const index = new Map(moduleOrder.map((id, position) => [id, position]));
+    const originalIndex = new Map(modules.map((module, position) => [module.id, position]));
+    return [...modules].sort((left, right) => {
+      const leftIndex = index.has(left.id) ? index.get(left.id) : Number.MAX_SAFE_INTEGER;
+      const rightIndex = index.has(right.id) ? index.get(right.id) : Number.MAX_SAFE_INTEGER;
+      if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+      return (originalIndex.get(left.id) || 0) - (originalIndex.get(right.id) || 0);
+    });
+  }, [modules, moduleOrder]);
+  const updateModuleOrder = useCallback((order) => {
+    setModuleOrder(order);
+    saveModuleOrder(guildId, order);
+  }, [guildId]);
+  const moduleById = new Map(sortedModules.map((module) => [module.id, module]));
 
   useEffect(() => {
     const freshServer = serverOptions?.find((option) => option.id === guildId);
@@ -286,9 +304,9 @@ function DashboardApp(props) {
 
   // All keyed by module ID (e.g. 'sound', 'music', 'patchwatcher') — no hardcoding.
   // botStatus and botInfo come from the cached modules, so they're correct on first render.
-  const botStatus = Object.fromEntries(modules.map((m) => [m.id, m.online ? 'online' : 'offline']));
-  const botInfo   = Object.fromEntries(modules.map((m) => [m.id, m.manifest?.bot || m.status?.bot || null]));
-  const displayNames = Object.fromEntries(modules.map((m) => [m.id, moduleDisplayName(m, m.id)]));
+  const botStatus = Object.fromEntries(sortedModules.map((m) => [m.id, m.online ? 'online' : 'offline']));
+  const botInfo   = Object.fromEntries(sortedModules.map((m) => [m.id, m.manifest?.bot || m.status?.bot || null]));
+  const displayNames = Object.fromEntries(sortedModules.map((m) => [m.id, moduleDisplayName(m, m.id)]));
 
   const { data: guildDetail, reload: reloadGuildDetail } = usePoll(async () => {
     // Fetch just this guild from music bot (primary), fall back to sound bot.
@@ -663,7 +681,7 @@ function DashboardApp(props) {
     sound: { onJoin: connectSound, onStop: stopSound, onDisconnect: disconnectSound },
     music: { onJoin: connectMusic, onStop: stopMusic, onDisconnect: disconnectMusic },
   };
-  const activeMeta = routeMeta(route, modules);
+  const activeMeta = routeMeta(route, sortedModules);
   const activeGenericKind = activeMeta.module ? (activeMeta.page?.kind || activeMeta.page?.id) : '';
   const activeGenericName = activeMeta.module ? moduleDisplayName(activeMeta.module, activeMeta.parentBot) : '';
 
@@ -676,7 +694,7 @@ function DashboardApp(props) {
                user={user}
                soundsCount={soundsCountForBadge}
                onLogout={onLogout}
-               modules={modules}
+               modules={sortedModules}
                restartEnabled={restartEnabled}
                onRestart={(bot) => setRestartConfirm(bot)}
                onStop={stopBot} onStart={startBot}
@@ -688,7 +706,7 @@ function DashboardApp(props) {
                 userVoiceChannel={userVoiceChannel} botVoiceChannelId={botVoiceChannelId}
                 voiceControls={voiceControls}
                 onOpenMenu={() => setMoreSheetOpen(true)}
-                modules={modules}/>
+                modules={sortedModules}/>
         <div className="content">
           {route === 'overview' && <OverviewScreen server={server} openRoute={setRoute}
             currentTrack={playerState.queue[playerState.currentIdx]}
@@ -702,11 +720,11 @@ function DashboardApp(props) {
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
-          {route === 'manage-navigation' && <ManagePlaceholder title="Navigation" cardTitle="Sidebar" emptyText="No custom order yet."/>}
-          {route === 'manage-settings' && <ManagePlaceholder title="Settings" cardTitle="Server" emptyText="No server settings yet."/>}
+          {route === 'manage-navigation' && <NavigationSettingsScreen modules={sortedModules} moduleOrder={moduleOrder} onChangeOrder={updateModuleOrder}/>}
+          {route === 'manage-settings' && <BotboardSettingsScreen server={server} modules={sortedModules}/>}
           {/* Alle Bots + alle ihre Seiten immer gemountet, nur das Aktive sichtbar.
               Kein Remount beim Bot- ODER Seitenwechsel = null Flash. */}
-          {modules.flatMap(module => {
+          {sortedModules.flatMap(module => {
             const parentBot = module.id;
             const botName   = moduleDisplayName(module, parentBot);
             return (module.manifest?.pages || []).map(page => {
@@ -785,7 +803,7 @@ function DashboardApp(props) {
           user={user}
           botStatus={botStatus}
           botInfo={botInfo}
-          modules={modules}
+          modules={sortedModules}
           soundsCount={soundsCountForBadge}
           restartEnabled={restartEnabled}
           onRestart={(bot) => { setRestartConfirm(bot); setMoreSheetOpen(false); }}
@@ -807,17 +825,82 @@ function DashboardApp(props) {
   );
 }
 
-const ManagePlaceholder = ({ title, cardTitle, emptyText }) => (
+const NavigationSettingsScreen = ({ modules, moduleOrder, onChangeOrder }) => {
+  const orderedIds = modules.map((module) => module.id);
+  const move = (id, direction) => {
+    const next = [...orderedIds];
+    const index = next.indexOf(id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    onChangeOrder(next);
+  };
+  const reset = () => onChangeOrder([]);
+
+  return (
+    <div className="content-narrow">
+      <div className="page-head">
+        <div>
+          <div className="page-title">Navigation</div>
+          <div className="page-sub">Sidebar order for this server.</div>
+        </div>
+        <button className="btn" type="button" onClick={reset} disabled={!moduleOrder.length}>
+          <Icon name="refresh" size={13}/> Reset
+        </button>
+      </div>
+      <div className="card">
+        <div className="card-header"><div className="card-title">Modules</div></div>
+        <div className="nav-order-list">
+          {modules.map((module, index) => (
+            <div className="nav-order-row" key={module.id}>
+              <div className="nav-order-mark">
+                {module.manifest?.bot?.avatar
+                  ? <img src={module.manifest.bot.avatar} alt=""/>
+                  : <Icon name={module.manifest?.icon || 'grid'} size={15}/>}
+              </div>
+              <div className="nav-order-main">
+                <div className="nav-order-name">{moduleDisplayName(module, module.id)}</div>
+                <div className="nav-order-meta">{module.id}</div>
+              </div>
+              <div className="nav-order-actions">
+                <button className="btn btn-sm" type="button" onClick={() => move(module.id, -1)} disabled={index === 0} title="Move up">
+                  <Icon name="chevron-up" size={13}/>
+                </button>
+                <button className="btn btn-sm" type="button" onClick={() => move(module.id, 1)} disabled={index === modules.length - 1} title="Move down">
+                  <Icon name="chevron-down" size={13}/>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BotboardSettingsScreen = ({ server, modules }) => (
   <div className="content-narrow">
     <div className="page-head">
       <div>
-        <div className="page-title">{title}</div>
+        <div className="page-title">Settings</div>
       </div>
     </div>
-    <div className="card">
-      <div className="card-header"><div className="card-title">{cardTitle}</div></div>
-      <div className="empty" style={{ padding: '42px 20px' }}>
-        <div>{emptyText}</div>
+    <div className="grid-2">
+      <div className="card">
+        <div className="card-header"><div className="card-title">Server</div></div>
+        <div className="settings-list compact">
+          <div><span>Name</span><strong>{server?.name || 'Unknown'}</strong></div>
+          <div><span>Members</span><strong>{server?.members ?? '-'}</strong></div>
+          <div><span>Modules</span><strong>{modules.length}</strong></div>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-header"><div className="card-title">Botboard</div></div>
+        <div className="settings-list compact">
+          <div><span>Navigation</span><strong>per server</strong></div>
+          <div><span>General</span><strong>fixed</strong></div>
+          <div><span>Manage</span><strong>fixed bottom</strong></div>
+        </div>
       </div>
     </div>
   </div>

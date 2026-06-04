@@ -183,7 +183,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     <div className="content-narrow registry-screen">
       <div className="page-head">
         <div>
-          <div className="page-title">Bot Modules</div>
+          <div className="page-title">Bots</div>
         </div>
         <div className="page-actions">
           <button className="btn btn-primary" type="button" onClick={startAdd}>

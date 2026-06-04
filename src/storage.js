@@ -72,6 +72,21 @@ export function saveModules(modules) {
   } catch {}
 }
 
+export function savedModuleOrder(guildId) {
+  try {
+    const raw = window.localStorage.getItem(`botboard:module-order:${guildId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveModuleOrder(guildId, order) {
+  try {
+    window.localStorage.setItem(`botboard:module-order:${guildId}`, JSON.stringify(order));
+  } catch {}
+}
+
 // Bot identity (names + avatar URLs) — cached so the first render after a
 // refresh shows the correct names/avatars without waiting for the status poll.
 const BOT_INFO_KEY = 'botboard:bot-info';

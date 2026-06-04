@@ -10,7 +10,7 @@ import { useCloseOnOutside } from './hooks.js';
 // Only truly static routes (no bot association)
 export const ROUTES = {
   overview:        { title: 'Overview',    group: 'gen' },
-  'bot-modules':   { title: 'Bot Modules', group: 'manage' },
+  'bot-modules':   { title: 'Bots',        group: 'manage' },
   'admin':         { title: 'Roles',       group: 'manage' },
   'botboard-logs': { title: 'Live Logs',   group: 'gen' },
   'manage-navigation': { title: 'Navigation', group: 'manage' },
@@ -164,19 +164,21 @@ export const Sidebar = ({
             </BotGroup>
           );
         })}
-        {(permissions.botModules || permissions.userManagement) && (
-          <SidebarSection
-            name="Manage"
-            collapsed={!!collapsedGroups.__manage}
-            onToggle={() => toggleGroup('__manage')}
-          >
-            {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
-            {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-            {permissions.userManagement && <NavItem id="manage-navigation" route={route} setRoute={setRoute} icon="list" label="Navigation"/>}
-            {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
-          </SidebarSection>
-        )}
       </div>
+
+      {(permissions.botModules || permissions.userManagement) && (
+        <SidebarSection
+          name="Manage"
+          fixed
+          collapsed={!!collapsedGroups.__manage}
+          onToggle={() => toggleGroup('__manage')}
+        >
+          {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
+          {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+          {permissions.userManagement && <NavItem id="manage-navigation" route={route} setRoute={setRoute} icon="list" label="Navigation"/>}
+          {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
+        </SidebarSection>
+      )}
 
       <div className="sidebar-user">
         {user?.avatar
@@ -281,7 +283,7 @@ export const Topbar = ({
   // Always show the BOT name in the topbar (page title lives in the content area)
   const sectionTitle = meta.module
     ? moduleDisplayName(meta.module, meta.parentBot)
-    : 'General';
+    : meta.group === 'manage' ? 'Manage' : 'General';
 
   const botKey = meta.parentBot;
   const hasVoiceControls = !!(botKey && voiceControls[botKey]);

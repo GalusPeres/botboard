@@ -1,5 +1,8 @@
 // Soundboard + Music Player + Library screens
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Icon, Waveform, Tag, fmtDur } from './components.jsx';
 import { useCloseOnOutside } from './hooks.js';
 import * as API from './api.js';
@@ -23,7 +26,7 @@ export const SoundboardScreen = ({ playSound, previewSound, currentSound, curren
 
   return (
     <div className="content-narrow">
-      <div className="page-head">
+      <div className="page-head media-page-head">
         <div>
           <div className="page-title">Soundboard</div>
           <div className="page-sub">
@@ -32,15 +35,15 @@ export const SoundboardScreen = ({ playSound, previewSound, currentSound, curren
               : <>Join a voice channel or pick a target at the top right. Headphones previews locally only.</>}
           </div>
         </div>
-        <div className="page-actions">
-          <div className="lib-search" style={{ width: 240, minWidth: 0 }}>
+        <div className="page-actions media-head-search">
+          <div className="lib-search">
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
-            <input placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}/>
+            <input placeholder="Search…" value={search} autoComplete="off" onChange={e => setSearch(e.target.value)}/>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
+      <div className="media-toolbar-row media-sort-row">
         {[
           { key: 'plays', label: 'plays' },
           { key: 'date', label: 'newest' },
@@ -181,13 +184,13 @@ const AddTrack = ({ addTrack, searchTracks }) => {
 
   return (
     <div className="track-search-inline" ref={wrapRef}>
-      <div className="lib-search" style={{ width: 260, minWidth: 0 }}>
+      <div className="lib-search">
         <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
         <input value={query}
           onChange={(event) => { setQuery(event.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(event) => { if (event.key === 'Enter') submit(); }}
-          placeholder="Search track or paste a URL…"/>
+          placeholder="Search track or paste a URL…" autoComplete="off"/>
       </div>
       {showPop && (
         <div className="track-results-pop">
@@ -213,6 +216,25 @@ const AddTrack = ({ addTrack, searchTracks }) => {
 
 export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, playerStyle, playerError }) => {
   const { queue, currentIdx, isPlaying, position, volume, shuffle, repeat } = playerState;
+  const queueSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const serverFutureQueue = queue.slice(currentIdx + 1);
+
+  // Optimistischer lokaler State — wird sofort gesetzt, vom Server überschrieben
+  const [localFutureQueue, setLocalFutureQueue] = useState(null);
+  // Wenn Server neue Daten liefert: lokalen Override zurücksetzen
+  useEffect(() => { setLocalFutureQueue(null); }, [queue]);
+  const futureQueue = localFutureQueue ?? serverFutureQueue;
+
+  const handleQueueDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const oldIdx = futureQueue.findIndex(t => t.id === active.id);
+    const newIdx = futureQueue.findIndex(t => t.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    // Sofort lokal umsortieren — kein Warten auf Server
+    setLocalFutureQueue(arrayMove(futureQueue, oldIdx, newIdx));
+    // Dann Server-Call (async, im Hintergrund)
+    dispatch({ type: 'move', from: oldIdx, to: newIdx });
+  };
   const cur = queue[currentIdx];
   const [dur, durFmt] = useMemo(() => {
     if (!cur) return [0, '0:00'];
@@ -223,11 +245,11 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, pla
   if (!cur) {
     return (
       <div className="content-narrow">
-        <div className="page-head">
+        <div className="page-head media-page-head">
           <div>
             <div className="page-title">Music Player</div>
           </div>
-          <div className="page-actions">
+          <div className="page-actions media-head-search">
             <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
           </div>
         </div>
@@ -248,11 +270,11 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, pla
   return (
     <>
     <div className="content-narrow">
-      <div className="page-head">
+      <div className="page-head media-page-head">
         <div>
           <div className="page-title">Music Player</div>
         </div>
-        <div className="page-actions">
+        <div className="page-actions media-head-search">
           <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
         </div>
       </div>
@@ -315,47 +337,46 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, pla
             <div className="card-eyebrow" style={{ marginTop: 3 }}>{queue.length} tracks</div>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
-            <button className="btn-icon btn-ghost btn-sm" onClick={() => dispatch({ type: 'shuffle' })} title="Shuffle queue">
+            <button className="btn btn-icon btn-sm" onClick={() => dispatch({ type: 'shuffle' })} title="Shuffle queue">
               <Icon name="shuffle" size={13}/>
             </button>
-            <button className="btn-icon btn-ghost btn-sm" onClick={() => dispatch({ type: 'clear' })} title="Clear">
+            <button className="btn btn-icon btn-sm btn-danger" onClick={() => {
+              if (window.confirm('Clear the entire queue?')) dispatch({ type: 'clear' });
+            }} title="Clear queue">
               <Icon name="trash" size={13}/>
             </button>
           </div>
         </div>
         <div className="queue-list">
-          {queue.map((t, i) => (
-            <div key={t.id} className={'queue-item' + (i === currentIdx ? ' current' : '')}
-                 onClick={() => i > currentIdx && dispatch({ type: 'jump', idx: i - currentIdx - 1 })}>
+          {/* Aktueller Track — nicht verschiebbar */}
+          {queue[currentIdx] && (
+            <div className="queue-item current">
+              <div className="queue-drag-handle queue-drag-handle-placeholder"/>
               <div className="queue-num">
-                {i === currentIdx ? (isPlaying ? <Icon name="play" size={11} style={{ color: 'var(--accent)' }}/> : <Icon name="pause" size={11} style={{ color: 'var(--accent)' }}/>) : i + 1}
+                {isPlaying ? <Icon name="play" size={11} style={{ color: 'var(--accent)' }}/> : <Icon name="pause" size={11} style={{ color: 'var(--accent)' }}/>}
               </div>
               <div className="queue-info">
-                <div className="queue-title">{t.title}</div>
+                <div className="queue-title">{queue[currentIdx].title}</div>
                 <div className="queue-sub">
-                  <span>{t.artist}</span><span>·</span><span>{t.duration}</span><span>·</span>
-                  <Tag kind={t.source === 'Spotify' ? 'success' : 'info'}>{t.source}</Tag>
+                  <span>{queue[currentIdx].artist}</span><span>·</span><span>{queue[currentIdx].duration}</span>
                 </div>
               </div>
-              <div className="queue-actions">
-                {i > currentIdx && (
-                  <>
-                    <button className="btn-icon btn-ghost btn-sm" disabled={i === currentIdx + 1}
-                      onClick={(e) => { e.stopPropagation(); dispatch({ type: 'move', from: i - currentIdx - 1, to: i - currentIdx - 2 }); }} title="Move up">
-                      <Icon name="chevron-up" size={12}/>
-                    </button>
-                    <button className="btn-icon btn-ghost btn-sm" disabled={i === queue.length - 1}
-                      onClick={(e) => { e.stopPropagation(); dispatch({ type: 'move', from: i - currentIdx - 1, to: i - currentIdx }); }} title="Move down">
-                      <Icon name="chevron-down" size={12}/>
-                    </button>
-                    <button className="btn-icon btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); dispatch({ type: 'remove', idx: i - currentIdx - 1 }); }} title="Remove">
-                      <Icon name="x" size={12}/>
-                    </button>
-                  </>
-                )}
-              </div>
             </div>
-          ))}
+          )}
+          {/* Nächste Tracks — drag & drop */}
+          <DndContext sensors={queueSensors} collisionDetection={closestCenter} onDragEnd={handleQueueDragEnd}>
+            <SortableContext items={futureQueue.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              {futureQueue.map((t, i) => (
+                <SortableQueueItem
+                  key={t.id}
+                  track={t}
+                  num={currentIdx + 2 + i}
+                  onJump={() => dispatch({ type: 'jump', idx: i })}
+                  onRemove={() => dispatch({ type: 'remove', idx: i })}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       </div>
     </div>
@@ -371,11 +392,11 @@ const MusicCompact = ({ playerState, dispatch, addTrack, searchTracks, playerErr
   const progress = position / dur;
   return (
     <div className="content-narrow">
-      <div className="page-head">
+      <div className="page-head media-page-head">
         <div>
           <div className="page-title">Music Player</div>
         </div>
-        <div className="page-actions">
+        <div className="page-actions media-head-search">
           <AddTrack addTrack={addTrack} searchTracks={searchTracks}/>
         </div>
       </div>
@@ -513,8 +534,18 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
   const [uploadFile, setUploadFile] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 640);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   const handleSort = (col) => {
+    // plays + added: immer nur desc, kein Toggle
+    if (col === 'plays' || col === 'added') {
+      setSortBy(col); setSortDir('desc'); return;
+    }
     if (sortBy === col) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
@@ -548,29 +579,53 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
     setUploadName(''); setUploadFile(null); setShowUpload(false);
   };
 
-  const gridCols = `40px minmax(160px,1fr) 70px 72px 68px 84px ${permissions.soundLibrary ? '92px' : '36px'}`;
+  const gridCols = isMobile
+    ? `32px minmax(100px,1fr) 52px ${permissions.soundLibrary ? '88px' : '32px'}`
+    : `40px minmax(160px,1fr) 70px 72px 68px 84px ${permissions.soundLibrary ? '92px' : '36px'}`;
 
   return (
     <div className="content-narrow">
-      <div className="page-head">
-        <div>
-          <div className="page-title">Sound Library</div>
-          <div className="page-sub">Manage your MP3 files. Configured upload limits are enforced by the connected bot.</div>
-        </div>
-        <div className="page-actions">
-          {permissions.soundLibrary && (
-            <a className="btn btn-sm btn-ghost" href={API.sound.downloadAllUrl()} download="sounds.zip">
-              <Icon name="download" size={13}/> Download All
-            </a>
-          )}
-          {permissions.soundLibrary && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowUpload(true)}>
-              <Icon name="upload" size={13}/> Upload
-            </button>
-          )}
+      <div className="page-head media-page-head">
+        <div className="page-title">Sound Library</div>
+        <div className="page-actions media-head-search">
+          <div className="lib-search">
+            <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
+            <input placeholder="Filter…" value={search} autoComplete="off"
+              onChange={e => setSearch(e.target.value)}/>
+          </div>
         </div>
       </div>
 
+      {permissions.soundLibrary && (
+        <div className="media-toolbar-row media-action-row">
+          <a className="btn btn-ghost" href={API.sound.downloadAllUrl()} download="sounds.zip">
+            <Icon name="download" size={13}/> Download All
+          </a>
+          <button className="btn btn-primary" onClick={() => setShowUpload(true)}>
+            <Icon name="upload" size={13}/> Upload
+          </button>
+        </div>
+      )}
+
+      <div className="media-toolbar-row media-sort-row">
+        {[
+          { key: 'plays', label: 'plays', canToggle: false },
+          { key: 'added', label: 'newest', canToggle: false },
+          { key: 'name', label: 'name', canToggle: true },
+          { key: 'duration', label: 'length', canToggle: true },
+          { key: 'size', label: 'size', canToggle: true },
+        ].map(({ key, label, canToggle }) => {
+          const active = sortBy === key;
+          const arrow = active && canToggle ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+          return (
+            <button key={key} type="button" className="btn btn-sm"
+              onClick={() => handleSort(key)}
+              style={active ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'transparent' } : undefined}>
+              {label}{arrow}
+            </button>
+          );
+        })}
+      </div>
       {showUpload && permissions.soundLibrary && (
         <div className="upload-zone" style={{ marginBottom: 16 }} onClick={(e) => e.stopPropagation()}>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -584,16 +639,9 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
         </div>
       )}
 
-      <div className="lib-toolbar">
-        <div className="lib-search">
-          <Icon name="search" size={14} style={{ color: 'var(--text-dim)' }}/>
-          <input placeholder="Filter sounds…" value={search} onChange={e => setSearch(e.target.value)}/>
-        </div>
-      </div>
-
       {deleteConfirm && (
-        <div className="modal-backdrop" onClick={() => setDeleteConfirm(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <h3>Sound löschen?</h3>
             <p><strong>{deleteConfirm}.mp3</strong> wird unwiderruflich gelöscht.</p>
             <div className="modal-actions">
@@ -606,76 +654,164 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
         </div>
       )}
 
-      <div style={{ overflowX: 'auto', borderRadius: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 520, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
-          {/* Header */}
-          <div/>
-          <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} style={{ paddingLeft: 4 }}/>
-          <SortHeader col="duration" label="Length"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <SortHeader col="size"     label="Size"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <SortHeader col="plays"    label="Plays"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <SortHeader col="added"    label="Added"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <div/>
-
-          {/* Rows */}
-          {sorted.map(s => (
-            <div key={s.name} style={{ display: 'contents' }}>
-              <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
-
-              {/* Preview */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
-                <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }} onClick={() => previewSound && previewSound(s)} title="Vorhören (lokal)">
-                  <Icon name="headphones" size={13}/>
-                </button>
-              </div>
-
-              {/* Filename */}
-              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 4px' }}>
-                {editing === s.name ? (
-                  <input className="input" autoFocus value={editVal}
-                    onChange={e => setEditVal(e.target.value)}
-                    onBlur={commitEdit}
-                    onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null); }}
-                    style={{ width: 150 }}/>
-                ) : (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13 }}>{s.name}.mp3</span>
-                )}
-              </div>
-
-              {/* Length */}
-              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.duration}</div>
-
-              {/* Size */}
-              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.size}</div>
-
-              {/* Plays */}
-              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{s.plays}</div>
-
-              {/* Added */}
-              <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(s.addedMs)}</div>
-
-              {/* Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, padding: '10px 8px' }}>
-                {permissions.soundLibrary && (
-                  <a className="btn btn-icon btn-ghost btn-sm" style={{ textDecoration: 'none' }} href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
-                    <Icon name="download" size={12}/>
-                  </a>
-                )}
-                {permissions.soundLibrary && (
-                  <button className="btn btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
-                    <Icon name="edit" size={12}/>
-                  </button>
-                )}
-                {permissions.soundLibrary && (
-                  <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => setDeleteConfirm(s.name)} title="Delete">
-                    <Icon name="trash" size={12}/>
-                  </button>
-                )}
-              </div>
+      {/* ===== MOBILE: List ===== */}
+      {isMobile && (() => {
+        const extraVal = (s) => {
+          switch (sortBy) {
+            case 'plays':    return s.plays;
+            case 'added':    return fmtDate(s.addedMs);
+            case 'size':     return s.size;
+            case 'duration': return s.duration;
+            default:         return null;
+          }
+        };
+        return (
+          <>
+            <div style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+              {sorted.map((s, i) => {
+                const extra = extraVal(s);
+                return (
+                  <div key={s.name}>
+                    {i > 0 && <div style={{ height: 1, background: 'var(--border)', opacity: 0.4 }}/>}
+                    <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr auto auto', alignItems: 'center', gap: 6, padding: '9px 10px 9px 0' }}>
+                      <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }}
+                        onClick={() => previewSound && previewSound(s)} title="Preview">
+                        <Icon name="headphones" size={13}/>
+                      </button>
+                      <div style={{ minWidth: 0 }}>
+                        {editing === s.name ? (
+                          <input className="input" autoFocus value={editVal}
+                            onChange={e => setEditVal(e.target.value)}
+                            onBlur={commitEdit}
+                            onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null); }}/>
+                        ) : (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                            {s.name}.mp3
+                          </span>
+                        )}
+                      </div>
+                      {/* Immer rendern damit Buttons konsistent in Spalte 4 bleiben */}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                        {extra ?? ''}
+                      </span>
+                      <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        {permissions.soundLibrary && (
+                          <a className="btn btn-icon btn-ghost btn-sm" style={{ textDecoration: 'none' }}
+                            href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
+                            <Icon name="download" size={12}/>
+                          </a>
+                        )}
+                        {permissions.soundLibrary && (
+                          <button className="btn btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
+                            <Icon name="edit" size={12}/>
+                          </button>
+                        )}
+                        {permissions.soundLibrary && (
+                          <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--red)' }}
+                            onClick={() => setDeleteConfirm(s.name)} title="Delete">
+                            <Icon name="trash" size={12}/>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          </>
+        );
+      })()}
+
+      {/* ===== DESKTOP: volle Tabelle ===== */}
+      {!isMobile && (
+        <div style={{ overflowX: 'auto', borderRadius: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 520, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+            <div/>
+            <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} style={{ paddingLeft: 4 }}/>
+            <SortHeader col="duration" label="Length"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+            <SortHeader col="size"     label="Size"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+            <SortHeader col="plays"    label="Plays"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+            <SortHeader col="added"    label="Added"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+            <div/>
+            {sorted.map(s => (
+              <div key={s.name} style={{ display: 'contents' }}>
+                <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+                  <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }} onClick={() => previewSound && previewSound(s)} title="Preview">
+                    <Icon name="headphones" size={13}/>
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 4px' }}>
+                  {editing === s.name ? (
+                    <input className="input" autoFocus value={editVal}
+                      onChange={e => setEditVal(e.target.value)} onBlur={commitEdit}
+                      onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(null); }}
+                      style={{ width: 150 }}/>
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13 }}>{s.name}.mp3</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.duration}</div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.size}</div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{s.plays}</div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(s.addedMs)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, padding: '10px 8px' }}>
+                  {permissions.soundLibrary && (
+                    <a className="btn btn-icon btn-ghost btn-sm" style={{ textDecoration: 'none' }} href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
+                      <Icon name="download" size={12}/>
+                    </a>
+                  )}
+                  {permissions.soundLibrary && (
+                    <button className="btn btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
+                      <Icon name="edit" size={12}/>
+                    </button>
+                  )}
+                  {permissions.soundLibrary && (
+                    <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => setDeleteConfirm(s.name)} title="Delete">
+                      <Icon name="trash" size={12}/>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
+
+function SortableQueueItem({ track, num, onJump, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: track.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    // Kein transition — verhindert dass dnd-kit den Reset nochmal animiert
+    opacity: isDragging ? 0.4 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="queue-item" onClick={onJump}>
+      <div className="queue-drag-handle" title="Drag to reorder" {...attributes} {...listeners}
+           onClick={(e) => e.stopPropagation()}>
+        <svg width="8" height="13" viewBox="0 0 10 16" fill="currentColor">
+          <circle cx="2.5" cy="3" r="1.5"/><circle cx="7.5" cy="3" r="1.5"/>
+          <circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/>
+          <circle cx="2.5" cy="13" r="1.5"/><circle cx="7.5" cy="13" r="1.5"/>
+        </svg>
+      </div>
+      <div className="queue-num">{num}</div>
+      <div className="queue-info">
+        <div className="queue-title">{track.title}</div>
+        <div className="queue-sub">
+          <span>{track.artist}</span><span>·</span><span>{track.duration}</span><span>·</span>
+          <Tag kind={track.source === 'Spotify' ? 'success' : 'info'}>{track.source}</Tag>
+        </div>
+      </div>
+      <button className="btn btn-icon btn-sm queue-remove-btn"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }} title="Remove">
+        <Icon name="x" size={12}/>
+      </button>
+    </div>
+  );
+}

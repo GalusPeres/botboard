@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { botIds, hasBot, botStatus, botFetch } from '../botClient.js';
 import { restartContainer, stopContainer, startContainer } from '../docker.js';
-import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot, reorderRegistryBot } from '../botRegistry.js';
+import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot, reorderRegistryBot, setRegistryOrder } from '../botRegistry.js';
 import { config } from '../config.js';
 import { requireAdmin, requirePermission } from '../auth.js';
 import { logActivity } from '../activityLog.js';
@@ -106,8 +106,10 @@ export default function botsRoutes() {
   });
 
   router.get('/modules', async (req, res) => {
+    const snapshot = registrySnapshot();
+    const orderedIds = snapshot.bots.map((b) => b.id);
     const modules = await Promise.all(
-      botIds().map(async (bot) => {
+      orderedIds.map(async (bot) => {
         const [status, manifest] = await Promise.all([
           botStatus(bot),
           botFetch(bot, '/api/manifest', { timeout: 3000 }).catch(() => null),
@@ -133,11 +135,15 @@ export default function botsRoutes() {
 
   router.post('/registry/reorder', requirePermission('botModules'), (req, res) => {
     try {
-      const { id, direction } = req.body || {};
-      if (!id || !['up', 'down'].includes(direction)) {
-        return res.status(400).json({ error: 'id and direction (up|down) required' });
+      const { id, direction, order } = req.body || {};
+      if (Array.isArray(order)) {
+        setRegistryOrder(order);
+      } else {
+        if (!id || !['up', 'down'].includes(direction)) {
+          return res.status(400).json({ error: 'id and direction (up|down) required, or order array' });
+        }
+        reorderRegistryBot(id, direction);
       }
-      reorderRegistryBot(id, direction);
       res.json(registrySnapshot());
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });

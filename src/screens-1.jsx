@@ -70,7 +70,7 @@ export const ServerSelectScreen = ({ servers = [], loading, error, onPick, onLog
   </div>
 );
 
-export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, botStatus, botInfo, statusData, currentSound, sounds = [], soundsCount = 0, queueLength = 0, liveLogs = [] }) => {
+export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, botStatus, botInfo, statusData, currentSound, sounds = [], soundsCount = 0, queueLength = 0, liveLogs = [], permissions = {} }) => {
   const totalPlays = sounds.reduce((sum, sound) => sum + (sound.plays || 0), 0);
   const topSounds = [...sounds].sort((a, b) => b.plays - a.plays).slice(0, 5);
   const mostPlays = topSounds[0]?.plays || 1;
@@ -85,7 +85,7 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
         </div>
       </div>
 
-      <div className="grid grid-2" style={{ marginBottom: 18 }}>
+      <div className="grid grid-2">
         <BotFocusCard
           color="sb"
           icon="soundboard"
@@ -97,7 +97,7 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
           primary={{ label: 'Open Soundboard', icon: 'soundboard', onClick: () => openRoute('bot/sound/soundboard') }}
           secondary={[
             { label: 'Library', icon: 'library', onClick: () => openRoute('bot/sound/library') },
-            { label: 'Settings', icon: 'settings', onClick: () => openRoute('bot/sound/settings') },
+            ...(permissions.settings ? [{ label: 'Settings', icon: 'settings', onClick: () => openRoute('bot/sound/settings') }] : []),
           ]}
           stats={[
             { label: 'Sounds', value: soundsCount },
@@ -115,64 +115,13 @@ export const OverviewScreen = ({ openRoute, currentTrack, voiceJoined, channel, 
           activityMeta={currentTrack ? `${currentTrack.artist} · ${currentTrack.source}` : null}
           primary={{ label: 'Open Music Player', icon: 'music', onClick: () => openRoute('bot/music/player') }}
           secondary={[
-            { label: 'Settings', icon: 'settings', onClick: () => openRoute('bot/music/settings') },
+            ...(permissions.settings ? [{ label: 'Settings', icon: 'settings', onClick: () => openRoute('bot/music/settings') }] : []),
           ]}
           stats={[
             { label: 'Queue', value: queueLength },
             { label: 'Lavalink', value: statusData?.music?.lavalink?.connected ? 'connected' : 'offline', kind: statusData?.music?.lavalink?.connected ? 'success' : 'warn' },
             { label: 'Status', value: botStatus?.music || 'offline', kind: botStatus?.music === 'online' ? 'success' : 'warn' },
           ]}
-        />
-      </div>
-
-      <div className="grid grid-2" style={{ marginBottom: 18 }}>
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">Top sounds - recorded plays</div>
-            <button className="btn btn-ghost btn-sm" onClick={() => openRoute('bot/sound/soundboard')}>Open <Icon name="chevron-right" size={12}/></button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {topSounds.map((s, i) => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', fontSize: 12, width: 14 }}>{i + 1}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13.5, flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                <div style={{ flex: 2, height: 4, background: 'var(--bg-deeper)', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ width: `${(s.plays / mostPlays) * 100}%`, height: '100%', background: 'var(--accent)' }}/>
-                </div>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', width: 40, textAlign: 'right' }}>{s.plays}</span>
-              </div>
-            ))}
-            {topSounds.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No sounds reported.</div>}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">Activity history</div>
-            <div className="page-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('bot/sound/stats')}>{dashboardBotName('sound', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
-              <button className="btn btn-ghost btn-sm" onClick={() => openRoute('bot/music/stats')}>{dashboardBotName('music', botInfo)} stats <Icon name="chevron-right" size={12}/></button>
-            </div>
-          </div>
-          <div className="empty" style={{ padding: '42px 20px' }}>
-            <div>No historical analytics endpoint is available yet.</div>
-            <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 6 }}>Live events from the connected bots appear below.</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-2">
-        <ActivityCard
-          title={`${dashboardBotName('sound', botInfo)} activity`}
-          logs={soundLogs}
-          openLabel="Logs"
-          onOpen={() => openRoute('bot/sound/logs')}
-        />
-        <ActivityCard
-          title={`${dashboardBotName('music', botInfo)} activity`}
-          logs={musicLogs}
-          openLabel="Logs"
-          onOpen={() => openRoute('bot/music/logs')}
         />
       </div>
     </div>

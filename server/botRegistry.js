@@ -63,13 +63,15 @@ export function readRegistryDocument() {
       bots: Object.fromEntries(parsed.filter((bot) => bot?.id).map((bot) => [bot.id, bot])),
     };
   }
-  return { bots: parsed.bots || parsed || {} };
+  return { bots: parsed.bots || parsed || {}, order: parsed.order || [] };
 }
 
 function writeRegistryDocument(doc) {
   const file = registryPath();
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${JSON.stringify({ bots: doc.bots || {} }, null, 2)}\n`);
+  const toWrite = { bots: doc.bots || {} };
+  if (Array.isArray(doc.order)) toWrite.order = doc.order;
+  fs.writeFileSync(file, `${JSON.stringify(toWrite, null, 2)}\n`);
 }
 
 function fileBots(includeDisabled = false) {
@@ -140,6 +142,18 @@ export function registrySnapshot() {
     });
   }
   return { registryPath: registryPath(), bots };
+}
+
+export function setRegistryOrder(order) {
+  if (!Array.isArray(order)) return;
+  const doc = readRegistryDocument();
+  const allIds = Object.keys(botConfigs({ includeDisabled: true }));
+  const valid = order.filter(id => allIds.includes(id));
+  for (const id of allIds) {
+    if (!valid.includes(id)) valid.push(id);
+  }
+  doc.order = valid;
+  writeRegistryDocument(doc);
 }
 
 export function reorderRegistryBot(id, direction) {

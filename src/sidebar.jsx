@@ -284,6 +284,9 @@ export const Topbar = ({
   const [chanOpen, setChanOpen] = useState(false);
   const channelRef = useRef(null);
   useCloseOnOutside(channelRef, chanOpen, () => setChanOpen(false));
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
+  const voiceMenuRef = useRef(null);
+  useCloseOnOutside(voiceMenuRef, voiceMenuOpen, () => setVoiceMenuOpen(false));
 
   // Always show the BOT name in the topbar (page title lives in the content area)
   const sectionTitle = meta.module
@@ -307,8 +310,9 @@ export const Topbar = ({
       </button>
       <span className="topbar-title">{sectionTitle}</span>
       <div className="topbar-spacer"/>
-      {botKey && hasVoiceControls && (
-        <div className="topbar-actions">
+      {botKey && hasVoiceControls && (<>
+        {/* Desktop: volle Voice-Controls + Channel-Chip-Dropdown */}
+        <div className="topbar-actions topbar-voice-full">
           <div className="topbar-voice-actions">
             <button className="btn btn-sm topbar-voice-btn" type="button" onClick={voiceControls[botKey]?.onJoin}>
               <Icon name="speaker" size={12}/> <span>Join</span>
@@ -334,8 +338,7 @@ export const Topbar = ({
                 <div style={{ padding: '6px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Target channel for {sectionTitle}
                 </div>
-                <div className="menu-item"
-                     onClick={() => { setVoiceTarget(botKey, 'auto'); setChanOpen(false); }}
+                <div className="menu-item" onClick={() => { setVoiceTarget(botKey, 'auto'); setChanOpen(false); }}
                      style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Icon name="headphones" size={12} style={{ color: 'var(--text-dim)' }}/>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -364,7 +367,66 @@ export const Topbar = ({
             )}
           </div>
         </div>
-      )}
+
+        {/* Mobile: kompakter Speaker-Button → Dropdown mit allem */}
+        <div className="topbar-voice-compact" ref={voiceMenuRef}>
+          <button className={'topbar-voice-compact-btn' + (connected ? ' connected' : '')}
+                  type="button" onClick={() => setVoiceMenuOpen((o) => !o)}
+                  title="Voice controls">
+            <span className="voice-dot"/>
+            <Icon name="speaker" size={16}/>
+            <Icon name="chevron-down" size={11}/>
+          </button>
+          {voiceMenuOpen && (
+            <div className="menu topbar-voice-compact-menu" style={{ top: '110%', right: 0, minWidth: 220 }}>
+              <div style={{ padding: '6px 10px 4px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Voice · {sectionTitle}
+              </div>
+              <div className="menu-item" onClick={() => { voiceControls[botKey]?.onJoin(); setVoiceMenuOpen(false); }}
+                   style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="speaker" size={13} style={{ color: 'var(--text-dim)' }}/>
+                <span>Join</span>
+              </div>
+              <div className="menu-item" onClick={() => { voiceControls[botKey]?.onStop(); setVoiceMenuOpen(false); }}
+                   style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="stop" size={13} style={{ color: 'var(--text-dim)' }}/>
+                <span>Stop</span>
+              </div>
+              <div className="menu-item" onClick={() => { voiceControls[botKey]?.onDisconnect(); setVoiceMenuOpen(false); }}
+                   style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="x" size={13} style={{ color: 'var(--text-dim)' }}/>
+                <span>Disconnect</span>
+              </div>
+              <div style={{ margin: '4px 10px', borderTop: '1px solid var(--border)' }}/>
+              <div style={{ padding: '4px 10px 4px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Channel
+              </div>
+              <div className="menu-item" onClick={() => setVoiceTarget(botKey, 'auto')}
+                   style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="headphones" size={12} style={{ color: 'var(--text-dim)' }}/>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div>Auto</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                    {userVoiceChannel ? userVoiceChannel.name : 'not in a channel'}
+                  </div>
+                </div>
+                {isAuto && <Icon name="check" size={12}/>}
+              </div>
+              {voiceChannels.map((c) => (
+                <div key={c.id} className="menu-item"
+                     onClick={() => setVoiceTarget(botKey, c.id)}
+                     style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon name="speaker" size={12} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: selection === c.id ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}>
+                    {selection === c.id ? '✓' : (c.users ?? '')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </>)}
     </header>
   );
 };
@@ -377,6 +439,9 @@ export const MobileMoreSheet = ({
   return (
     <div className="mobile-sidebar-backdrop" onClick={onClose}>
       <div className="mobile-sidebar-drawer" onClick={(e) => e.stopPropagation()}>
+        <button className="mobile-drawer-close" type="button" onClick={onClose} title="Schließen">
+          <Icon name="x" size={16}/>
+        </button>
         <Sidebar
           route={route} setRoute={go}
           server={server} servers={servers} onChangeServer={onChangeServer}

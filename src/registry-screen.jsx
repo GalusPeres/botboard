@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Icon, Tag, Toggle } from './components.jsx';
 import * as API from './api.js';
 
@@ -50,6 +53,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const load = async () => {
     setError('');
@@ -79,6 +83,28 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     const rows = registry?.bots || [];
     return rows.map((bot) => ({ ...bot, module: moduleById.get(bot.id) || null }));
   }, [moduleById, registry]);
+
+  const handleDndEnd = async ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const oldIdx = bots.findIndex(b => b.id === active.id);
+    const newIdx = bots.findIndex(b => b.id === over.id);
+    const arr = arrayMove(bots, oldIdx, newIdx);
+    const newOrder = arr.map(b => b.id);
+    setRegistry(prev => prev ? { ...prev, bots: arr } : prev);
+    try {
+      await API.bots.reorderRegistryAll(newOrder);
+      onChanged?.();
+      const [registryData, modulesData] = await Promise.all([
+        API.bots.registry(),
+        API.bots.modules().catch(() => []),
+      ]);
+      setRegistry(registryData);
+      setModules(modulesData || []);
+    } catch (err) {
+      setError(err.message);
+      load();
+    }
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -211,81 +237,29 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
         </div>
       )}
       {!loading && bots.length > 0 && (
-        <div className="registry-list registry-list-single">
-          {bots.map((bot, idx) => (
-            <div className="registry-row" key={bot.id}>
-              {/* Order arrows */}
-              <div className="registry-row-order">
-                <button className="btn-icon btn-ghost btn-sm" type="button" title="Move up"
-                  disabled={idx === 0}
-                  onClick={async () => { await API.bots.reorderRegistry(bot.id, 'up'); await load(); onChanged?.(); }}>
-                  <Icon name="chevron-up" size={13}/>
-                </button>
-                <button className="btn-icon btn-ghost btn-sm" type="button" title="Move down"
-                  disabled={idx === bots.length - 1}
-                  onClick={async () => { await API.bots.reorderRegistry(bot.id, 'down'); await load(); onChanged?.(); }}>
-                  <Icon name="chevron-down" size={13}/>
-                </button>
-              </div>
-              <div className="registry-row-mark">
-                {bot.module?.manifest?.bot?.avatar
-                  ? <img src={bot.module.manifest.bot.avatar} alt=""/>
-                  : <Icon name={bot.module?.manifest?.icon || 'grid'} size={16}/>}
-              </div>
-              <div className="registry-row-main">
-                <div className="registry-row-title">
-                  <span>{bot.module?.manifest?.displayName || bot.name || bot.id}</span>
-                  {!bot.enabled && <Tag kind="warn">disabled</Tag>}
-                  <Tag kind={statusKind(bot.module)}>{statusText(bot.module)}</Tag>
-                </div>
-                <div className="registry-row-url">{bot.url}</div>
-                <div className="registry-row-tags">
-                  {(bot.module?.manifest?.capabilities || []).slice(0, 7).map((capability) => (
-                    <span key={capability}>{capability}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="registry-row-actions">
-                {restartEnabled && bot.module?.online && (
-                  <>
-                    {onStop && (
-                      <button className="btn btn-sm" type="button" onClick={() => onStop(bot.id)} title="Stop">
-                        <Icon name="stop" size={12}/>
-                      </button>
-                    )}
-                    {onRestart && (
-                      <button className="btn btn-sm" type="button" onClick={() => onRestart(bot.id)} title="Restart">
-                        <Icon name="refresh" size={12}/>
-                      </button>
-                    )}
-                  </>
-                )}
-                {restartEnabled && !bot.module?.online && onStart && (
-                  <button className="btn btn-sm btn-primary" type="button" onClick={() => onStart(bot.id)} title="Start">
-                    <Icon name="play" size={12}/>
-                  </button>
-                )}
-                <button className="btn btn-sm" type="button" onClick={() => startEdit(bot)}>
-                  <Icon name="edit" size={12}/> Edit
-                </button>
-                {bot.registryBacked && (
-                  bot.envDefault
-                    ? <button className="btn btn-sm" type="button" onClick={() => remove(bot)}>
-                        <Icon name="refresh" size={12}/> Reset
-                      </button>
-                    : <button className="btn btn-sm btn-danger" type="button" onClick={() => remove(bot)}>
-                        <Icon name="trash" size={12}/> Remove
-                      </button>
-                )}
-              </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDndEnd}>
+          <SortableContext items={bots.map(b => b.id)} strategy={verticalListSortingStrategy}>
+            <div className="registry-list">
+              {bots.map((bot) => (
+                <SortableBot
+                  key={bot.id}
+                  bot={bot}
+                  restartEnabled={restartEnabled}
+                  onStop={onStop}
+                  onRestart={onRestart}
+                  onStart={onStart}
+                  onEdit={() => startEdit(bot)}
+                  onRemove={() => remove(bot)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {formOpen && (
-        <div className="modal-backdrop" onClick={closeForm}>
-          <form className="modal registry-modal" onSubmit={submit} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) closeForm(); }}>
+          <form className="modal registry-modal" onSubmit={submit} onMouseDown={(e) => e.stopPropagation()}>
             <h3>{editing ? 'Edit bot' : 'Add bot'}</h3>
 
             {error && <div className="settings-notice registry-error" style={{ marginBottom: 14 }}>{error}</div>}
@@ -338,6 +312,86 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+function SortableBot({ bot, restartEnabled, onStop, onRestart, onStart, onEdit, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bot.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative',
+  };
+
+  function statusKind(module) {
+    if (!module) return 'warn';
+    return module.online ? 'success' : 'error';
+  }
+  function statusText(module) {
+    if (!module) return 'not loaded';
+    return module.online ? 'online' : module.status?.error || 'offline';
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="registry-row">
+      <div className="registry-drag-handle" title="Drag to reorder" {...attributes} {...listeners}>
+        <svg width="12" height="20" viewBox="0 0 10 16" fill="currentColor">
+          <circle cx="2.5" cy="3" r="1.5"/><circle cx="7.5" cy="3" r="1.5"/>
+          <circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/>
+          <circle cx="2.5" cy="13" r="1.5"/><circle cx="7.5" cy="13" r="1.5"/>
+        </svg>
+      </div>
+      <div className="registry-row-top">
+        <div className="registry-row-mark">
+          {bot.module?.manifest?.bot?.avatar
+            ? <img src={bot.module.manifest.bot.avatar} alt=""/>
+            : <Icon name={bot.module?.manifest?.icon || 'grid'} size={16}/>}
+        </div>
+        <div className="registry-row-info">
+          <div className="registry-row-title">
+            <span>{bot.module?.manifest?.displayName || bot.name || bot.id}</span>
+            {!bot.enabled && <Tag kind="warn">disabled</Tag>}
+            <Tag kind={statusKind(bot.module)}>{statusText(bot.module)}</Tag>
+          </div>
+          <div className="registry-row-url">{bot.url}</div>
+        </div>
+      </div>
+      <div className="registry-row-actions">
+        {restartEnabled && bot.module?.online && (
+          <>
+            {onStop && (
+              <button className="btn btn-icon" type="button" onClick={() => onStop(bot.id)} title="Stop">
+                <Icon name="stop" size={14}/>
+              </button>
+            )}
+            {onRestart && (
+              <button className="btn btn-icon" type="button" onClick={() => onRestart(bot.id)} title="Restart">
+                <Icon name="refresh" size={14}/>
+              </button>
+            )}
+          </>
+        )}
+        {restartEnabled && !bot.module?.online && onStart && (
+          <button className="btn btn-icon btn-primary" type="button" onClick={() => onStart(bot.id)} title="Start">
+            <Icon name="play" size={14}/>
+          </button>
+        )}
+        <button className="btn" type="button" onClick={onEdit}>
+          <Icon name="edit" size={13}/> Edit
+        </button>
+        {bot.registryBacked && (
+          bot.envDefault
+            ? <button className="btn" type="button" onClick={onRemove}>
+                <Icon name="refresh" size={13}/> Reset
+              </button>
+            : <button className="btn btn-danger" type="button" onClick={onRemove}>
+                <Icon name="trash" size={13}/> Remove
+              </button>
+        )}
+      </div>
     </div>
   );
 }

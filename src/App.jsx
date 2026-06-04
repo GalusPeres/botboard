@@ -56,6 +56,16 @@ export default function App() {
   const [route, setRouteRaw] = useHashRoute('overview');
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
+  // Lock body scroll when mobile drawer is open (iOS workaround)
+  useEffect(() => {
+    if (moreSheetOpen) {
+      document.body.classList.add('drawer-open');
+    } else {
+      document.body.classList.remove('drawer-open');
+    }
+    return () => document.body.classList.remove('drawer-open');
+  }, [moreSheetOpen]);
+
   const perms = user?.permissions || {};
   const setRoute = (next) => {
     if (['bot-modules'].includes(next) && !perms.botModules) return;
@@ -713,8 +723,9 @@ function DashboardApp(props) {
             voiceJoined={!!soundTarget} channel={soundTarget || { name: 'voice' }}
             botStatus={botStatus} currentSound={currentSound}
             botInfo={botInfo} statusData={statusData} liveLogs={liveLogs}
-            sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}/>}
-          {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); }}
+            sounds={sounds} soundsCount={sounds.length} queueLength={playerState.queue.length}
+            permissions={perms}/>}
+          {route === 'bot-modules' && <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); updateModuleOrder([]); }}
             restartEnabled={restartEnabled && !!perms.restartBot}
             onRestart={restartBot} onStop={stopBot} onStart={startBot}/>}
           {route === 'admin' && <AdminScreen currentUserId={user?.id} server={server}/>}
@@ -929,8 +940,8 @@ const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) 
   const names = { sound: dynamicNames.sound || 'Sound Bot', music: dynamicNames.music || 'Music Bot', all: 'both bots' };
   const label = names[which] || dynamicNames[which] || which;
   return (
-    <div className="modal-backdrop" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <h3>Restart {label}?</h3>
         <p>
           {which === 'music'

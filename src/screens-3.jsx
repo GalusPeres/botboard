@@ -1063,8 +1063,8 @@ export const PatchWatcherScreen = ({ botId, botName, guildId, setToast }) => {
 
       {/* Add Source modal */}
       {sourceFormOpen && (
-        <div className="modal-backdrop" onClick={() => setSourceFormOpen(false)}>
-          <form className="modal registry-modal" onSubmit={saveSourceFn} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setSourceFormOpen(false); }}>
+          <form className="modal registry-modal" onSubmit={saveSourceFn} onMouseDown={(e) => e.stopPropagation()}>
             <h3>{editingSource ? 'Edit source' : 'Add source'}</h3>
             <label className="registry-field">
               <span>Name</span>

@@ -214,7 +214,7 @@ ul, ol { list-style: none; }
 .sidebar-section-group.collapsed .bot-collapse-btn svg { transform: rotate(-90deg); }
 .sidebar-separator {
   height: 0;
-  margin: 0 12px;
+  margin: 0 8px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }

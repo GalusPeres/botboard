@@ -533,7 +533,11 @@ const ICON_BTN = {
   transition: 'background 0.1s, color 0.1s',
 };
 
+const LIBRARY_COMPACT_WIDTH = 880;
+const initialLibraryCompact = () => typeof window !== 'undefined' && window.innerWidth <= 1300;
+
 export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, previewSound, permissions = {} }) => {
+  const libraryRef = useRef(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('plays');
   const [sortDir, setSortDir] = useState('desc');
@@ -543,11 +547,21 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
   const [uploadFile, setUploadFile] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
+  const [isMobile, setIsMobile] = useState(initialLibraryCompact);
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth <= 900);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
+    const measure = () => {
+      const width = libraryRef.current?.getBoundingClientRect().width || window.innerWidth;
+      setIsMobile(width < LIBRARY_COMPACT_WIDTH);
+    };
+    measure();
+    const node = libraryRef.current;
+    const observer = node && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (node && observer) observer.observe(node);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, []);
 
   const handleSort = (col) => {
@@ -593,7 +607,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
     : `40px minmax(160px,1fr) 70px 72px 68px 84px ${permissions.soundLibrary ? '92px' : '36px'}`;
 
   return (
-    <div className="content-narrow">
+    <div ref={libraryRef} className={`content-narrow library-screen ${isMobile ? 'library-screen-compact' : 'library-screen-full'}`}>
       <div className="page-head media-page-head">
         <div className="page-title">Sound Library</div>
         <div className="page-actions media-head-search">
@@ -754,8 +768,8 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
 
       {/* ===== DESKTOP: volle Tabelle ===== */}
       {!isMobile && (
-        <div style={{ overflowX: 'auto', borderRadius: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: permissions.soundLibrary ? 706 : 650, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)' }}>
+        <div className="library-table-wrap">
+          <div className="library-table-grid" style={{ gridTemplateColumns: gridCols }}>
             <div/>
             <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} style={{ paddingLeft: 4 }}/>
             <SortHeader col="duration" label="Length"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>

@@ -539,6 +539,7 @@ ul, ol { list-style: none; }
 .main {
   display: grid;
   grid-template-rows: 64px 1fr;
+  min-width: 0;
   overflow: hidden;
 }
 .topbar {
@@ -546,6 +547,7 @@ ul, ol { list-style: none; }
   background: var(--bg);
   display: flex;
   align-items: center;
+  min-width: 0;
   padding: 0 28px;
   gap: 16px;
 }
@@ -629,11 +631,13 @@ ul, ol { list-style: none; }
 .voice-chip.connected .voice-dot { background: var(--green); box-shadow: 0 0 0 3px oklch(0.78 0.15 155 / 0.2); }
 
 .content {
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 28px;
 }
-.content-narrow { max-width: 1240px; margin: 0 auto; }
+.content-narrow { width: 100%; max-width: 1240px; min-width: 0; margin: 0 auto; }
 
 /* ===== Common: Cards, Buttons, Inputs ===== */
 .card {
@@ -1251,6 +1255,21 @@ ul, ol { list-style: none; }
 }
 .library-mobile-actions .btn-icon.btn-sm {
   flex: 0 0 28px;
+}
+.library-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.library-table-grid {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
 }
 
 .table {

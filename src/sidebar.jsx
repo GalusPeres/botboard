@@ -198,8 +198,9 @@ export const Sidebar = ({
 
 export const SidebarSection = ({ name, fixed = false, collapsed = false, onToggle, children }) => {
   const collapsible = typeof onToggle === 'function';
+  const sectionKey = String(name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return (
-    <div className={'sidebar-section-group' + (fixed ? ' fixed' : '') + (collapsed ? ' collapsed' : '')}>
+    <div className={'sidebar-section-group section-' + sectionKey + (fixed ? ' fixed' : '') + (collapsed ? ' collapsed' : '')}>
       <div
         className={'sidebar-section-head' + (collapsible ? ' collapsible' : '')}
         onClick={collapsible ? onToggle : undefined}

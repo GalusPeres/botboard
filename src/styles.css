@@ -212,6 +212,20 @@ ul, ol { list-style: none; }
 }
 .sidebar-section-nav[hidden] { display: none; }
 .sidebar-section-group.collapsed .bot-collapse-btn svg { transform: rotate(-90deg); }
+.sidebar-section-group.section-general::after,
+.sidebar-section-group.section-manage::before {
+  content: '';
+  display: block;
+  height: 1px;
+  margin-inline: 10px;
+  background: var(--border);
+}
+.sidebar-section-group.section-general::after {
+  margin-top: 12px;
+}
+.sidebar-section-group.section-manage::before {
+  margin-bottom: 12px;
+}
 .sidebar-bots-scroll {
   flex: 1;
   min-height: 0;
@@ -223,10 +237,6 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding-top: 12px;
-  padding-bottom: 12px;
 }
 .sidebar-bots-scroll::-webkit-scrollbar { width: 5px; }
 .sidebar-bots-scroll::-webkit-scrollbar-track { background: transparent; }

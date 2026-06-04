@@ -194,7 +194,7 @@ ul, ol { list-style: none; }
 }
 .sidebar-section-head.collapsible:hover { background: var(--surface); }
 .sidebar-section-name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   color: var(--text);
   font-size: 13.5px;
@@ -211,7 +211,7 @@ ul, ol { list-style: none; }
   padding-left: 10px;
 }
 .sidebar-section-nav[hidden] { display: none; }
-.sidebar-section-group.collapsed .bot-collapse-btn { transform: rotate(-90deg); }
+.sidebar-section-group.collapsed .bot-collapse-btn svg { transform: rotate(-90deg); }
 .sidebar-bots-scroll {
   flex: 1;
   min-height: 0;
@@ -339,14 +339,14 @@ ul, ol { list-style: none; }
   color: var(--text);
   border: 1px solid var(--border-strong);
 }
-.bot-group-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.bot-group-info { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; }
 .bot-group-name {
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   /* Fade-out statt harter Abschnitt oder Zeilenumbruch */
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
@@ -387,7 +387,8 @@ ul, ol { list-style: none; }
   flex-shrink: 0;
 }
 .bot-collapse-btn:hover { background: var(--surface-2); color: var(--text); }
-.bot-group.collapsed .bot-collapse-btn { transform: rotate(-90deg); }
+.bot-collapse-btn svg { transition: transform 0.12s; }
+.bot-group.collapsed .bot-collapse-btn svg { transform: rotate(-90deg); }
 
 .bot-restart-btn {
   width: 24px; height: 24px;
@@ -399,6 +400,7 @@ ul, ol { list-style: none; }
   transition: color 0.12s, background 0.12s;
   cursor: pointer;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .bot-restart-btn:hover { background: var(--surface-2); color: var(--text); }
 .bot-restart-btn.spinning { color: var(--amber); animation: rotate 1.2s linear infinite; }

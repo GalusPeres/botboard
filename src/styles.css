@@ -912,6 +912,16 @@ ul, ol { list-style: none; }
   max-width: 1240px;
   margin: 0 auto;
 }
+/* Wrapper ist der Query-Container (misst die echte verfügbare Breite).
+   container-type nur hier, NICHT auf .content — sonst würde .content zum
+   Bezugsrahmen für position:fixed (z.B. .modal-backdrop) und das Modal
+   würde nicht mehr den ganzen Viewport abdecken. */
+.player-wrap { container-type: inline-size; }
+/* Sobald der Inhaltsbereich (nicht der Viewport) zu schmal wird, stapeln —
+   verhindert die gequetschte 2-Spalten-Ansicht wenn die Sidebar Platz frisst. */
+@container (max-width: 820px) {
+  .player { grid-template-columns: 1fr; }
+}
 .now-playing {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1222,10 +1232,12 @@ ul, ol { list-style: none; }
 }
 .library-mobile-head {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 86px 104px;
+  grid-template-columns: 40px minmax(0, 1fr) 86px 104px;
   align-items: center;
   column-gap: 12px;
-  padding: 11px 12px 9px;
+  /* Linker Einzug kommt aus der 40px-Spalte (wie in der vollen Tabelle),
+     damit der Spaltenanfang beim Breakpoint nicht springt. */
+  padding: 10px 12px 10px 0;
   border-bottom: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -1236,11 +1248,13 @@ ul, ol { list-style: none; }
 }
 .library-mobile-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 86px 104px;
+  grid-template-columns: 40px minmax(0, 1fr) 86px 104px;
   align-items: center;
   column-gap: 12px;
-  padding: 9px 12px;
+  padding: 10px 12px 10px 0;
 }
+/* Vorschau-Button in der ersten Spalte zentrieren — wie in der vollen Tabelle */
+.library-mobile-row > .btn:first-child { justify-self: center; }
 .library-mobile-head span:nth-child(3),
 .library-mobile-row > span {
   text-align: right;
@@ -1667,17 +1681,29 @@ ul, ol { list-style: none; }
 .media-page-head {
   align-items: center;
   margin-bottom: 14px;
+  flex-wrap: nowrap !important; /* Search bleibt IMMER in der Titelzeile */
 }
+/* Linke Seite immer min. so hoch wie Titel+Subtitle → Searchbox wirkt gleich groß auf allen Screens */
+.media-page-head > :first-child {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+/* Webkit cancel-button (X) bei type=search verstecken */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration { display: none; }
 .media-head-search {
-  flex: 1 1 320px;
+  flex: 1 1 0;
   justify-content: flex-end;
-  min-width: 220px;
+  min-width: 80px;
+  max-width: 280px;
 }
 .media-head-search .lib-search,
 .media-head-search .track-search-inline {
   flex: 0 1 280px;
   width: min(280px, 100%);
-  min-width: 180px;
+  min-width: 0;
 }
 .media-head-search .track-search-inline .lib-search {
   width: 100%;
@@ -2004,9 +2030,12 @@ ul, ol { list-style: none; }
     justify-content: space-between;
   }
 
-  /* Voice controls: Desktop-Version verstecken, Compact zeigen */
+}
+/* Bei ≤1024px: kompakter Topbar + Music Player single-column */
+@media (max-width: 1024px) {
   .topbar-voice-full { display: none !important; }
   .topbar-voice-compact { display: block; }
+  .player { grid-template-columns: 1fr; }
 }
 
 /* Kein separater 400px-Breakpoint mehr nötig — Compact-Button löst das */
@@ -2465,9 +2494,9 @@ ul, ol { list-style: none; }
 
 @media (max-width: 560px) {
   .media-head-search {
-    flex: 0 1 min(260px, calc(50% - 5px));
-    max-width: min(260px, calc(50% - 5px));
-    min-width: 0;
+    flex: 1 1 0;
+    max-width: 200px;
+    min-width: 80px;
     margin-left: auto;
   }
   .media-head-search .lib-search,

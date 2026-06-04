@@ -37,8 +37,13 @@ export const SoundboardScreen = ({ playSound, previewSound, currentSound, curren
         </div>
         <div className="page-actions media-head-search">
           <div className="lib-search">
-            <Icon name="search" size={13} style={{ color: 'var(--text-dim)' }}/>
-            <input placeholder="Search…" value={search} autoComplete="off" onChange={e => setSearch(e.target.value)}/>
+            <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
+            <input type="search" placeholder="Search…" value={search}
+              autoComplete="off" autoCorrect="off" autoCapitalize="none"
+              spellCheck="false" aria-autocomplete="none"
+              data-lpignore="true" data-1p-ignore="true"
+              data-bwignore="true" data-form-type="other"
+              onChange={e => setSearch(e.target.value)}/>
           </div>
         </div>
       </div>
@@ -289,6 +294,7 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, pla
       </div>
       {playerError && <div className="settings-notice registry-error" style={{ marginBottom: 16 }}>Player refresh failed: {playerError.message}</div>}
     </div>
+    <div className="player-wrap">
     <div className="player">
       <div className="now-playing">
         <div className="cover-art">
@@ -388,6 +394,7 @@ export const MusicScreen = ({ playerState, dispatch, addTrack, searchTracks, pla
           </DndContext>
         </div>
       </div>
+    </div>
     </div>
     </>
   );
@@ -514,9 +521,10 @@ function SortHeader({ col, label, sortBy, sortDir, onSort, style }) {
   const active = sortBy === col;
   return (
     <div onClick={() => onSort(col)} style={{
-      padding: '10px 8px', fontSize: 10, fontWeight: 600,
-      color: active ? 'var(--text)' : 'var(--text-dim)',
-      textTransform: 'uppercase', letterSpacing: '0.07em',
+      padding: '10px 12px',
+      fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700,
+      color: active ? 'var(--text)' : 'var(--text-muted)',
+      textTransform: 'uppercase', letterSpacing: '0.06em',
       cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
       userSelect: 'none', whiteSpace: 'nowrap', ...style,
     }}>
@@ -533,7 +541,7 @@ const ICON_BTN = {
   transition: 'background 0.1s, color 0.1s',
 };
 
-const LIBRARY_COMPACT_WIDTH = 880;
+const LIBRARY_COMPACT_WIDTH = 600;
 const initialLibraryCompact = () => typeof window !== 'undefined' && window.innerWidth <= 1300;
 
 export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, previewSound, permissions = {} }) => {
@@ -609,11 +617,13 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
   return (
     <div ref={libraryRef} className={`content-narrow library-screen ${isMobile ? 'library-screen-compact' : 'library-screen-full'}`}>
       <div className="page-head media-page-head">
-        <div className="page-title">Sound Library</div>
+        <div>
+          <div className="page-title">Sound Library</div>
+        </div>
         <div className="page-actions media-head-search">
           <div className="lib-search">
             <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
-            <input placeholder="Search..." value={search}
+            <input type="search" placeholder="Search..." value={search}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
@@ -709,7 +719,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
               <div className="library-mobile-head">
                 <span/>
                 <span>Filename</span>
-                {extraLabel && <span>{extraLabel}</span>}
+                <span>{extraLabel}</span>
                 <span/>
               </div>
               {sorted.map((s, i) => {
@@ -771,12 +781,13 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
         <div className="library-table-wrap">
           <div className="library-table-grid" style={{ gridTemplateColumns: gridCols }}>
             <div/>
-            <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} style={{ paddingLeft: 4 }}/>
+            <SortHeader col="name"     label="Filename" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
             <SortHeader col="duration" label="Length"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
             <SortHeader col="size"     label="Size"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
             <SortHeader col="plays"    label="Plays"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
             <SortHeader col="added"    label="Added"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
             <div/>
+            <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)' }}/>
             {sorted.map(s => (
               <div key={s.name} style={{ display: 'contents' }}>
                 <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--border)', opacity: 0.5 }}/>
@@ -785,7 +796,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
                     <Icon name="headphones" size={13}/>
                   </button>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px' }}>
                   {editing === s.name ? (
                     <input className="input" autoFocus value={editVal}
                       onChange={e => setEditVal(e.target.value)} onBlur={commitEdit}
@@ -795,11 +806,11 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
                     <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13 }}>{s.name}.mp3</span>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.duration}</div>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.size}</div>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{s.plays}</div>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 8px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(s.addedMs)}</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, padding: '10px 8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.duration}</div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{s.size}</div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600 }}>{s.plays}</div>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{fmtDate(s.addedMs)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, padding: '10px 12px' }}>
                   {permissions.soundLibrary && (
                     <a className="btn btn-icon btn-ghost btn-sm" style={{ textDecoration: 'none' }} href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
                       <Icon name="download" size={12}/>

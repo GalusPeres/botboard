@@ -1623,11 +1623,12 @@ ul, ol { list-style: none; }
 }
 .media-toolbar-row {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
 }
 .media-action-row {
+  justify-content: flex-end;
   margin-bottom: 10px;
 }
 .media-sort-row {
@@ -1872,7 +1873,7 @@ ul, ol { list-style: none; }
   .track-search-inline { flex: 1; min-width: 0; }
   .track-search-inline .lib-search { width: auto !important; flex: 1 !important; min-width: 0 !important; }
   /* Suchergebnis-Dropdown linksbündig */
-  .track-results-pop { right: auto; left: 0; width: calc(100vw - 28px); max-width: 400px; }
+  .track-results-pop { right: 0; left: auto; width: min(400px, calc(100vw - 28px)); max-width: none; }
 
   /* Settings stack */
   .settings-row { grid-template-columns: 1fr; gap: 8px; padding: 14px 16px; }
@@ -1944,7 +1945,7 @@ ul, ol { list-style: none; }
   /* Row mit Wrap — kein Column, sonst landen Buttons in eigener Zeile */
   .page-head { flex-direction: row; align-items: center; flex-wrap: wrap; }
   .page-actions { flex-wrap: wrap; }
-  .page-actions > .lib-search { width: 100%; }
+  .page-actions > .lib-search { width: auto; }
 
   /* Sound tiles smaller */
   .sound-grid.size-sm,
@@ -2390,12 +2391,17 @@ ul, ol { list-style: none; }
 
 @media (max-width: 560px) {
   .media-head-search {
-    flex-basis: 100%;
+    flex: 0 0 calc(50% - 5px);
+    max-width: calc(50% - 5px);
+    min-width: 0;
+    margin-left: auto;
   }
   .media-head-search .lib-search,
   .media-head-search .track-search-inline {
-    flex-basis: 100%;
-    max-width: none;
+    flex: 0 0 100%;
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0;
   }
   .media-action-row .btn {
     flex: 1 1 auto;

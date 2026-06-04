@@ -127,6 +127,8 @@ export const Sidebar = ({
         {permissions.userManagement && <NavItem id="botboard-logs" route={route} setRoute={setRoute} icon="logs" label="Live Logs"/>}
       </SidebarSection>
 
+      <SidebarSeparator/>
+
       <div className="sidebar-bots-scroll">
         {visibleModules.map((module) => {
           const pages = permissions.settings
@@ -166,6 +168,8 @@ export const Sidebar = ({
         })}
       </div>
 
+      <SidebarSeparator/>
+
       {(permissions.botModules || permissions.userManagement) && (
         <SidebarSection
           name="Manage"
@@ -195,6 +199,8 @@ export const Sidebar = ({
     </aside>
   );
 };
+
+const SidebarSeparator = () => <div className="sidebar-separator" aria-hidden="true"/>;
 
 export const SidebarSection = ({ name, fixed = false, collapsed = false, onToggle, children }) => {
   const collapsible = typeof onToggle === 'function';

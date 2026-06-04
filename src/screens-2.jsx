@@ -705,7 +705,7 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
                     {i > 0 && <div style={{ height: 1, background: 'var(--border)', opacity: 0.4 }}/>}
                     <div className="library-mobile-row">
                       <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--accent)' }}
-                        onClick={() => previewSound && previewSound(s)} title="Preview">
+                        onClick={() => previewSound && previewSound(s)} aria-label="Preview">
                         <Icon name="headphones" size={13}/>
                       </button>
                       <div style={{ minWidth: 0 }}>
@@ -724,21 +724,21 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
                         {extra ?? ''}
                       </span>
-                      <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      <div className="library-mobile-actions">
                         {permissions.soundLibrary && (
                           <a className="btn btn-icon btn-ghost btn-sm" style={{ textDecoration: 'none' }}
-                            href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} title="Download">
+                            href={API.sound.downloadUrl(s.name)} download={`${s.name}.mp3`} aria-label="Download">
                             <Icon name="download" size={12}/>
                           </a>
                         )}
                         {permissions.soundLibrary && (
-                          <button className="btn btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} title="Rename">
+                          <button className="btn btn-icon btn-ghost btn-sm" onClick={() => startEdit(s)} aria-label="Rename">
                             <Icon name="edit" size={12}/>
                           </button>
                         )}
                         {permissions.soundLibrary && (
                           <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--red)' }}
-                            onClick={() => setDeleteConfirm(s.name)} title="Delete">
+                            onClick={() => setDeleteConfirm(s.name)} aria-label="Delete">
                             <Icon name="trash" size={12}/>
                           </button>
                         )}

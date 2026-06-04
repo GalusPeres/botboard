@@ -346,11 +346,9 @@ ul, ol { list-style: none; }
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   flex: 0 1 auto;
   min-width: 0;
-  /* Fade-out statt harter Abschnitt oder Zeilenumbruch */
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
-  mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
 }
 .bot-group-status {
   display: inline-flex;

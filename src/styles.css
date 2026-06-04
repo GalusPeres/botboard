@@ -217,15 +217,15 @@ ul, ol { list-style: none; }
   content: '';
   display: block;
   height: 1px;
-  margin-inline: 0;
+  margin-inline: 12px;
   background: var(--border);
 }
 .sidebar-section-group.section-general::after {
   margin-top: 8px;
-  margin-bottom: -6px;
+  margin-bottom: -14px;
 }
 .sidebar-section-group.section-manage::before {
-  margin-top: -6px;
+  margin-top: -14px;
   margin-bottom: 8px;
 }
 .sidebar-bots-scroll > .bot-group:first-child {
@@ -240,6 +240,8 @@ ul, ol { list-style: none; }
   scrollbar-gutter: stable;
   margin-right: -8px;
   padding-right: 8px;
+  padding-top: 8px;
+  padding-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;

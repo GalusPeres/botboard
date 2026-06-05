@@ -168,6 +168,18 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     setFormOpen(false);
   };
 
+  const toggleEnabled = async (bot) => {
+    setError('');
+    setNotice('');
+    try {
+      await API.bots.updateRegistry(bot.id, { enabled: !bot.enabled });
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const remove = async (bot) => {
     const display = bot.module?.manifest?.displayName || bot.name || 'this bot';
     const action = bot.envDefault ? `Reset ${display}?` : `Remove ${display} from Botboard?`;
@@ -250,6 +262,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
                   onStart={onStart}
                   onEdit={() => startEdit(bot)}
                   onRemove={() => remove(bot)}
+                  onToggleEnabled={() => toggleEnabled(bot)}
                 />
               ))}
             </div>
@@ -315,7 +328,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
   );
 }
 
-function SortableBot({ bot, restartEnabled, onStop, onRestart, onStart, onEdit, onRemove }) {
+function SortableBot({ bot, restartEnabled, onStop, onRestart, onStart, onEdit, onRemove, onToggleEnabled }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bot.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -359,6 +372,11 @@ function SortableBot({ bot, restartEnabled, onStop, onRestart, onStart, onEdit, 
         </div>
       </div>
       <div className="registry-row-actions">
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 'auto', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
+          title="Im Dashboard / der Sidebar anzeigen">
+          Visible
+          <Toggle on={bot.enabled} onClick={onToggleEnabled}/>
+        </label>
         {restartEnabled && bot.module?.online && (
           <>
             {onStop && (

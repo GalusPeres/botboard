@@ -100,8 +100,10 @@ export const Sidebar = ({
   const userInitial = displayName.charAt(0).toUpperCase();
 
   const serverBotIds = Array.isArray(server?.bots) ? new Set(server.bots) : null;
-  const botVisibleOnServer = (id) => !serverBotIds || serverBotIds.has(id);
-  const visibleModules = modules.filter((m) => botVisibleOnServer(m.id));
+  // Container-/Gameserver-Module hängen an keiner Discord-Guild → immer sichtbar.
+  // Discord-Bots nur, wenn sie in diesem Server sind.
+  const botVisibleOnServer = (m) => m.manifest?.type === 'container' || !serverBotIds || serverBotIds.has(m.id);
+  const visibleModules = modules.filter(botVisibleOnServer);
 
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('botboard:collapsed-groups') || '{}'); } catch { return {}; }
@@ -176,7 +178,7 @@ export const Sidebar = ({
           collapsed={!!collapsedGroups.__manage}
           onToggle={() => toggleGroup('__manage')}
         >
-          {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Bots"/>}
+          {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Modules"/>}
           {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
           {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
         </SidebarSection>

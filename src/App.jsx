@@ -887,7 +887,7 @@ const BotboardSettingsScreen = ({ server, modules }) => (
         <ManageSettingsRow label="Members" help="Member count reported by Discord.">
           <span className="settings-value">{server?.members ?? '-'}</span>
         </ManageSettingsRow>
-        <ManageSettingsRow label="Active modules" help="Bots visible for this server.">
+        <ManageSettingsRow label="Active modules" help="Modules visible for this server.">
           <span className="settings-value">{modules.length}</span>
         </ManageSettingsRow>
       </div>

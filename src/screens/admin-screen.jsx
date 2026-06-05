@@ -10,7 +10,7 @@ const PERM_LABELS = {
   restartBot:     'Restart',
   soundLibrary:   'Library',
   settings:       'Settings',
-  botModules:     'Bots',
+  botModules:     'Modules',
   userManagement: 'Roles',
 };
 

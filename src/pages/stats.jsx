@@ -163,7 +163,7 @@ export const GenericStatsScreen = ({ botId, botName }) => {
             {(visibleStats.cards || []).map((card) => (
               <div className="stat-card" key={card.key || card.label}>
                 <div className="stat-label">{card.label}</div>
-                <div className="stat-value">{String(card.value ?? '-')}</div>
+                <div className={`stat-value${card.key === 'mem' ? ' stat-value-compact' : ''}`}>{String(card.value ?? '-')}</div>
               </div>
             ))}
           </div>

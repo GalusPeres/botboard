@@ -771,6 +771,10 @@ ul, ol { list-style: none; }
   font-feature-settings: "tnum" 1;
   margin-top: 2px;
 }
+.stat-value-compact {
+  font-size: clamp(20px, 1.55vw, 26px);
+  white-space: nowrap;
+}
 .stat-trend {
   display: flex;
   align-items: center;

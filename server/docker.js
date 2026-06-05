@@ -72,8 +72,13 @@ function containerCpuPercent(cur) {
   const c = cur?.cpu_stats;
   const p = cur?.precpu_stats;
   if (!c?.cpu_usage || !p?.cpu_usage) return null;
-  const cpuDelta = c.cpu_usage.total_usage - p.cpu_usage.total_usage;
-  const sysDelta = c.system_cpu_usage - p.system_cpu_usage;
+  const currentCpu = Number(c.cpu_usage.total_usage);
+  const previousCpu = Number(p.cpu_usage.total_usage);
+  const currentSystem = Number(c.system_cpu_usage);
+  const previousSystem = Number(p.system_cpu_usage);
+  if (![currentCpu, previousCpu, currentSystem, previousSystem].every(Number.isFinite)) return null;
+  const cpuDelta = currentCpu - previousCpu;
+  const sysDelta = currentSystem - previousSystem;
   if (sysDelta <= 0 || cpuDelta < 0) return 0;
   return (cpuDelta / sysDelta) * 100;
 }
@@ -112,9 +117,9 @@ export async function containerStats(bot) {
   let memUsed = 0;
   let memLimit = 0;
   if (running) {
-    // Docker includes the previous sample in the response. Using that exact
-    // pair matches Unraid's normalized Docker view and avoids a second wait.
-    const cur = await container.stats({ stream: false, 'one-shot': true });
+    // A non-streaming request waits for Docker's paired CPU samples and
+    // returns both current and previous values in one response.
+    const cur = await container.stats({ stream: false });
     cpu = containerCpuPercent(cur);
     // Unraid shows the container's cgroup usage including filesystem cache.
     memUsed = cur?.memory_stats?.usage || 0;

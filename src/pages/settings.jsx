@@ -87,18 +87,18 @@ const ServicesBlock = ({ botKey, botStatus, canRestart, canStartStop, onStart, o
       <div style={{ display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap', alignItems: 'center' }}>
         <Tag kind={online ? 'success' : 'error'}><span className="dot"/> {botStatus || 'offline'}</Tag>
         {canStartStop && !online && (
-          <button className="btn btn-sm btn-primary" type="button" onClick={() => onStart(botKey)}>
-            <Icon name="play" size={13}/> Start
+          <button className="btn btn-primary" type="button" onClick={() => onStart(botKey)}>
+            <Icon name="play" size={15}/> Start
           </button>
         )}
         {canStartStop && online && (
-          <button className="btn btn-sm" type="button" onClick={() => onStop(botKey)}>
-            <Icon name="stop" size={13}/> Stop
+          <button className="btn" type="button" onClick={() => onStop(botKey)}>
+            <Icon name="stop" size={15}/> Stop
           </button>
         )}
         {canRestart && online && (
-          <button className="btn btn-sm" type="button" onClick={() => onRestart(botKey)}>
-            <Icon name="refresh" size={13}/> Restart
+          <button className="btn" type="button" onClick={() => onRestart(botKey)}>
+            <Icon name="refresh" size={15}/> Restart
           </button>
         )}
       </div>

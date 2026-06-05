@@ -71,7 +71,7 @@ export default function App() {
   const setRoute = (next) => {
     if (['bot-modules'].includes(next) && !perms.botModules) return;
     if (['admin', 'botboard-logs', 'manage-navigation', 'manage-settings'].includes(next) && !perms.userManagement) return;
-    if (String(next).endsWith('/settings') && !perms.settings) return;
+    if (String(next).endsWith('/settings') && !(perms.settings || perms.restartBot || perms.startStop)) return;
     setRouteRaw(next);
   };
 
@@ -101,7 +101,12 @@ export default function App() {
     'manage-settings': 'userManagement',
   };
   useEffect(() => {
-    const required = ROUTE_PERM[route] || (String(route).endsWith('/settings') ? 'settings' : null);
+    if (String(route).endsWith('/settings')) {
+      // Settings-Seite ist offen für Config ODER Restart ODER Start/Stop.
+      if (!(perms.settings || perms.restartBot || perms.startStop)) setRouteRaw('overview');
+      return;
+    }
+    const required = ROUTE_PERM[route];
     if (required && perms[required] === false) setRouteRaw('overview');
   }, [perms]);
 

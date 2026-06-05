@@ -1,11 +1,35 @@
 // Statistik-Seite (sound/music bespoke + generisch).
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Icon, Tag } from '../ui/components.jsx';
 import { dashboardBotName } from '../lib/botIdentity.js';
 import { usePoll } from '../lib/hooks.js';
 import * as API from '../lib/api.js';
 
 const containerStatsCache = new Map();
+const STATS_CACHE_MAX_AGE_MS = 60 * 60 * 1000;
+
+function readContainerStatsCache(botId) {
+  const memory = containerStatsCache.get(botId);
+  if (memory) return memory;
+  try {
+    const cached = JSON.parse(localStorage.getItem(`botboard:container-stats:${botId}`) || 'null');
+    if (cached?.data && Date.now() - cached.savedAt < STATS_CACHE_MAX_AGE_MS) {
+      containerStatsCache.set(botId, cached.data);
+      return cached.data;
+    }
+  } catch {}
+  return null;
+}
+
+function writeContainerStatsCache(botId, stats) {
+  containerStatsCache.set(botId, stats);
+  try {
+    localStorage.setItem(`botboard:container-stats:${botId}`, JSON.stringify({
+      savedAt: Date.now(),
+      data: stats,
+    }));
+  } catch {}
+}
 
 function uptime(ms) {
   if (!Number.isFinite(ms)) return 'not available';
@@ -126,8 +150,18 @@ export const GenericStatsScreen = ({ botId, botName }) => {
     [botId],
   );
   const [refreshing, setRefreshing] = useState(false);
-  if (stats) containerStatsCache.set(botId, stats);
-  const visibleStats = stats || containerStatsCache.get(botId);
+  const [cachedStats, setCachedStats] = useState(() => readContainerStatsCache(botId));
+  const visibleStats = stats || cachedStats;
+
+  useEffect(() => {
+    setCachedStats(readContainerStatsCache(botId));
+  }, [botId]);
+
+  useEffect(() => {
+    if (!stats) return;
+    writeContainerStatsCache(botId, stats);
+    setCachedStats(stats);
+  }, [botId, stats]);
 
   const refresh = async () => {
     if (refreshing) return;

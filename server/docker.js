@@ -6,6 +6,8 @@ import { config } from './config.js';
 import { botConfigs, botContainer } from './botRegistry.js';
 
 let docker = null;
+const statsStreams = new Map();
+
 function client() {
   if (!docker) docker = new Docker({ socketPath: config.dockerSocket });
   return docker;
@@ -83,6 +85,68 @@ function containerCpuPercent(cur) {
   return (cpuDelta / sysDelta) * 100;
 }
 
+function hasCpuSample(stats) {
+  return containerCpuPercent(stats) != null;
+}
+
+async function liveContainerStats(name, container) {
+  const existing = statsStreams.get(name);
+  if (existing?.sample && hasCpuSample(existing.sample)) return existing.sample;
+  if (existing?.ready) return existing.ready;
+
+  let resolveReady;
+  let rejectReady;
+  const entry = {
+    sample: existing?.sample || null,
+    ready: new Promise((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+    }),
+  };
+  const ready = entry.ready;
+  statsStreams.set(name, entry);
+
+  try {
+    const stream = await container.stats({ stream: true });
+    entry.stream = stream;
+    let buffer = '';
+
+    stream.on('data', (chunk) => {
+      buffer += chunk.toString('utf8');
+      let newline;
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (!line) continue;
+        try {
+          const sample = JSON.parse(line);
+          entry.sample = sample;
+          if (entry.ready && hasCpuSample(sample)) {
+            resolveReady(sample);
+            entry.ready = null;
+          }
+        } catch {
+          // Ignore an incomplete frame; the next Docker stats frame is complete.
+        }
+      }
+    });
+
+    const reset = (error) => {
+      if (statsStreams.get(name) !== entry) return;
+      statsStreams.delete(name);
+      if (entry.ready) rejectReady(error || new Error(`stats stream ended for ${name}`));
+    };
+    stream.once('error', reset);
+    stream.once('end', () => reset());
+    stream.once('close', () => reset());
+  } catch (error) {
+    statsStreams.delete(name);
+    rejectReady(error);
+  }
+
+  return ready;
+}
+
 // Demux Docker's multiplexed log stream (8-byte frame headers) unless the
 // container runs with a TTY (then the buffer is raw text).
 function decodeLogs(buffer, tty) {
@@ -117,9 +181,9 @@ export async function containerStats(bot) {
   let memUsed = 0;
   let memLimit = 0;
   if (running) {
-    // A non-streaming request waits for Docker's paired CPU samples and
-    // returns both current and previous values in one response.
-    const cur = await container.stats({ stream: false });
+    // Keep one Docker stats stream per container, like Unraid's live view.
+    // Requests then use the latest complete one-second sample immediately.
+    const cur = await liveContainerStats(info.Id || name, container);
     cpu = containerCpuPercent(cur);
     // Unraid shows the container's cgroup usage including filesystem cache.
     memUsed = cur?.memory_stats?.usage || 0;
@@ -130,7 +194,7 @@ export async function containerStats(bot) {
   return {
     cards: [
       { key: 'status', label: 'Status', value: info.State?.Status || 'unknown' },
-      { key: 'cpu', label: 'Container CPU', value: cpu == null ? '-' : `${cpu.toFixed(1)} %` },
+      { key: 'cpu', label: 'Container CPU', value: cpu == null ? '-' : `${cpu.toFixed(2)} %` },
       { key: 'mem', label: 'Memory', value: memLimit ? `${formatMemory(memUsed, 3)} / ${formatMemory(memLimit, 2)}` : formatMemory(memUsed, 3) },
       { key: 'uptime', label: 'Uptime', value: running ? fmtUptime(up) : '-' },
     ],

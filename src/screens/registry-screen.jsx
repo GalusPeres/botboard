@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Icon, Tag, Toggle } from './components.jsx';
-import * as API from './api.js';
+import { Icon, Tag, Toggle } from '../ui/components.jsx';
+import * as API from '../lib/api.js';
 
 const EMPTY_FORM = {
   id: '',

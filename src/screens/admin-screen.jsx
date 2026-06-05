@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Icon } from './components.jsx';
-import { useFetch } from './hooks.js';
-import * as API from './api.js';
-import { relativeTime } from './format.js';
+import { Icon } from '../ui/components.jsx';
+import { useFetch } from '../lib/hooks.js';
+import * as API from '../lib/api.js';
+import { relativeTime } from '../lib/format.js';
 
 const PERMISSIONS = ['controlBot', 'restartBot', 'soundLibrary', 'settings', 'botModules', 'userManagement'];
 const PERM_LABELS = {

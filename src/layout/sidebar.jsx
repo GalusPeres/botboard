@@ -3,9 +3,9 @@
 // Route format for all bots: bot/:moduleId/:pageId
 // Topbar always shows the BOT name; page screens show their own content title.
 import React, { useRef, useState } from 'react';
-import { Icon } from './components.jsx';
-import { dashboardBotName, moduleAvatar, moduleDisplayName } from './botIdentity.js';
-import { useCloseOnOutside } from './hooks.js';
+import { Icon } from '../ui/components.jsx';
+import { dashboardBotName, moduleAvatar, moduleDisplayName } from '../lib/botIdentity.js';
+import { useCloseOnOutside } from '../lib/hooks.js';
 
 // Only truly static routes (no bot association)
 export const ROUTES = {

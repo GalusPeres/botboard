@@ -2,20 +2,21 @@
 // All mutating actions go through src/api.js; reads are either one-shot
 // (useFetch) or periodic (usePoll). Logs come in via SSE.
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Sidebar, Topbar, MobileMoreSheet, routeMeta } from './sidebar.jsx';
-import { Icon } from './components.jsx';
-import { LoginScreen, ServerSelectScreen, OverviewScreen } from './screens-1.jsx';
-import { SoundboardScreen, MusicScreen, LibraryScreen } from './screens-2.jsx';
-import { StatsScreen, SoundbotSettingsScreen, NewibotSettingsScreen, LogsScreen, GenericStatsScreen, GenericSettingsScreen, PatchWatcherScreen } from './screens-3.jsx';
-import { BotRegistryScreen } from './registry-screen.jsx';
-import { AdminScreen } from './admin-screen.jsx';
-import { dashboardBotName, moduleDisplayName } from './botIdentity.js';
-import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './tweaks-panel.jsx';
-import * as API from './api.js';
-import { useFetch, usePoll, useSSE, useHashRoute } from './hooks.js';
-import { adaptTrack, adaptSound, normalizeLog, msToClock, formatBytes, relativeTime } from './format.js';
-import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo, savedModules, saveModules, savedModuleOrder, saveModuleOrder } from './storage.js';
-import { SETTING_MAP_MUSIC, SETTING_MAP_SOUND, mapSettingsPatch, mergeSettings } from './settings-map.js';
+import { Sidebar, Topbar, MobileMoreSheet, routeMeta } from './layout/sidebar.jsx';
+import { Icon } from './ui/components.jsx';
+import { LoginScreen, ServerSelectScreen } from './screens/auth.jsx';
+import { OverviewScreen } from './screens/overview.jsx';
+import { LogsScreen } from './pages/logs.jsx';
+import PAGE_RENDERERS from './pages/registry.js';
+import { BotRegistryScreen } from './screens/registry-screen.jsx';
+import { AdminScreen } from './screens/admin-screen.jsx';
+import { dashboardBotName, moduleDisplayName } from './lib/botIdentity.js';
+import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor } from './layout/tweaks-panel.jsx';
+import * as API from './lib/api.js';
+import { useFetch, usePoll, useSSE, useHashRoute } from './lib/hooks.js';
+import { adaptTrack, adaptSound, normalizeLog, msToClock, formatBytes, relativeTime } from './lib/format.js';
+import { savedUser, saveUser, savedServer, saveServer, savedVoiceTargets, saveVoiceTargets, clearVoiceTargets, savedBotInfo, saveBotInfo, savedModules, saveModules, savedModuleOrder, saveModuleOrder } from './lib/storage.js';
+import { SETTING_MAP_MUSIC, SETTING_MAP_SOUND, mapSettingsPatch, mergeSettings } from './lib/settings-map.js';
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   accent: 'lime',
@@ -695,6 +696,18 @@ function DashboardApp(props) {
   const activeGenericKind = activeMeta.module ? (activeMeta.page?.kind || activeMeta.page?.id) : '';
   const activeGenericName = activeMeta.module ? moduleDisplayName(activeMeta.module, activeMeta.parentBot) : '';
 
+  // Geteilter Kontext für die Page-Kind-Registry (siehe PAGE_RENDERERS).
+  const pageCtx = {
+    sounds, currentSound, currentPreview, playSound, previewSound, resolveTarget,
+    addSound, deleteSound, renameSound, perms,
+    playerState, dispatchPlayer, addMusic, searchMusic, playerError,
+    botStatus, botInfo, statusData, soundStats, musicStats,
+    liveLogs, logConnection,
+    settings, saveSettings, soundSettings, musicSettings,
+    restartEnabled, setRestartConfirm, stopBot, startBot,
+    guildId, setToast, tweaks,
+  };
+
   return (
     <div className="app">
       <Sidebar route={route} setRoute={setRoute}
@@ -752,59 +765,16 @@ function DashboardApp(props) {
             return (module.manifest?.pages || []).map(page => {
               const kind    = page.kind || page.id;
               const visible = activeMeta.parentBot === parentBot && activeGenericKind === kind;
+              const render  = PAGE_RENDERERS[kind];
               return (
                 <div key={`${parentBot}/${page.id}`} hidden={!visible}>
-                  {kind === 'soundboard' && (
-                    <SoundboardScreen sounds={sounds} currentSound={currentSound} currentPreview={currentPreview}
-                      playSound={playSound} previewSound={previewSound}
-                      tileSize={tweaks.tileSize} targetChannel={resolveTarget(parentBot)}/>
-                  )}
-                  {kind === 'file-library' && (
-                    <LibraryScreen sounds={sounds}
-                      addSound={addSound} deleteSound={deleteSound} renameSound={renameSound} previewSound={previewSound} permissions={perms}/>
-                  )}
-                  {kind === 'music-player' && (
-                    <MusicScreen playerState={playerState} dispatch={dispatchPlayer} addTrack={addMusic} searchTracks={searchMusic}
-                      playerStyle={tweaks.playerStyle} playerError={playerError}/>
-                  )}
-                  {kind === 'stats' && (
-                    parentBot === 'sound' ? (
-                      <StatsScreen bot="sound" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} apiStats={soundStats}/>
-                    ) : parentBot === 'music' ? (
-                      <StatsScreen bot="music" sounds={sounds} botStatus={botStatus} botInfo={botInfo} statusData={statusData} queueLength={playerState.queue.length} apiStats={musicStats}/>
-                    ) : (
-                      <GenericStatsScreen botId={parentBot} botName={botName}/>
-                    )
-                  )}
-                  {kind === 'logs' && (
-                    <LogsScreen bot={parentBot} botName={botName} liveLogs={liveLogs} connection={logConnection}/>
-                  )}
-                  {kind === 'settings' && (
-                    parentBot === 'sound' ? (
-                      <SoundbotSettingsScreen settings={settings} onSave={(patch) => saveSettings('sound', patch)}
-                        settingsLoaded={!!soundSettings} botStatus={botStatus.sound} botName={botName}
-                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}
-                        onStop={stopBot} onStart={startBot}/>
-                    ) : parentBot === 'music' ? (
-                      <NewibotSettingsScreen settings={settings} onSave={(patch) => saveSettings('music', patch)}
-                        settingsLoaded={!!musicSettings} botStatus={botStatus.music} botName={botName}
-                        restartEnabled={restartEnabled} onRestart={(b) => setRestartConfirm(b)}
-                        onStop={stopBot} onStart={startBot}/>
-                    ) : (
-                      <GenericSettingsScreen botId={parentBot} botName={botName} setToast={setToast}
-                        botStatus={botStatus[parentBot]} restartEnabled={restartEnabled && !!perms.restartBot}
-                        onRestart={() => setRestartConfirm(parentBot)}
-                        onStop={stopBot} onStart={startBot}/>
-                    )
-                  )}
-                  {kind === 'patch-watcher' && (
-                    <PatchWatcherScreen botId={parentBot} botName={botName} guildId={guildId} setToast={setToast}/>
-                  )}
-                  {!['soundboard','file-library','music-player','stats','logs','settings','patch-watcher'].includes(kind) && (
-                    <div className="content-narrow">
-                      <div className="empty"><div>No renderer for page kind "{kind}".</div></div>
-                    </div>
-                  )}
+                  {render
+                    ? render({ ...pageCtx, parentBot, botName })
+                    : (
+                      <div className="content-narrow">
+                        <div className="empty"><div>No renderer for page kind "{kind}".</div></div>
+                      </div>
+                    )}
                 </div>
               );
             });

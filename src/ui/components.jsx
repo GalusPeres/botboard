@@ -156,3 +156,44 @@ export const fmtDur = (s) => {
   const m = Math.floor(s / 60), r = Math.floor(s % 60);
   return `${m}:${r.toString().padStart(2, '0')}`;
 };
+
+// Einheitliches Such-Feld (Lupe + Input). Einzige Quelle der Wahrheit für die
+// Lupengröße (flexShrink) und den Bündel an Autocomplete-/Passwort-Manager-aus-
+// Attributen, die sonst an jeder Call-Site kopiert wurden.
+export const SearchField = ({
+  value, onChange, placeholder = 'Search…',
+  type = 'search', onFocus, onKeyDown, className = '', inputProps = {},
+}) => (
+  <div className={'lib-search' + (className ? ' ' + className : '')}>
+    <Icon name="search" size={13} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="none"
+      spellCheck="false"
+      aria-autocomplete="none"
+      data-lpignore="true"
+      data-1p-ignore="true"
+      data-bwignore="true"
+      data-form-type="other"
+      {...inputProps}
+    />
+  </div>
+);
+
+// Labeled settings/detail row (label + help + control).
+export const Row = ({ label, help, children }) => (
+  <div className="settings-row">
+    <div className="settings-label-col">
+      <div className="settings-label">{label}</div>
+      {help && <div className="settings-help">{help}</div>}
+    </div>
+    <div className="settings-control">{children}</div>
+  </div>
+);

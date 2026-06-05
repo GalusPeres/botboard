@@ -744,7 +744,8 @@ function DashboardApp(props) {
               gegated, damit kein unnötiger Fetch für Unberechtigte läuft. */}
           {!!perms.botModules && (
             <div hidden={route !== 'bot-modules'}>
-              <BotRegistryScreen onChanged={() => { reloadStatus(); reloadModules(); updateModuleOrder([]); }}
+              <BotRegistryScreen modules={allModules}
+                onChanged={() => { reloadStatus(); reloadModules(); updateModuleOrder([]); }}
                 restartEnabled={restartEnabled && !!perms.restartBot}
                 onRestart={restartBot} onStop={stopBot} onStart={startBot}/>
             </div>

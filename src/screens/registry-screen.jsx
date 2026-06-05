@@ -42,9 +42,8 @@ function statusText(module) {
   return module.online ? 'online' : module.status?.error || 'offline';
 }
 
-export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop, onStart }) {
+export function BotRegistryScreen({ modules = [], onChanged, restartEnabled, onRestart, onStop, onStart }) {
   const [registry, setRegistry] = useState(null);
-  const [modules, setModules] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -59,12 +58,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     setError('');
     if (showLoading) setLoading(true);
     try {
-      const [registryData, modulesData] = await Promise.all([
-        API.bots.registry(),
-        API.bots.modules().catch(() => []),
-      ]);
-      setRegistry(registryData);
-      setModules(modulesData || []);
+      setRegistry(await API.bots.registry());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -94,12 +88,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     try {
       await API.bots.reorderRegistryAll(newOrder);
       onChanged?.();
-      const [registryData, modulesData] = await Promise.all([
-        API.bots.registry(),
-        API.bots.modules().catch(() => []),
-      ]);
-      setRegistry(registryData);
-      setModules(modulesData || []);
+      setRegistry(await API.bots.registry());
     } catch (err) {
       setError(err.message);
       load();

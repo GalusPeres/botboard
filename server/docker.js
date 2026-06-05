@@ -49,7 +49,12 @@ function containerHandle(bot) {
   return { name, container: client().getContainer(name) };
 }
 
-const toMb = (bytes) => Math.round((bytes || 0) / (1024 * 1024));
+function formatMemory(bytes) {
+  const value = Math.max(0, Number(bytes) || 0);
+  const gib = value / (1024 ** 3);
+  if (gib >= 0.1) return `${gib.toFixed(2)} GiB`;
+  return `${Math.round(value / (1024 ** 2))} MiB`;
+}
 
 function fmtUptime(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '-';
@@ -61,17 +66,16 @@ function fmtUptime(ms) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-// Match `docker stats`: 100% means one fully used logical CPU. A container
-// using multiple CPU threads can therefore exceed 100%.
+// Match Unraid's container overview: the container's share of the machine's
+// total CPU capacity. This stays directly comparable to Unraid's percentage.
 function containerCpuPercentDelta(prev, cur) {
   const c = cur?.cpu_stats;
   const p = prev?.cpu_stats;
   if (!c?.cpu_usage || !p?.cpu_usage) return null;
   const cpuDelta = c.cpu_usage.total_usage - p.cpu_usage.total_usage;
   const sysDelta = c.system_cpu_usage - p.system_cpu_usage;
-  const cores = c.online_cpus || c.cpu_usage.percpu_usage?.length || 1;
   if (sysDelta <= 0 || cpuDelta < 0) return 0;
-  return (cpuDelta / sysDelta) * cores * 100;
+  return (cpuDelta / sysDelta) * 100;
 }
 
 // Demux Docker's multiplexed log stream (8-byte frame headers) unless the
@@ -113,9 +117,8 @@ export async function containerStats(bot) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const cur = await container.stats({ stream: false });
     cpu = containerCpuPercentDelta(prev, cur);
-    // Docker's reported memory excludes the page cache (inactive_file).
-    const cache = cur?.memory_stats?.stats?.inactive_file ?? cur?.memory_stats?.stats?.cache ?? 0;
-    memUsed = Math.max(0, (cur?.memory_stats?.usage || 0) - cache);
+    // Unraid shows the container's cgroup usage including filesystem cache.
+    memUsed = cur?.memory_stats?.usage || 0;
     memLimit = cur?.memory_stats?.limit || 0;
   }
   const up = info.State?.StartedAt ? Date.now() - new Date(info.State.StartedAt).getTime() : NaN;
@@ -124,7 +127,7 @@ export async function containerStats(bot) {
     cards: [
       { key: 'status', label: 'Status', value: info.State?.Status || 'unknown' },
       { key: 'cpu', label: 'Container CPU', value: cpu == null ? '-' : `${cpu.toFixed(1)} %` },
-      { key: 'mem', label: 'Memory', value: memLimit ? `${toMb(memUsed)} / ${toMb(memLimit)} MB` : `${toMb(memUsed)} MB` },
+      { key: 'mem', label: 'Memory', value: memLimit ? `${formatMemory(memUsed)} / ${formatMemory(memLimit)}` : formatMemory(memUsed) },
       { key: 'uptime', label: 'Uptime', value: running ? fmtUptime(up) : '-' },
     ],
     health: [

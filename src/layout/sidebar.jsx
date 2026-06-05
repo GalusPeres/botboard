@@ -10,7 +10,7 @@ import { useCloseOnOutside } from '../lib/hooks.js';
 // Only truly static routes (no bot association)
 export const ROUTES = {
   overview:        { title: 'Overview',    group: 'gen' },
-  'bot-modules':   { title: 'Bots',        group: 'manage' },
+  'bot-modules':   { title: 'Modules',     group: 'manage' },
   'admin':         { title: 'Roles',       group: 'manage' },
   'botboard-logs': { title: 'Live Logs',   group: 'gen' },
   'manage-settings':   { title: 'Settings',   group: 'manage' },

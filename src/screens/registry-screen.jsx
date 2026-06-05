@@ -127,10 +127,10 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
       };
       if (editing) {
         await API.bots.updateRegistry(editing, payload);
-        setNotice('Bot saved.');
+        setNotice('Module saved.');
       } else {
         await API.bots.addRegistry(payload);
-        setNotice('Bot added.');
+        setNotice('Module added.');
       }
       setForm(EMPTY_FORM);
       setEditing(null);
@@ -209,11 +209,11 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     <div className="content-narrow registry-screen">
       <div className="page-head">
         <div>
-          <div className="page-title">Bots</div>
+          <div className="page-title">Modules</div>
         </div>
         <div className="page-actions">
           <button className="btn btn-primary" type="button" onClick={startAdd}>
-            <Icon name="plus" size={13}/> Add bot
+            <Icon name="plus" size={13}/> Add module
           </button>
           <button className="btn" type="button" onClick={load} disabled={loading}>
             <Icon name="refresh" size={13}/> Refresh
@@ -225,15 +225,15 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
       {notice && <div className="settings-notice registry-notice" style={{ marginBottom: 18 }}>{notice}</div>}
 
       <div className="registry-subhead">
-        <div className="card-title">Registered bots</div>
-        <Tag kind="info">{bots.length} bots</Tag>
+        <div className="card-title">Registered modules</div>
+        <Tag kind="info">{bots.length} modules</Tag>
       </div>
 
-      {loading && <div className="empty"><div>Loading bots...</div></div>}
+      {loading && <div className="empty"><div>Loading modules...</div></div>}
       {!loading && bots.length === 0 && (
         <div className="empty">
           <div className="empty-icon">+</div>
-          <div>No bots registered yet.</div>
+          <div>No modules registered yet.</div>
         </div>
       )}
       {!loading && bots.length > 0 && (
@@ -260,7 +260,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
       {formOpen && (
         <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) closeForm(); }}>
           <form className="modal registry-modal" onSubmit={submit} onMouseDown={(e) => e.stopPropagation()}>
-            <h3>{editing ? 'Edit bot' : 'Add bot'}</h3>
+            <h3>{editing ? 'Edit module' : 'Add module'}</h3>
 
             {error && <div className="settings-notice registry-error" style={{ marginBottom: 14 }}>{error}</div>}
             {notice && <div className="settings-notice registry-notice" style={{ marginBottom: 14 }}>{notice}</div>}
@@ -268,7 +268,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
             <label className="registry-field">
               <span>Name</span>
               <input className="input" value={form.name}
-                placeholder="My Bot"
+                placeholder="My Module"
                 required autoFocus
                 onChange={(event) => setForm((value) => {
                   const name = event.target.value;
@@ -277,10 +277,9 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
             </label>
 
             <label className="registry-field">
-              <span>API URL</span>
+              <span>API URL (optional)</span>
               <input className="input" value={form.url}
                 placeholder="http://localhost:3003"
-                required
                 onChange={(event) => setForm((value) => ({ ...value, url: event.target.value }))}/>
             </label>
 
@@ -306,7 +305,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
               </button>
               <button className="btn btn-primary" type="submit" disabled={saving}>
                 <Icon name={editing ? 'check' : 'plus'} size={13}/>
-                {saving ? 'Saving...' : editing ? 'Save changes' : 'Add bot'}
+                {saving ? 'Saving...' : editing ? 'Save changes' : 'Add module'}
               </button>
             </div>
           </form>

@@ -29,10 +29,12 @@ function validateUrl(url) {
 }
 
 function normalizeBot(id, raw, source) {
-  if (!raw?.url) return null;
+  // A module needs at least a way to reach it: an HTTP API URL (own bot)
+  // or a container name (managed purely via the Docker socket).
+  if (!raw?.url && !raw?.container) return null;
   return {
     id,
-    url: validateUrl(raw.url),
+    url: raw.url ? validateUrl(raw.url) : '',
     container: raw.container || '',
     name: raw.name || '',
     enabled: raw.enabled !== false,
@@ -180,7 +182,7 @@ export function upsertRegistryBot(id, input) {
   const existing = current.bots?.[id] || {};
   const next = normalizeBot(id, { ...existing, ...input }, 'file');
   if (!next) {
-    const error = new Error('bot url is required');
+    const error = new Error('a module needs an API URL or a container name');
     error.status = 400;
     throw error;
   }

@@ -1,10 +1,36 @@
 import { Router } from 'express';
 import { botIds, hasBot, botStatus, botFetch } from '../botClient.js';
-import { restartContainer, stopContainer, startContainer } from '../docker.js';
+import { restartContainer, stopContainer, startContainer, containerStatus, containerStats, containerLogs } from '../docker.js';
 import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot, reorderRegistryBot, setRegistryOrder } from '../botRegistry.js';
 import { config } from '../config.js';
 import { requireAdmin, requirePermission } from '../auth.js';
 import { logActivity } from '../activityLog.js';
+
+// A module with a container name but NO API URL is managed purely via the
+// Docker socket (raw container / gameserver) — its pages are synthesized here.
+function isContainerModule(bot) {
+  const cfg = botConfig(bot);
+  return !!(cfg && cfg.container && !cfg.url);
+}
+
+function containerManifest(bot) {
+  const cfg = botConfig(bot);
+  const name = cfg?.name?.trim() || bot;
+  return {
+    apiVersion: 1,
+    id: bot,
+    type: 'container',
+    name,
+    displayName: name,
+    description: 'Docker container',
+    icon: 'container',
+    capabilities: ['control', 'stats', 'logs'],
+    pages: [
+      { id: 'stats', kind: 'stats', title: 'Statistics' },
+      { id: 'logs', kind: 'container-logs', title: 'Logs' },
+    ],
+  };
+}
 
 function configuredName(bot) {
   const cfg = botConfig(bot);
@@ -101,7 +127,12 @@ export default function botsRoutes() {
   const router = Router();
 
   router.get('/', async (req, res) => {
-    const statuses = await Promise.all(botIds().map(async (bot) => [bot, withConfiguredName(bot, await botStatus(bot))]));
+    const statuses = await Promise.all(botIds().map(async (bot) => {
+      const status = isContainerModule(bot)
+        ? await containerStatus(bot).catch((err) => ({ online: false, error: err.message }))
+        : await botStatus(bot);
+      return [bot, withConfiguredName(bot, status)];
+    }));
     res.json(Object.fromEntries(statuses));
   });
 
@@ -110,6 +141,15 @@ export default function botsRoutes() {
     const orderedIds = snapshot.bots.map((b) => b.id);
     const modules = await Promise.all(
       orderedIds.map(async (bot) => {
+        if (isContainerModule(bot)) {
+          const status = await containerStatus(bot).catch((err) => ({ online: false, error: err.message }));
+          return {
+            id: bot,
+            online: status.online,
+            status: withConfiguredName(bot, status),
+            manifest: withConfiguredManifestName(bot, containerManifest(bot)),
+          };
+        }
         const [status, manifest] = await Promise.all([
           botStatus(bot),
           botFetch(bot, '/api/manifest', { timeout: 3000 }).catch(() => null),
@@ -222,6 +262,27 @@ export default function botsRoutes() {
       res.json(result);
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  // Container-Module: Stats/Logs aus dem Docker-Socket. HTTP-Bots fallen per
+  // next() durch zum generischen Proxy (unverändertes Verhalten).
+  router.get('/:bot/stats', async (req, res, next) => {
+    if (!isContainerModule(req.params.bot)) return next();
+    try {
+      res.json(await containerStats(req.params.bot));
+    } catch (err) {
+      res.status(err.status || 502).json({ error: err.message });
+    }
+  });
+
+  router.get('/:bot/logs/tail', async (req, res, next) => {
+    if (!isContainerModule(req.params.bot)) return next();
+    try {
+      const tail = Math.min(2000, Number(req.query.tail) || 300);
+      res.json({ lines: await containerLogs(req.params.bot, tail) });
+    } catch (err) {
+      res.status(err.status || 502).json({ error: err.message });
     }
   });
 

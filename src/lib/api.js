@@ -54,6 +54,7 @@ export const bots = {
 
 export const moduleApi = {
   stats: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/stats`),
+  containerLogs: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/logs/tail`),
   settings: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/settings`),
   settingsSchema: (bot) => api(`/api/bots/${encodeURIComponent(bot)}/settings/schema`),
   saveSettings: (bot, patch) => api(`/api/bots/${encodeURIComponent(bot)}/settings`, { method: 'PUT', body: patch }),

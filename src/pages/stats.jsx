@@ -118,7 +118,7 @@ export const StatsScreen = ({ bot, sounds = [], botStatus, botInfo, statusData, 
 export const GenericStatsScreen = ({ botId, botName }) => {
   // Screen bleibt dank CSS-hidden gemountet — kein Remount beim Seitenwechsel,
   // daher kein Loading-Flash. Daten bleiben im lokalen State erhalten.
-  const { data: stats, error, reload } = usePoll(
+  const { data: stats, error, loading, reload } = usePoll(
     () => API.moduleApi.stats(botId),
     5000,
     [botId],
@@ -137,6 +137,11 @@ export const GenericStatsScreen = ({ botId, botName }) => {
         </div>
       </div>
       {error && <div className="settings-notice registry-error">Stats failed: {error.message}</div>}
+      {loading && !stats && (
+        <div className="empty">
+          <div>Measuring container statistics...</div>
+        </div>
+      )}
       {stats && (
         <>
           <div className="grid grid-4" style={{ marginBottom: 16 }}>

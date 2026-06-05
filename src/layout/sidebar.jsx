@@ -132,7 +132,10 @@ export const Sidebar = ({
 
       <div className="sidebar-bots-scroll">
         {visibleModules.map((module) => {
-          const pages = permissions.settings
+          // Settings-Seite enthält jetzt Services (Start/Stop/Restart) + Configuration.
+          // Sichtbar, wenn man mindestens eines der Rechte hat.
+          const canSeeSettings = permissions.settings || permissions.restartBot || permissions.startStop;
+          const pages = canSeeSettings
             ? modulePages(module)
             : modulePages(module).filter((p) => (p.kind || p.id) !== 'settings');
           if (pages.length === 0) return null;

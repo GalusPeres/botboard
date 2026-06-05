@@ -60,41 +60,51 @@ function useEditableSettings(settings, fields, onSave, settingsLoaded) {
   return { draft, setField, pending, feedback, commit, reset };
 }
 
-const SettingsHeader = ({ title, subtitle, botStatus, restartEnabled, botKey, onRestart, onStop, onStart, onReset, resetting, resetDisabled }) => (
+const SettingsHeader = ({ title, subtitle, onReset, resetting, resetDisabled }) => (
   <div className="page-head">
     <div>
       <div className="page-title">{title}</div>
       <div className="page-sub">{subtitle}</div>
     </div>
     <div className="page-actions">
-      <Tag kind={botStatus === 'online' ? 'success' : 'error'}><span className="dot"/> {botStatus || 'offline'}</Tag>
       {onReset && (
         <button className="btn btn-sm" type="button" onClick={onReset} disabled={resetting || resetDisabled}>
           <Icon name="refresh" size={13}/> {resetting ? 'Resetting...' : 'Reset page'}
         </button>
       )}
-      {restartEnabled && botStatus !== 'online' && onStart && (
-        <button className="btn btn-sm btn-primary" type="button" onClick={() => onStart(botKey)}>
-          <Icon name="play" size={13}/> Start
-        </button>
-      )}
-      {restartEnabled && botStatus === 'online' && (
-        <>
-          {onStop && (
-            <button className="btn btn-sm" type="button" onClick={() => onStop(botKey)}>
-              <Icon name="stop" size={13}/> Stop
-            </button>
-          )}
-          {onRestart && (
-            <button className="btn btn-sm" type="button" onClick={() => onRestart(botKey)}>
-              <Icon name="refresh" size={13}/> Restart
-            </button>
-          )}
-        </>
-      )}
     </div>
   </div>
 );
+
+// Start/Stop/Restart als eigener Block oben in der Settings-Seite. Sichtbar nur
+// mit passendem Recht (Restart bzw. Start/Stop). Greift für Bots UND Container.
+const ServicesBlock = ({ botKey, botStatus, canRestart, canStartStop, onStart, onStop, onRestart }) => {
+  if (!canRestart && !canStartStop) return null;
+  const online = botStatus === 'online';
+  return (
+    <div className="settings-group">
+      <div className="settings-group-head"><div className="settings-group-title">Services</div></div>
+      <div style={{ display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <Tag kind={online ? 'success' : 'error'}><span className="dot"/> {botStatus || 'offline'}</Tag>
+        {canStartStop && !online && (
+          <button className="btn btn-sm btn-primary" type="button" onClick={() => onStart(botKey)}>
+            <Icon name="play" size={13}/> Start
+          </button>
+        )}
+        {canStartStop && online && (
+          <button className="btn btn-sm" type="button" onClick={() => onStop(botKey)}>
+            <Icon name="stop" size={13}/> Stop
+          </button>
+        )}
+        {canRestart && online && (
+          <button className="btn btn-sm" type="button" onClick={() => onRestart(botKey)}>
+            <Icon name="refresh" size={13}/> Restart
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const AutoField = ({ field, value, setField, commit, pending, type = 'text', min, max, placeholder }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -120,35 +130,41 @@ const AutoBoolean = ({ field, value, setField, commit, pending }) => (
   </div>
 );
 
-export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Sound Bot', restartEnabled, onRestart, onStop, onStart }) => {
+export const SoundbotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Sound Bot', canRestart, canStartStop, canConfig, onRestart, onStop, onStart }) => {
   const fields = ['sbPrefix', 'sbMaxMb', 'sbMaxName', 'sbAutoLeave'];
   const { draft, setField, pending, feedback, commit, reset } = useEditableSettings(settings, fields, onSave, settingsLoaded);
 
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey="sound" onRestart={onRestart} onStop={onStop} onStart={onStart}
-        onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
-      {feedback && <div className="settings-notice">{feedback}</div>}
-      <div className="settings-group">
-        <Row label="Command prefix" help="COMMAND_PREFIX">
-          <AutoField field="sbPrefix" value={draft.sbPrefix} setField={setField} commit={commit} pending={pending}/>
-        </Row>
-        <Row label="Max upload size" help="MAX_UPLOAD_SIZE_MB">
-          <AutoField field="sbMaxMb" value={draft.sbMaxMb} setField={setField} commit={commit} pending={pending} type="number" min="1"/>
-        </Row>
-        <Row label="Max filename length" help="MAX_FILENAME_LENGTH">
-          <AutoField field="sbMaxName" value={draft.sbMaxName} setField={setField} commit={commit} pending={pending} type="number" min="1"/>
-        </Row>
-        <Row label="Auto-leave delay (seconds)" help="AUTO_LEAVE_DELAY_MS">
-          <AutoField field="sbAutoLeave" value={draft.sbAutoLeave} setField={setField} commit={commit} pending={pending} type="number" min="0"/>
-        </Row>
-      </div>
+        onReset={canConfig ? reset : null} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
+      <ServicesBlock botKey="sound" botStatus={botStatus} canRestart={canRestart} canStartStop={canStartStop}
+        onStart={onStart} onStop={onStop} onRestart={onRestart}/>
+      {canConfig && (
+        <>
+          {feedback && <div className="settings-notice">{feedback}</div>}
+          <div className="settings-group">
+            <div className="settings-group-head"><div className="settings-group-title">Configuration</div></div>
+            <Row label="Command prefix" help="COMMAND_PREFIX">
+              <AutoField field="sbPrefix" value={draft.sbPrefix} setField={setField} commit={commit} pending={pending}/>
+            </Row>
+            <Row label="Max upload size" help="MAX_UPLOAD_SIZE_MB">
+              <AutoField field="sbMaxMb" value={draft.sbMaxMb} setField={setField} commit={commit} pending={pending} type="number" min="1"/>
+            </Row>
+            <Row label="Max filename length" help="MAX_FILENAME_LENGTH">
+              <AutoField field="sbMaxName" value={draft.sbMaxName} setField={setField} commit={commit} pending={pending} type="number" min="1"/>
+            </Row>
+            <Row label="Auto-leave delay (seconds)" help="AUTO_LEAVE_DELAY_MS">
+              <AutoField field="sbAutoLeave" value={draft.sbAutoLeave} setField={setField} commit={commit} pending={pending} type="number" min="0"/>
+            </Row>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
-export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Music Bot', restartEnabled, onRestart, onStop, onStart }) => {
+export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botStatus, botName = 'Music Bot', canRestart, canStartStop, canConfig, onRestart, onStop, onStart }) => {
   const fields = [
     'mbPrefix', 'mbUsername', 'mbLogLevel', 'mbSearch', 'mbVol', 'mbMaxQueue', 'mbAutoDc',
     'mbConnTimeout', 'mbCooldown', 'mbRetryDelay', 'mbRetryCount', 'mbMaxPlaylist', 'mbMaxResults',
@@ -170,8 +186,11 @@ export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botSta
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName} and external Lavalink.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey="music" onRestart={onRestart} onStop={onStop} onStart={onStart}
-        onReset={reset} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
+        onReset={canConfig ? reset : null} resetting={pending === 'reset'} resetDisabled={!settingsLoaded}/>
+      <ServicesBlock botKey="music" botStatus={botStatus} canRestart={canRestart} canStartStop={canStartStop}
+        onStart={onStart} onStop={onStop} onRestart={onRestart}/>
+      {canConfig && (
+      <>
       {feedback && <div className="settings-notice">{feedback}</div>}
       <div className="settings-group">
         <div className="settings-group-head"><div className="settings-group-title">General and playback</div></div>
@@ -233,11 +252,13 @@ export const NewibotSettingsScreen = ({ settings, onSave, settingsLoaded, botSta
         <Row label="YouTube" help="EMOJI_YT_ID"><AutoField field="emojiYt" value={draft.emojiYt} setField={setField} commit={commit} pending={pending}/></Row>
         <Row label="YouTube Music" help="EMOJI_YTM_ID"><AutoField field="emojiYtm" value={draft.emojiYtm} setField={setField} commit={commit} pending={pending}/></Row>
       </div>
+      </>
+      )}
     </div>
   );
 };
 
-export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, restartEnabled, onRestart, onStop, onStart }) => {
+export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, canRestart, canStartStop, canConfig, onRestart, onStop, onStart }) => {
   const { data: schema, error: schemaError } = useFetch(
     () => API.moduleApi.settingsSchema(botId),
     [botId],
@@ -300,29 +321,34 @@ export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, res
   return (
     <div className="content-narrow">
       <SettingsHeader title="Settings" subtitle={`Environment configuration for ${botName}.`}
-        botStatus={botStatus} restartEnabled={restartEnabled} botKey={botId} onRestart={onRestart} onStop={onStop} onStart={onStart}
         onReset={null} resetting={false} resetDisabled={true}/>
-      {(schemaError || settingsError) && <div className="settings-notice registry-error">Failed: {(schemaError || settingsError)?.message}</div>}
-      {!schema && !schemaError && <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading…</div>}
-      {(schemaError || settingsError) && (
-        <div className="settings-notice registry-error">
-          Settings failed: {(schemaError || settingsError).message}
-        </div>
-      )}
-      {schema?.sections?.map((section) => (
-        <div className="settings-group" key={section.id}>
-          <div className="settings-group-head"><div className="settings-group-title">{section.label}</div></div>
-          {section.fields.map((field) => (
-            <Row key={field.key} label={field.label || field.key} help={field.env}>
-              <div className="generic-setting-control">
-                {renderField(field)}
-                {field.restartRequired && <Tag kind="warn">restart</Tag>}
-                {pending === field.key && <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>saving...</span>}
-              </div>
-            </Row>
+      <ServicesBlock botKey={botId} botStatus={botStatus} canRestart={canRestart} canStartStop={canStartStop}
+        onStart={onStart} onStop={onStop} onRestart={onRestart}/>
+      {canConfig && (
+        <>
+          {(schemaError || settingsError) && (
+            <div className="settings-notice registry-error">Settings failed: {(schemaError || settingsError).message}</div>
+          )}
+          {!schema && !schemaError && <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading…</div>}
+          {schema?.sections?.length === 0 && (
+            <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13 }}>No configuration available.</div>
+          )}
+          {schema?.sections?.map((section) => (
+            <div className="settings-group" key={section.id}>
+              <div className="settings-group-head"><div className="settings-group-title">{section.label}</div></div>
+              {section.fields.map((field) => (
+                <Row key={field.key} label={field.label || field.key} help={field.env}>
+                  <div className="generic-setting-control">
+                    {renderField(field)}
+                    {field.restartRequired && <Tag kind="warn">restart</Tag>}
+                    {pending === field.key && <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>saving...</span>}
+                  </div>
+                </Row>
+              ))}
+            </div>
           ))}
-        </div>
-      ))}
+        </>
+      )}
     </div>
   );
 };
@@ -330,22 +356,33 @@ export const GenericSettingsScreen = ({ botId, botName, setToast, botStatus, res
 
 export const page = {
   kind: 'settings',
-  render: (c) => (
-    c.parentBot === 'sound' ? (
-      <SoundbotSettingsScreen settings={c.settings} onSave={(patch) => c.saveSettings('sound', patch)}
-        settingsLoaded={!!c.soundSettings} botStatus={c.botStatus.sound} botName={c.botName}
-        restartEnabled={c.restartEnabled} onRestart={(b) => c.setRestartConfirm(b)}
-        onStop={c.stopBot} onStart={c.startBot}/>
-    ) : c.parentBot === 'music' ? (
-      <NewibotSettingsScreen settings={c.settings} onSave={(patch) => c.saveSettings('music', patch)}
-        settingsLoaded={!!c.musicSettings} botStatus={c.botStatus.music} botName={c.botName}
-        restartEnabled={c.restartEnabled} onRestart={(b) => c.setRestartConfirm(b)}
-        onStop={c.stopBot} onStart={c.startBot}/>
-    ) : (
+  render: (c) => {
+    // Rechte → was im Services-Block sichtbar ist (Restart / Start-Stop) und ob
+    // der Configuration-Block gezeigt wird (Config). restartEnabled = Docker-Flag.
+    const canRestart = c.restartEnabled && !!c.perms.restartBot;
+    const canStartStop = c.restartEnabled && !!c.perms.startStop;
+    const canConfig = !!c.perms.settings;
+    if (c.parentBot === 'sound') {
+      return (
+        <SoundbotSettingsScreen settings={c.settings} onSave={(patch) => c.saveSettings('sound', patch)}
+          settingsLoaded={!!c.soundSettings} botStatus={c.botStatus.sound} botName={c.botName}
+          canRestart={canRestart} canStartStop={canStartStop} canConfig={canConfig}
+          onRestart={(b) => c.setRestartConfirm(b)} onStop={c.stopBot} onStart={c.startBot}/>
+      );
+    }
+    if (c.parentBot === 'music') {
+      return (
+        <NewibotSettingsScreen settings={c.settings} onSave={(patch) => c.saveSettings('music', patch)}
+          settingsLoaded={!!c.musicSettings} botStatus={c.botStatus.music} botName={c.botName}
+          canRestart={canRestart} canStartStop={canStartStop} canConfig={canConfig}
+          onRestart={(b) => c.setRestartConfirm(b)} onStop={c.stopBot} onStart={c.startBot}/>
+      );
+    }
+    return (
       <GenericSettingsScreen botId={c.parentBot} botName={c.botName} setToast={c.setToast}
-        botStatus={c.botStatus[c.parentBot]} restartEnabled={c.restartEnabled && !!c.perms.restartBot}
-        onRestart={() => c.setRestartConfirm(c.parentBot)}
-        onStop={c.stopBot} onStart={c.startBot}/>
-    )
-  ),
+        botStatus={c.botStatus[c.parentBot]}
+        canRestart={canRestart} canStartStop={canStartStop} canConfig={canConfig}
+        onRestart={() => c.setRestartConfirm(c.parentBot)} onStop={c.stopBot} onStart={c.startBot}/>
+    );
+  },
 };

@@ -2,11 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { config } from './config.js';
 
-export const PERMISSIONS = ['controlBot', 'restartBot', 'soundLibrary', 'settings', 'userManagement', 'botModules'];
+export const PERMISSIONS = ['controlBot', 'restartBot', 'startStop', 'soundLibrary', 'settings', 'userManagement', 'botModules'];
 
 const DEFAULT_PERMISSIONS = {
   controlBot: true,
+  // restartBot = "Restart" right; startStop = "Start/Stop" right. Split on
+  // purpose so a public Botboard doesn't let everyone start/stop containers.
   restartBot: false,
+  startStop: false,
   soundLibrary: false,
   settings: false,
   userManagement: false,

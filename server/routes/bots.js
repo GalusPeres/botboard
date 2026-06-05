@@ -24,11 +24,11 @@ function containerManifest(bot) {
     displayName: name,
     description: 'Docker container',
     icon: 'server',
-    capabilities: ['control', 'stats', 'logs'],
+    capabilities: ['stats', 'logs', 'settings'],
     pages: [
-      { id: 'control', label: 'Control',    icon: 'power', kind: 'control' },
-      { id: 'stats',   label: 'Statistics', icon: 'stats', kind: 'stats' },
-      { id: 'logs',    label: 'Live Logs',  icon: 'logs',  kind: 'container-logs' },
+      { id: 'stats',    label: 'Statistics', icon: 'stats',    kind: 'stats' },
+      { id: 'logs',     label: 'Live Logs',  icon: 'logs',     kind: 'container-logs' },
+      { id: 'settings', label: 'Settings',   icon: 'settings', kind: 'settings' },
     ],
   };
 }
@@ -242,7 +242,7 @@ export default function botsRoutes() {
     }
   });
 
-  router.post('/:bot/stop', requirePermission('restartBot'), async (req, res) => {
+  router.post('/:bot/stop', requirePermission('startStop'), async (req, res) => {
     const { bot } = req.params;
     if (!hasBot(bot)) return res.status(400).json({ error: 'unknown bot' });
     try {
@@ -255,7 +255,7 @@ export default function botsRoutes() {
     }
   });
 
-  router.post('/:bot/start', requirePermission('restartBot'), async (req, res) => {
+  router.post('/:bot/start', requirePermission('startStop'), async (req, res) => {
     const { bot } = req.params;
     if (!hasBot(bot)) return res.status(400).json({ error: 'unknown bot' });
     try {
@@ -287,6 +287,18 @@ export default function botsRoutes() {
     } catch (err) {
       res.status(err.status || 502).json({ error: err.message });
     }
+  });
+
+  // Container haben (noch) keine editierbare Config (Env kommt später) → leeres
+  // Schema, damit die Settings-Seite sauber „No configuration available" zeigt
+  // statt eines Proxy-Fehlers. HTTP-Bots fallen per next() zum Proxy durch.
+  router.get('/:bot/settings/schema', (req, res, next) => {
+    if (!isContainerModule(req.params.bot)) return next();
+    res.json({ sections: [] });
+  });
+  router.get('/:bot/settings', (req, res, next) => {
+    if (!isContainerModule(req.params.bot)) return next();
+    res.json({});
   });
 
   router.get('/servers', async (req, res) => {

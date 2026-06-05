@@ -1,9 +1,11 @@
 // Statistik-Seite (sound/music bespoke + generisch).
-import React from 'react';
+import React, { useState } from 'react';
 import { Icon, Tag } from '../ui/components.jsx';
 import { dashboardBotName } from '../lib/botIdentity.js';
 import { usePoll } from '../lib/hooks.js';
 import * as API from '../lib/api.js';
+
+const containerStatsCache = new Map();
 
 function uptime(ms) {
   if (!Number.isFinite(ms)) return 'not available';
@@ -123,6 +125,19 @@ export const GenericStatsScreen = ({ botId, botName }) => {
     5000,
     [botId],
   );
+  const [refreshing, setRefreshing] = useState(false);
+  if (stats) containerStatsCache.set(botId, stats);
+  const visibleStats = stats || containerStatsCache.get(botId);
+
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await reload();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <div className="content-narrow">
@@ -131,21 +146,21 @@ export const GenericStatsScreen = ({ botId, botName }) => {
           <div className="page-title">Statistics</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-sm" type="button" onClick={reload}>
-            <Icon name="refresh" size={13}/> Refresh
+          <button className="btn btn-sm" type="button" onClick={refresh} disabled={refreshing}>
+            <Icon name="refresh" size={13}/> {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
       {error && <div className="settings-notice registry-error">Stats failed: {error.message}</div>}
-      {loading && !stats && (
+      {loading && !visibleStats && (
         <div className="empty">
           <div>Measuring container statistics...</div>
         </div>
       )}
-      {stats && (
+      {visibleStats && (
         <>
           <div className="grid grid-4" style={{ marginBottom: 16 }}>
-            {(stats.cards || []).map((card) => (
+            {(visibleStats.cards || []).map((card) => (
               <div className="stat-card" key={card.key || card.label}>
                 <div className="stat-label">{card.label}</div>
                 <div className="stat-value">{String(card.value ?? '-')}</div>
@@ -154,7 +169,7 @@ export const GenericStatsScreen = ({ botId, botName }) => {
           </div>
           <div className="card">
             <div className="card-header"><div className="card-title">{botName} health</div></div>
-            {(stats.health || []).map((item) => (
+            {(visibleStats.health || []).map((item) => (
               <div key={item.key || item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{item.label}</span>
                 <Tag kind={item.status === 'ok' ? 'success' : item.status === 'neutral' ? 'info' : 'error'}>
@@ -162,9 +177,9 @@ export const GenericStatsScreen = ({ botId, botName }) => {
                 </Tag>
               </div>
             ))}
-            {(!stats.health || stats.health.length === 0) && <div style={{ color: 'var(--text-muted)' }}>No health entries reported.</div>}
+            {(!visibleStats.health || visibleStats.health.length === 0) && <div style={{ color: 'var(--text-muted)' }}>No health entries reported.</div>}
           </div>
-          {(stats.tables || []).filter((table) => table.rows?.length).map((table) => (
+          {(visibleStats.tables || []).filter((table) => table.rows?.length).map((table) => (
             <div className="card" style={{ marginTop: 16 }} key={table.key || table.label}>
               <div className="card-header"><div className="card-title">{table.label}</div></div>
               <div className="generic-table">

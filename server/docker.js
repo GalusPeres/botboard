@@ -49,10 +49,10 @@ function containerHandle(bot) {
   return { name, container: client().getContainer(name) };
 }
 
-function formatMemory(bytes) {
+function formatMemory(bytes, precision = 2) {
   const value = Math.max(0, Number(bytes) || 0);
   const gib = value / (1024 ** 3);
-  if (gib >= 0.1) return `${gib.toFixed(2)} GiB`;
+  if (gib >= 0.1) return `${gib.toFixed(precision)} GiB`;
   return `${Math.round(value / (1024 ** 2))} MiB`;
 }
 
@@ -68,9 +68,9 @@ function fmtUptime(ms) {
 
 // Match Unraid's container overview: the container's share of the machine's
 // total CPU capacity. This stays directly comparable to Unraid's percentage.
-function containerCpuPercentDelta(prev, cur) {
+function containerCpuPercent(cur) {
   const c = cur?.cpu_stats;
-  const p = prev?.cpu_stats;
+  const p = cur?.precpu_stats;
   if (!c?.cpu_usage || !p?.cpu_usage) return null;
   const cpuDelta = c.cpu_usage.total_usage - p.cpu_usage.total_usage;
   const sysDelta = c.system_cpu_usage - p.system_cpu_usage;
@@ -112,11 +112,10 @@ export async function containerStats(bot) {
   let memUsed = 0;
   let memLimit = 0;
   if (running) {
-    // Two samples ~1s apart for an accurate CPU% (matches `docker stats`).
-    const prev = await container.stats({ stream: false });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const cur = await container.stats({ stream: false });
-    cpu = containerCpuPercentDelta(prev, cur);
+    // Docker includes the previous sample in the response. Using that exact
+    // pair matches Unraid's normalized Docker view and avoids a second wait.
+    const cur = await container.stats({ stream: false, 'one-shot': true });
+    cpu = containerCpuPercent(cur);
     // Unraid shows the container's cgroup usage including filesystem cache.
     memUsed = cur?.memory_stats?.usage || 0;
     memLimit = cur?.memory_stats?.limit || 0;
@@ -127,7 +126,7 @@ export async function containerStats(bot) {
     cards: [
       { key: 'status', label: 'Status', value: info.State?.Status || 'unknown' },
       { key: 'cpu', label: 'Container CPU', value: cpu == null ? '-' : `${cpu.toFixed(1)} %` },
-      { key: 'mem', label: 'Memory', value: memLimit ? `${formatMemory(memUsed)} / ${formatMemory(memLimit)}` : formatMemory(memUsed) },
+      { key: 'mem', label: 'Memory', value: memLimit ? `${formatMemory(memUsed, 3)} / ${formatMemory(memLimit, 2)}` : formatMemory(memUsed, 3) },
       { key: 'uptime', label: 'Uptime', value: running ? fmtUptime(up) : '-' },
     ],
     health: [

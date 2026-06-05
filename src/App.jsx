@@ -936,7 +936,9 @@ const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) 
             ? 'The current track will stop. Queue will be preserved. Estimated downtime ~3s.'
             : which === 'sound'
             ? 'Any sound currently playing will stop. Estimated downtime ~3s.'
-            : 'Both bots will be restarted. Active queue will be preserved, current track will stop.'}
+            : which === 'all'
+            ? 'Both bots will be restarted. Active queue will be preserved, current track will stop.'
+            : `${label} will be restarted. Expect a short downtime.`}
         </p>
         <div className="modal-actions">
           <button className="btn" onClick={onCancel}>Cancel</button>

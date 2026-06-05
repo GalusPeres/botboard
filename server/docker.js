@@ -61,17 +61,17 @@ function fmtUptime(ms) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-// Return the container's share of the host's total CPU capacity. Docker's CLI
-// multiplies this value by the CPU count, which expresses usage in "one core =
-// 100%" units and is not directly comparable to Unraid's overall CPU load.
-function hostCpuPercentDelta(prev, cur) {
+// Match `docker stats`: 100% means one fully used logical CPU. A container
+// using multiple CPU threads can therefore exceed 100%.
+function containerCpuPercentDelta(prev, cur) {
   const c = cur?.cpu_stats;
   const p = prev?.cpu_stats;
   if (!c?.cpu_usage || !p?.cpu_usage) return null;
   const cpuDelta = c.cpu_usage.total_usage - p.cpu_usage.total_usage;
   const sysDelta = c.system_cpu_usage - p.system_cpu_usage;
+  const cores = c.online_cpus || c.cpu_usage.percpu_usage?.length || 1;
   if (sysDelta <= 0 || cpuDelta < 0) return 0;
-  return (cpuDelta / sysDelta) * 100;
+  return (cpuDelta / sysDelta) * cores * 100;
 }
 
 // Demux Docker's multiplexed log stream (8-byte frame headers) unless the
@@ -112,7 +112,7 @@ export async function containerStats(bot) {
     const prev = await container.stats({ stream: false });
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const cur = await container.stats({ stream: false });
-    cpu = hostCpuPercentDelta(prev, cur);
+    cpu = containerCpuPercentDelta(prev, cur);
     // Docker's reported memory excludes the page cache (inactive_file).
     const cache = cur?.memory_stats?.stats?.inactive_file ?? cur?.memory_stats?.stats?.cache ?? 0;
     memUsed = Math.max(0, (cur?.memory_stats?.usage || 0) - cache);
@@ -123,7 +123,7 @@ export async function containerStats(bot) {
   return {
     cards: [
       { key: 'status', label: 'Status', value: info.State?.Status || 'unknown' },
-      { key: 'cpu', label: 'Host CPU', value: cpu == null ? '-' : `${cpu.toFixed(1)} %` },
+      { key: 'cpu', label: 'Container CPU', value: cpu == null ? '-' : `${cpu.toFixed(1)} %` },
       { key: 'mem', label: 'Memory', value: memLimit ? `${toMb(memUsed)} / ${toMb(memLimit)} MB` : `${toMb(memUsed)} MB` },
       { key: 'uptime', label: 'Uptime', value: running ? fmtUptime(up) : '-' },
     ],

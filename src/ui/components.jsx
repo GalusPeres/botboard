@@ -31,6 +31,8 @@ export const Icon = ({ name, size = 16, className = '', style = {} }) => {
     case 'upload': return <svg {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
     case 'trash': return <svg {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
     case 'edit': return <svg {...props}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>;
+    case 'eye': return <svg {...props}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>;
+    case 'eye-off': return <svg {...props}><path d="M3 3l18 18"/><path d="M10.6 6.2A11.8 11.8 0 0 1 12 6c6.5 0 10 6 10 6a17.2 17.2 0 0 1-3 3.7"/><path d="M6.6 6.7C3.6 8.5 2 12 2 12s3.5 6 10 6a10.8 10.8 0 0 0 4.1-.8"/><path d="M10.2 10.2a2.5 2.5 0 0 0 3.6 3.6"/></svg>;
     case 'star': return <svg {...props}><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>;
     case 'star-fill': return <svg {...props} fill="currentColor"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>;
     case 'chevron-down': return <svg {...props}><polyline points="6 9 12 15 18 9"/></svg>;

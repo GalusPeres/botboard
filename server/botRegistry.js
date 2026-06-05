@@ -76,20 +76,20 @@ function writeRegistryDocument(doc) {
   fs.writeFileSync(file, `${JSON.stringify(toWrite, null, 2)}\n`);
 }
 
-function fileBots(includeDisabled = false) {
+function fileBots() {
   const out = {};
   const doc = readRegistryDocument();
   for (const [id, raw] of Object.entries(doc.bots || {})) {
     validateId(id);
     const bot = normalizeBot(id, raw, 'file');
-    if (bot && (includeDisabled || bot.enabled)) out[id] = bot;
+    if (bot) out[id] = bot;
   }
   return out;
 }
 
-function mergedBots(includeDisabled = false) {
+function mergedBots() {
   const env = envBots();
-  const file = fileBots(true);
+  const file = fileBots();
   const ids = new Set([...Object.keys(env), ...Object.keys(file)]);
   const out = {};
   for (const id of ids) {
@@ -104,14 +104,13 @@ function mergedBots(includeDisabled = false) {
       readOnly: false,
       source: registryBacked ? 'registry' : 'env',
     };
-    if (includeDisabled || merged.enabled) out[id] = merged;
+    out[id] = merged;
   }
   return out;
 }
 
-export function botConfigs(options = {}) {
-  const includeDisabled = !!options.includeDisabled;
-  return mergedBots(includeDisabled);
+export function botConfigs() {
+  return mergedBots();
 }
 
 export function botIds() {
@@ -131,7 +130,7 @@ export function botContainer(id) {
 }
 
 export function registrySnapshot() {
-  const bots = Object.values(botConfigs({ includeDisabled: true }));
+  const bots = Object.values(botConfigs());
   const order = readRegistryDocument().order || [];
   if (order.length) {
     bots.sort((a, b) => {

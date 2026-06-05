@@ -266,7 +266,8 @@ function DashboardApp(props) {
     if (pages === m.manifest?.pages && bot === m.manifest?.bot) return m; // nichts geändert
     return { ...m, manifest: { ...(m.manifest || {}), pages, bot, displayName, icon } };
   });
-  const modules = modulesData ? mergeWithCache(modulesData) : cachedModules;
+  const allModules = modulesData ? mergeWithCache(modulesData) : cachedModules;
+  const modules = allModules.filter((module) => module.visible !== false);
   const [moduleOrder, setModuleOrder] = useState(() => savedModuleOrder(guildId));
   useEffect(() => {
     if (modulesData !== null) {

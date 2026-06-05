@@ -55,9 +55,9 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
   const [notice, setNotice] = useState('');
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  const load = async () => {
+  const load = async ({ showLoading = false } = {}) => {
     setError('');
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const [registryData, modulesData] = await Promise.all([
         API.bots.registry(),
@@ -72,7 +72,7 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load({ showLoading: true }); }, []);
 
   const moduleById = useMemo(
     () => new Map((modules || []).map((module) => [module.id, module])),
@@ -171,12 +171,18 @@ export function BotRegistryScreen({ onChanged, restartEnabled, onRestart, onStop
   const toggleEnabled = async (bot) => {
     setError('');
     setNotice('');
+    const enabled = !bot.enabled;
+    setRegistry((current) => current ? {
+      ...current,
+      bots: current.bots.map((entry) => entry.id === bot.id ? { ...entry, enabled } : entry),
+    } : current);
     try {
-      await API.bots.updateRegistry(bot.id, { enabled: !bot.enabled });
+      await API.bots.updateRegistry(bot.id, { enabled });
       await load();
       onChanged?.();
     } catch (err) {
       setError(err.message);
+      await load();
     }
   };
 
@@ -365,47 +371,49 @@ function SortableBot({ bot, restartEnabled, onStop, onRestart, onStart, onEdit, 
         <div className="registry-row-info">
           <div className="registry-row-title">
             <span>{bot.module?.manifest?.displayName || bot.name || bot.id}</span>
-            {!bot.enabled && <Tag kind="warn">disabled</Tag>}
+            {!bot.enabled && <Tag kind="warn">hidden</Tag>}
             <Tag kind={statusKind(bot.module)}>{statusText(bot.module)}</Tag>
           </div>
           <div className="registry-row-url">{bot.url}</div>
         </div>
       </div>
       <div className="registry-row-actions">
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 'auto', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
-          title="Im Dashboard / der Sidebar anzeigen">
-          Visible
-          <Toggle on={bot.enabled} onClick={onToggleEnabled}/>
-        </label>
+        <button className={'btn btn-icon registry-action-button registry-visible-button' + (bot.enabled ? ' active' : '')}
+          type="button" onClick={onToggleEnabled}
+          title={bot.enabled ? 'Hide module' : 'Show module'}
+          aria-label={bot.enabled ? 'Hide module' : 'Show module'}
+          aria-pressed={bot.enabled}>
+          <Icon name={bot.enabled ? 'eye' : 'eye-off'} size={15}/>
+        </button>
         {restartEnabled && bot.module?.online && (
           <>
             {onStop && (
-              <button className="btn btn-icon" type="button" onClick={() => onStop(bot.id)} title="Stop">
+              <button className="btn btn-icon registry-action-button" type="button" onClick={() => onStop(bot.id)} title="Stop" aria-label="Stop">
                 <Icon name="stop" size={14}/>
               </button>
             )}
             {onRestart && (
-              <button className="btn btn-icon" type="button" onClick={() => onRestart(bot.id)} title="Restart">
+              <button className="btn btn-icon registry-action-button" type="button" onClick={() => onRestart(bot.id)} title="Restart" aria-label="Restart">
                 <Icon name="refresh" size={14}/>
               </button>
             )}
           </>
         )}
         {restartEnabled && !bot.module?.online && onStart && (
-          <button className="btn btn-icon btn-primary" type="button" onClick={() => onStart(bot.id)} title="Start">
+          <button className="btn btn-icon btn-primary registry-action-button" type="button" onClick={() => onStart(bot.id)} title="Start" aria-label="Start">
             <Icon name="play" size={14}/>
           </button>
         )}
-        <button className="btn" type="button" onClick={onEdit}>
-          <Icon name="edit" size={13}/> Edit
+        <button className="btn btn-icon registry-action-button" type="button" onClick={onEdit} title="Edit" aria-label="Edit">
+          <Icon name="edit" size={14}/>
         </button>
         {bot.registryBacked && (
           bot.envDefault
-            ? <button className="btn" type="button" onClick={onRemove}>
-                <Icon name="refresh" size={13}/> Reset
+            ? <button className="btn btn-icon registry-action-button" type="button" onClick={onRemove} title="Reset" aria-label="Reset">
+                <Icon name="refresh" size={14}/>
               </button>
-            : <button className="btn btn-danger" type="button" onClick={onRemove}>
-                <Icon name="trash" size={13}/> Remove
+            : <button className="btn btn-icon btn-danger registry-action-button" type="button" onClick={onRemove} title="Remove" aria-label="Remove">
+                <Icon name="trash" size={14}/>
               </button>
         )}
       </div>

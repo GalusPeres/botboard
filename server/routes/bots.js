@@ -146,6 +146,7 @@ export default function botsRoutes() {
           const status = await containerStatus(bot).catch((err) => ({ online: false, error: err.message }));
           return {
             id: bot,
+            visible: botConfig(bot)?.enabled !== false,
             online: status.online,
             status: withConfiguredName(bot, status),
             manifest: withConfiguredManifestName(bot, containerManifest(bot)),
@@ -157,6 +158,7 @@ export default function botsRoutes() {
         ]);
         return {
           id: bot,
+          visible: botConfig(bot)?.enabled !== false,
           online: status.online,
           status: withConfiguredName(bot, status),
           manifest: withConfiguredManifestName(bot, manifest || fallbackManifest(bot, status)),

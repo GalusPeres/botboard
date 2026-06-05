@@ -1442,6 +1442,12 @@ ul, ol { list-style: none; }
 }
 .registry-row-tags { display: none; }
 .registry-row-actions { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 7px; justify-content: flex-end; padding: 8px 16px 14px 12px; }
+.registry-action-button { width: 42px; height: 42px; padding: 0; flex: 0 0 42px; }
+.registry-visible-button.active {
+  color: var(--accent);
+  border-color: oklch(from var(--accent) l c h / 0.45);
+  background: var(--accent-soft);
+}
 .registry-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 13px; }
 .registry-field span,
 .registry-toggle-title {

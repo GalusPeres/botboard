@@ -56,6 +56,8 @@ export const Icon = ({ name, size = 16, className = '', style = {} }) => {
     case 'queue': return <svg {...props}><line x1="3" y1="6" x2="13" y2="6"/><line x1="3" y1="12" x2="13" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/><polygon points="17 6 22 9 17 12" fill="currentColor" strokeWidth="0"/></svg>;
     case 'drag': return <svg {...props}><circle cx="9" cy="6" r="1" fill="currentColor"/><circle cx="15" cy="6" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="18" r="1" fill="currentColor"/><circle cx="15" cy="18" r="1" fill="currentColor"/></svg>;
     case 'lavalink': return <svg {...props}><path d="M3 3v18h18"/><path d="M21 9l-7 6-4-3-4 4"/></svg>;
+    case 'server': return <svg {...props}><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><line x1="6.5" y1="7.5" x2="6.51" y2="7.5"/><line x1="6.5" y1="16.5" x2="6.51" y2="16.5"/></svg>;
+    case 'power': return <svg {...props}><path d="M12 2v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>;
     default: return <svg {...props}><circle cx="12" cy="12" r="9"/></svg>;
   }
 };

@@ -61,13 +61,15 @@ function fmtUptime(ms) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-function cpuPercent(stats) {
-  const cpu = stats?.cpu_stats;
-  const pre = stats?.precpu_stats;
-  if (!cpu?.cpu_usage || !pre?.cpu_usage) return null;
-  const cpuDelta = cpu.cpu_usage.total_usage - pre.cpu_usage.total_usage;
-  const sysDelta = cpu.system_cpu_usage - pre.system_cpu_usage;
-  const cores = cpu.online_cpus || cpu.cpu_usage.percpu_usage?.length || 1;
+// CPU% needs TWO samples (like `docker stats`). A single one-shot read has an
+// unreliable precpu baseline and gives wildly wrong values.
+function cpuPercentDelta(prev, cur) {
+  const c = cur?.cpu_stats;
+  const p = prev?.cpu_stats;
+  if (!c?.cpu_usage || !p?.cpu_usage) return null;
+  const cpuDelta = c.cpu_usage.total_usage - p.cpu_usage.total_usage;
+  const sysDelta = c.system_cpu_usage - p.system_cpu_usage;
+  const cores = c.online_cpus || c.cpu_usage.percpu_usage?.length || 1;
   if (sysDelta <= 0 || cpuDelta < 0) return 0;
   return (cpuDelta / sysDelta) * cores * 100;
 }
@@ -100,11 +102,22 @@ export async function containerStatus(bot) {
 
 export async function containerStats(bot) {
   const { name, container } = containerHandle(bot);
-  const [info, stats] = await Promise.all([container.inspect(), container.stats({ stream: false })]);
-  const cpu = cpuPercent(stats);
-  const memUsed = stats?.memory_stats?.usage || 0;
-  const memLimit = stats?.memory_stats?.limit || 0;
+  const info = await container.inspect();
   const running = !!info.State?.Running;
+  let cpu = null;
+  let memUsed = 0;
+  let memLimit = 0;
+  if (running) {
+    // Two samples ~1s apart for an accurate CPU% (matches `docker stats`).
+    const prev = await container.stats({ stream: false });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const cur = await container.stats({ stream: false });
+    cpu = cpuPercentDelta(prev, cur);
+    // Docker's reported memory excludes the page cache (inactive_file).
+    const cache = cur?.memory_stats?.stats?.inactive_file ?? cur?.memory_stats?.stats?.cache ?? 0;
+    memUsed = Math.max(0, (cur?.memory_stats?.usage || 0) - cache);
+    memLimit = cur?.memory_stats?.limit || 0;
+  }
   const up = info.State?.StartedAt ? Date.now() - new Date(info.State.StartedAt).getTime() : NaN;
   const display = (info.Name || name).replace(/^\//, '');
   return {

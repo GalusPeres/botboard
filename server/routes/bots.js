@@ -23,11 +23,12 @@ function containerManifest(bot) {
     name,
     displayName: name,
     description: 'Docker container',
-    icon: 'container',
+    icon: 'server',
     capabilities: ['control', 'stats', 'logs'],
     pages: [
-      { id: 'stats', kind: 'stats', title: 'Statistics' },
-      { id: 'logs', kind: 'container-logs', title: 'Logs' },
+      { id: 'control', label: 'Control',    icon: 'power', kind: 'control' },
+      { id: 'stats',   label: 'Statistics', icon: 'stats', kind: 'stats' },
+      { id: 'logs',    label: 'Live Logs',  icon: 'logs',  kind: 'container-logs' },
     ],
   };
 }

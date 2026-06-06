@@ -50,10 +50,14 @@ function withFilesPage(bot, manifest) {
   if (!cfg?.dataPath?.trim() || !manifest) return manifest;
   const pages = manifest.pages || [];
   if (pages.some((p) => (p.kind || p.id) === 'files')) return manifest;
-  return {
-    ...manifest,
-    pages: [...pages, { id: 'files', label: 'Library', icon: 'folder', kind: 'files' }],
-  };
+  const libraryPage = { id: 'files', label: 'Library', icon: 'folder', kind: 'files' };
+  // Direkt vor „Statistics" einsortieren (bei Gameservern damit an erster Stelle);
+  // gibt es keine Statistics-Seite, ans Ende.
+  const statsIdx = pages.findIndex((p) => (p.kind || p.id) === 'stats');
+  const next = [...pages];
+  if (statsIdx >= 0) next.splice(statsIdx, 0, libraryPage);
+  else next.push(libraryPage);
+  return { ...manifest, pages: next };
 }
 
 function configuredName(bot) {

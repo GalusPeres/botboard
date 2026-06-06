@@ -65,7 +65,7 @@ export async function fetchGuildRoles(guildId) {
 // sind (sie laufen jetzt auch in requirePermission). Fehler werden NICHT
 // gecacht (Aufrufer macht fail-open). Änderungen greifen nach ≤ TTL.
 const memberCache = new Map(); // `${guildId}:${userId}` -> { roles, at }
-const MEMBER_TTL_MS = 30_000;
+const MEMBER_TTL_MS = 10_000;
 
 export async function fetchMemberRoleIds(guildId, userId) {
   if (!botTokenConfigured()) return null;

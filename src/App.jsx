@@ -101,6 +101,14 @@ export default function App() {
       try {
         const me = await API.auth.me();
         if (!me.user) return;
+        // Zugang zum aktiven Server verloren (Rolle/Mitgliedschaft weg) → raus,
+        // ohne dass der User neu laden muss.
+        if (me.activeGuildAllowed === false) {
+          saveServer(null);
+          setServer(null);
+          setStage('server');
+          return;
+        }
         const newPerms = me.user.permissions || {};
         setUser((prev) => {
           if (JSON.stringify(prev?.permissions) === JSON.stringify(newPerms)) return prev;

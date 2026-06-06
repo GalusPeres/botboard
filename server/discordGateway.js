@@ -9,6 +9,7 @@ import { registrySnapshot, botConfig } from './botRegistry.js';
 import { botStatus } from './botClient.js';
 import { containerStatus } from './docker.js';
 import { getBotboardConfig } from './botboardConfig.js';
+import { getGuildAccess } from './accessRegistry.js';
 
 const PRESENCE_REFRESH_MS = 30_000;
 
@@ -65,21 +66,54 @@ export async function refreshPresence() {
   }
 }
 
+// Command-Gate: nur Mitglieder mit der für diesen Server konfigurierten
+// Access-Rolle dürfen Befehle nutzen. Ohne gesetzte Rolle: jeder im Server.
+async function commandGate(message) {
+  if (!message.guildId) return { allowed: false };
+  const access = getGuildAccess(message.guildId);
+  if (!access.requiredRoleId) return { allowed: true };
+  let member = message.member;
+  if (!member && message.guild) {
+    member = await message.guild.members.fetch(message.author.id).catch(() => null);
+  }
+  return {
+    allowed: !!member?.roles?.cache?.has(access.requiredRoleId),
+    roleName: access.requiredRoleName || 'the required',
+  };
+}
+
 async function handleInfo(message) {
   const rows = await collectModuleStatuses();
   const url = publicUrl();
-  const lines = rows.length
-    ? rows
-        .map((r) => `${r.online ? '🟢' : '🔴'} **${r.name}** — ${r.kind} · ${r.online ? 'Online' : 'Offline'}`)
-        .join('\n')
-    : '_No modules configured._';
+  const prefix = getBotboardConfig().prefix || '#';
+  const onlineCount = rows.filter((r) => r.online).length;
 
+  const render = (list) =>
+    list.length ? list.map((r) => `${r.online ? '🟢' : '🔴'} ${r.name}`).join('\n') : '—';
+  const bots = rows.filter((r) => r.kind === 'Bot');
+  const games = rows.filter((r) => r.kind === 'Gameserver');
+
+  // Farbe spiegelt den Gesamtzustand: grün = alles online, gelb = teilweise,
+  // rot = alles offline, grau = nichts konfiguriert.
+  const color =
+    rows.length === 0 ? 0x6b7280
+    : onlineCount === rows.length ? 0x9dda4f
+    : onlineCount === 0 ? 0xe05252
+    : 0xe5a83b;
+
+  const avatar = message.client.user.displayAvatarURL({ size: 128 });
   const embed = new EmbedBuilder()
-    .setColor(0x9dda4f)
-    .setTitle('Botboard')
-    .setDescription(url ? `Dashboard: ${url}` : 'Dashboard URL not configured.')
-    .addFields({ name: 'Modules', value: lines })
-    .setFooter({ text: `${rows.filter((r) => r.online).length}/${rows.length} online` });
+    .setColor(color)
+    .setAuthor({ name: 'Botboard', iconURL: avatar, url: url || undefined })
+    .setThumbnail(avatar)
+    .setDescription(url ? `🔗 **[Open dashboard](${url})**` : 'Discord bot dashboard')
+    .addFields(
+      { name: '🤖 Bots', value: render(bots), inline: true },
+      { name: '🎮 Gameservers', value: render(games), inline: true },
+      { name: '💬 Commands', value: `\`${prefix}info\` — show this overview`, inline: false },
+    )
+    .setFooter({ text: `${onlineCount}/${rows.length} modules online` })
+    .setTimestamp();
 
   await message.reply({ embeds: [embed] });
 }
@@ -111,6 +145,13 @@ export function startGateway() {
     const command = message.content.slice(prefix.length).trim().split(/\s+/)[0]?.toLowerCase();
     if (command !== 'info') return;
     try {
+      const gate = await commandGate(message);
+      if (!gate.allowed) {
+        if (message.guildId) {
+          await message.reply(`⛔ You need the **${gate.roleName}** role to use Botboard commands.`).catch(() => {});
+        }
+        return;
+      }
       await handleInfo(message);
     } catch (err) {
       console.error('[gateway] #info failed:', err.message);

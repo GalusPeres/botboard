@@ -23,8 +23,14 @@ export default function usersRoutes() {
         if (botGuilds.has(guildId)) {
           const isMember = await Promise.all(users.map(async (u) => {
             if (u.isEnvAdmin) return true;
-            const roles = await fetchMemberRoleIds(guildId, u.id).catch(() => null);
-            return roles !== null; // null = 404 = nicht im Server
+            try {
+              const roles = await fetchMemberRoleIds(guildId, u.id);
+              return roles !== null; // null = echtes 404 = nicht im Server
+            } catch {
+              // Lookup-Fehler (Rate-Limit/Timeout) NICHT als "kein Mitglied"
+              // werten, sonst flackern echte Mitglieder rein/raus → drinlassen.
+              return true;
+            }
           }));
           users = users.filter((_, i) => isMember[i]);
         }

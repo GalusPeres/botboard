@@ -346,7 +346,17 @@ function DashboardApp(props) {
     if (!selectedServer || selectedServer.id === guildId) return;
     saveServer(selectedServer);
     setServer(selectedServer);
-    setRoute('overview');
+    // Menüpunkt beibehalten, wenn er auf dem neuen Server existiert. Allgemeine/
+    // Manage-Seiten (kein bot/-Prefix) bleiben sowieso. Bot-Seiten nur, wenn der
+    // Bot dort sichtbar ist (Container überall, sonst Mitgliedschaft im Server).
+    const match = String(route).match(/^bot\/([^/]+)\/[^/]+$/);
+    if (match) {
+      const botId = match[1];
+      const module = sortedModules.find((m) => m.id === botId);
+      const isContainer = module?.manifest?.type === 'container';
+      const visible = isContainer || (Array.isArray(selectedServer.bots) && selectedServer.bots.includes(botId));
+      if (!visible) setRoute('overview');
+    }
   };
 
   const { data: statusData, reload: reloadStatus } = usePoll(API.bots.status, POLL_STATUS_MS, [guildId]);

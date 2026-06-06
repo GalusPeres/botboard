@@ -211,6 +211,8 @@ export default function App() {
       setMoreSheetOpen={setMoreSheetOpen}
       restartConfirm={restartConfirm}
       setRestartConfirm={setRestartConfirm}
+      stopConfirm={stopConfirm}
+      setStopConfirm={setStopConfirm}
       restartEnabled={restartEnabled}
       toast={toast}
       setToast={setToast}
@@ -244,7 +246,7 @@ function DashboardApp(props) {
     user, server, setServer, route, setRoute,
     currentSound, setCurrentSound, currentPreview, setCurrentPreview,
     moreSheetOpen, setMoreSheetOpen,
-    restartConfirm, setRestartConfirm, restartEnabled,
+    restartConfirm, setRestartConfirm, stopConfirm, setStopConfirm, restartEnabled,
     toast, setToast,
     liveLogs, setLiveLogs, logConnection, setLogConnection,
     onLogout, tweaks, setTweak,

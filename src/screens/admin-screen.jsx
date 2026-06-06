@@ -12,7 +12,7 @@ const PERM_LABELS = {
   soundLibrary:   'Library',
   settings:       'Config',
   botModules:     'Modules',
-  userManagement: 'Roles',
+  userManagement: 'Admin',
 };
 
 function Checkbox({ checked, disabled, onChange }) {

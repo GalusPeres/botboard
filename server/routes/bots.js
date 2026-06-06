@@ -5,6 +5,15 @@ import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot, reor
 import { config } from '../config.js';
 import { requireAdmin, requirePermission } from '../auth.js';
 import { logActivity } from '../activityLog.js';
+import { refreshPresence } from '../discordGateway.js';
+
+// Bot-Presence sofort aktualisieren, wenn ein Modul über Botboard gestartet/
+// gestoppt wird. Zweiter, verzögerter Refresh fängt HTTP-Bots ab, deren API
+// erst ein paar Sekunden nach dem Container-Start wieder erreichbar ist.
+function bumpPresence() {
+  refreshPresence().catch(() => {});
+  setTimeout(() => refreshPresence().catch(() => {}), 4000);
+}
 
 // A module with a container name but NO API URL is managed purely via the
 // Docker socket (raw container / gameserver) — its pages are synthesized here.
@@ -235,6 +244,7 @@ export default function botsRoutes() {
       const result = await restartContainer(bot);
       const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
       logActivity(`${who} → Bot neugestartet: ${bot}`);
+      bumpPresence();
       res.json(result);
     } catch (err) {
       console.error('[restart]', err);
@@ -249,6 +259,7 @@ export default function botsRoutes() {
       const result = await stopContainer(bot);
       const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
       logActivity(`${who} → Bot gestoppt: ${bot}`);
+      bumpPresence();
       res.json(result);
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
@@ -262,6 +273,7 @@ export default function botsRoutes() {
       const result = await startContainer(bot);
       const who = req.session?.user?.global_name || req.session?.user?.username || 'unknown';
       logActivity(`${who} → Bot gestartet: ${bot}`);
+      bumpPresence();
       res.json(result);
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });

@@ -10,7 +10,7 @@ import { botStatus } from './botClient.js';
 import { containerStatus } from './docker.js';
 import { getBotboardConfig } from './botboardConfig.js';
 
-const PRESENCE_REFRESH_MS = 60_000;
+const PRESENCE_REFRESH_MS = 30_000;
 
 let client = null;
 

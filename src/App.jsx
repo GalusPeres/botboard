@@ -921,8 +921,67 @@ const BotboardSettingsScreen = ({ server, modules }) => (
       </div>
     </div>
     <AccessCard server={server}/>
+    <BotCard/>
   </div>
 );
+
+// Globale Bot-Einstellungen: Befehls-Prefix + optionaler Status-Text. Token
+// bleibt env-only; hier nur die „weiche" Config.
+const BotCard = () => {
+  const { data, error } = useFetch(() => API.botboardConfig.get(), []);
+  const [prefix, setPrefix] = useState('');
+  const [statusText, setStatusText] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    if (data) {
+      setPrefix(data.prefix || '');
+      setStatusText(data.statusText || '');
+    }
+  }, [data]);
+
+  const save = async (patch) => {
+    setNotice('');
+    try {
+      const saved = await API.botboardConfig.set(patch);
+      setPrefix(saved.prefix);
+      setStatusText(saved.statusText);
+      setNotice('Saved.');
+    } catch (err) {
+      setNotice('Save failed: ' + err.message);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-header"><div className="card-title">Bot</div></div>
+      {!data && !error && <ManageSettingsRow label="Loading…"><span className="settings-value">…</span></ManageSettingsRow>}
+      {error && <ManageSettingsRow label="Bot"><span className="tag error">{error.message}</span></ManageSettingsRow>}
+      {data && (
+        <>
+          {!data.tokenConfigured && (
+            <ManageSettingsRow label="Status" help="Set DISCORD_BOT_TOKEN (env) to bring the bot online.">
+              <span className="tag warn">Token not set — bot offline</span>
+            </ManageSettingsRow>
+          )}
+          <ManageSettingsRow label="Command prefix" help="Prefix for chat commands, e.g. #info. 1–5 characters, no spaces.">
+            <input className="input" style={{ maxWidth: 120 }} value={prefix}
+              onChange={(e) => setPrefix(e.target.value)}
+              onBlur={() => prefix !== (data.prefix || '') && save({ prefix })}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+          </ManageSettingsRow>
+          <ManageSettingsRow label="Status text" help="Shown as “Watching …”. Leave empty for the automatic module count.">
+            <input className="input" value={statusText} placeholder="Auto (X/Y modules online)"
+              onChange={(e) => setStatusText(e.target.value)}
+              onBlur={() => statusText !== (data.statusText || '') && save({ statusText })}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+          </ManageSettingsRow>
+        </>
+      )}
+      {notice && <div className="settings-notice" style={{ margin: '0 20px 14px' }}>{notice}</div>}
+    </div>
+  );
+};
 
 // Login-Gate pro Server: optionale Pflichtrolle. Rollen kommen live vom
 // Discord-Bot-Token (Dropdown). "Keine" = Mitgliedschaft im Server reicht.

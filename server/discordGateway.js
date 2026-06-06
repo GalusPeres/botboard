@@ -8,8 +8,8 @@ import { botTokenConfigured } from './discordBot.js';
 import { registrySnapshot, botConfig } from './botRegistry.js';
 import { botStatus } from './botClient.js';
 import { containerStatus } from './docker.js';
+import { getBotboardConfig } from './botboardConfig.js';
 
-const PREFIX = '#';
 const PRESENCE_REFRESH_MS = 60_000;
 
 let client = null;
@@ -48,14 +48,16 @@ async function collectModuleStatuses() {
   );
 }
 
-async function updatePresence() {
+export async function refreshPresence() {
   if (!client?.user) return;
   try {
+    const { statusText } = getBotboardConfig();
     const rows = await collectModuleStatuses();
     const onlineCount = rows.filter((r) => r.online).length;
+    const name = statusText?.trim() || `${onlineCount}/${rows.length} modules online`;
     client.user.setPresence({
       status: 'online',
-      activities: [{ name: `${onlineCount}/${rows.length} modules online`, type: ActivityType.Watching }],
+      activities: [{ name, type: ActivityType.Watching }],
     });
   } catch (err) {
     console.error('[gateway] presence update failed:', err.message);
@@ -97,13 +99,15 @@ export function startGateway() {
 
   client.once(Events.ClientReady, (c) => {
     console.log(`[gateway] online as ${c.user.tag}`);
-    updatePresence();
-    setInterval(updatePresence, PRESENCE_REFRESH_MS);
+    refreshPresence();
+    setInterval(refreshPresence, PRESENCE_REFRESH_MS);
   });
 
   client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot || !message.content.startsWith(PREFIX)) return;
-    const command = message.content.slice(PREFIX.length).trim().split(/\s+/)[0]?.toLowerCase();
+    if (message.author.bot) return;
+    const prefix = getBotboardConfig().prefix || '#';
+    if (!message.content.startsWith(prefix)) return;
+    const command = message.content.slice(prefix.length).trim().split(/\s+/)[0]?.toLowerCase();
     if (command !== 'info') return;
     try {
       await handleInfo(message);

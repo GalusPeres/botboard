@@ -122,6 +122,11 @@ export const access = {
   set: (guildId, body) => api(`/api/access/${encodeURIComponent(guildId)}`, { method: 'PUT', body }),
 };
 
+export const botboardConfig = {
+  get: () => api('/api/botboard-config'),
+  set: (body) => api('/api/botboard-config', { method: 'PUT', body }),
+};
+
 export const users = {
   list: () => api('/api/users'),
   add: (user) => api('/api/users', { method: 'POST', body: user }),

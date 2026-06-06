@@ -14,6 +14,7 @@ import proxyRoutes from './routes/proxy.js';
 import logsRoutes from './routes/logs.js';
 import usersRoutes from './routes/users.js';
 import accessRoutes from './routes/access.js';
+import botboardRoutes from './routes/botboard.js';
 import { startGateway } from './discordGateway.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -59,6 +60,7 @@ app.use('/api/bots', botsRoutes());
 app.use('/api/logs', logsRoutes());
 app.use('/api/users', usersRoutes());
 app.use('/api/access', accessRoutes());
+app.use('/api/botboard-config', botboardRoutes());
 app.use('/api/bots', proxyRoutes());
 
 app.use(express.static(distDir, { maxAge: '1h', index: false }));

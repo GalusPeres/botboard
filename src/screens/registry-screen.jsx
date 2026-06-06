@@ -222,9 +222,6 @@ export function BotRegistryScreen({ modules = [], onChanged, restartEnabled, onR
           <button className="btn btn-primary" type="button" onClick={startAdd}>
             <Icon name="plus" size={13}/> Add module
           </button>
-          <button className="btn" type="button" onClick={load} disabled={loading}>
-            <Icon name="refresh" size={13}/> Refresh
-          </button>
         </div>
       </div>
 

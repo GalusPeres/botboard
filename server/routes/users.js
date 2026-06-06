@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { requireAdmin, reqGuild } from '../auth.js';
 import { listUsers, setPermissions, recordUser } from '../userRegistry.js';
 import { botIds, botBaseUrl, botAuthHeader } from '../botClient.js';
-import { botTokenConfigured, fetchBotGuildIds, fetchMemberRoleIds } from '../discordBot.js';
 import { logActivity } from '../activityLog.js';
 
 export default function usersRoutes() {
@@ -10,32 +9,11 @@ export default function usersRoutes() {
 
   router.use(requireAdmin);
 
-  // Nur Mitglieder des aktuell gewählten Servers anzeigen. users.json kennt alle
-  // je eingeloggten User board-weit; wer nicht im Server ist, gehört hier nicht
-  // hin. Mitgliedschaft wird live über den Bot-Token geprüft. Env-Admins werden
-  // immer gezeigt; ohne Bot-Token (oder Bot nicht im Server) wird nicht gefiltert.
-  router.get('/', async (req, res) => {
+  // listUsers filtert bereits auf Mitglieder des gewählten Servers (anhand der
+  // beim Login gespeicherten Server-Liste) — kein Live-Discord-Call nötig.
+  router.get('/', (req, res) => {
     try {
-      const guildId = reqGuild(req);
-      let users = listUsers(guildId);
-      if (guildId && botTokenConfigured()) {
-        const botGuilds = await fetchBotGuildIds().catch(() => new Set());
-        if (botGuilds.has(guildId)) {
-          const isMember = await Promise.all(users.map(async (u) => {
-            if (u.isEnvAdmin) return true;
-            try {
-              const roles = await fetchMemberRoleIds(guildId, u.id);
-              return roles !== null; // null = echtes 404 = nicht im Server
-            } catch {
-              // Lookup-Fehler (Rate-Limit/Timeout) NICHT als "kein Mitglied"
-              // werten, sonst flackern echte Mitglieder rein/raus → drinlassen.
-              return true;
-            }
-          }));
-          users = users.filter((_, i) => isMember[i]);
-        }
-      }
-      res.json(users);
+      res.json(listUsers(reqGuild(req)));
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
     }

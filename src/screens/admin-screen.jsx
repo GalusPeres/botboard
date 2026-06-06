@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Icon } from '../ui/components.jsx';
-import { useFetch } from '../lib/hooks.js';
+import { usePoll } from '../lib/hooks.js';
 import * as API from '../lib/api.js';
 import { relativeTime } from '../lib/format.js';
 
@@ -154,28 +154,60 @@ function RolesTable({ users, currentUserId, onToggle, busy, loading }) {
 }
 
 export function AdminScreen({ currentUserId, server }) {
-  const { data: fetchedUsers, reload, loading } = useFetch(() => API.users.list(), [server?.id]);
-  const [users, setUsers] = useState(null);
+  // Auto-Poll alle 5 s → kein Refresh-Button nötig. Da nur aus der frischen
+  // Server-Antwort gerendert wird, gibt es keine hängende lokale Liste mehr.
+  const { data: fetched, reload, loading } = usePoll(() => API.users.list(), 5000, [server?.id]);
+  const [overrides, setOverrides] = useState({}); // `${id}|${perm}` -> bool (optimistisch)
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const displayed = users ?? fetchedUsers ?? [];
-  const admins = displayed.filter((u) => u.isEnvAdmin);
-  const regularUsers = displayed.filter((u) => !u.isEnvAdmin);
+  // Optimistische Overrides verwerfen, sobald die frischen Daten sie bestätigen.
+  useEffect(() => {
+    if (!fetched) return;
+    setOverrides((prev) => {
+      const keys = Object.keys(prev);
+      if (!keys.length) return prev;
+      const next = {}; let changed = false;
+      for (const k of keys) {
+        const [id, perm] = k.split('|');
+        const u = fetched.find((x) => x.id === id);
+        if (u && u.permissions?.[perm] === prev[k]) { changed = true; continue; }
+        next[k] = prev[k];
+      }
+      return changed ? next : prev;
+    });
+  }, [fetched]);
+
+  // Serverwechsel → alle Overrides weg (andere Nutzerliste).
+  useEffect(() => { setOverrides({}); }, [server?.id]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
+  const displayed = (fetched ?? []).map((u) => {
+    let perms = u.permissions;
+    for (const key of PERMISSIONS) {
+      const o = overrides[u.id + '|' + key];
+      if (o !== undefined) { if (perms === u.permissions) perms = { ...u.permissions }; perms[key] = o; }
+    }
+    return perms === u.permissions ? u : { ...u, permissions: perms };
+  });
+  const admins = displayed.filter((u) => u.isEnvAdmin);
+  const regularUsers = displayed.filter((u) => !u.isEnvAdmin);
+
   const togglePermission = useCallback(async (user, permission) => {
+    const newVal = !user.permissions[permission];
+    setOverrides((prev) => ({ ...prev, [user.id + '|' + permission]: newVal }));
     setBusy(user.id + permission);
     try {
-      const updated = await API.users.setPermissions(user.id, { [permission]: !user.permissions[permission] });
-      setUsers((prev) => (prev ?? fetchedUsers ?? []).map((u) => u.id === user.id ? { ...u, ...updated } : u));
+      await API.users.setPermissions(user.id, { [permission]: newVal });
+      reload();
     } catch (err) {
+      setOverrides((prev) => { const n = { ...prev }; delete n[user.id + '|' + permission]; return n; });
       showToast(err.message || 'Failed to update');
     } finally {
       setBusy(null);
     }
-  }, [fetchedUsers]);
+  }, [reload]);
 
   return (
     <div className="content-narrow">
@@ -184,9 +216,6 @@ export function AdminScreen({ currentUserId, server }) {
           <div className="page-title">Roles</div>
           <div className="page-sub">Permissions for {server?.name || 'this server'} — set per server.</div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
-          <Icon name="refresh" size={13}/> Refresh
-        </button>
       </div>
 
       <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin</div>

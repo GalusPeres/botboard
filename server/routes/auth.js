@@ -43,7 +43,7 @@ export default function authRoutes() {
       }
 
       const avatar = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : null;
-      recordUser({ id: user.id, username: user.username, global_name: user.global_name, avatar });
+      recordUser({ id: user.id, username: user.username, global_name: user.global_name, avatar, guilds: guildIds });
 
       req.session.user = {
         id: user.id,

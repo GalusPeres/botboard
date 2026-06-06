@@ -51,6 +51,10 @@ export function recordUser(user) {
     username: user.username,
     global_name: user.global_name || user.username,
     avatar: user.avatar,
+    // Discord-Server des Users (aus dem OAuth-Login). Damit die Roles-Liste pro
+    // Server filtern kann, ohne den Bot live zu fragen. Wird bei jedem Login
+    // aktualisiert.
+    ...(Array.isArray(user.guilds) ? { guilds: user.guilds } : {}),
     lastSeen: new Date().toISOString(),
   };
   save(data);
@@ -121,7 +125,12 @@ function serialize(u, guildId) {
   };
 }
 
+// Nur Mitglieder des gewählten Servers (anhand der beim Login gespeicherten
+// Server-Liste). Env-Admins immer. Alt-User ohne gespeicherte Server werden
+// gezeigt, bis sie sich einmal neu eingeloggt haben (dann exakt).
 export function listUsers(guildId) {
   const data = load();
-  return Object.values(data).map((u) => serialize(u, guildId));
+  return Object.values(data)
+    .filter((u) => envAdminSet().has(u.id) || !Array.isArray(u.guilds) || (!!guildId && u.guilds.includes(guildId)))
+    .map((u) => serialize(u, guildId));
 }

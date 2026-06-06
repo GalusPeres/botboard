@@ -10,6 +10,7 @@ const EMPTY_FORM = {
   name: '',
   url: '',
   container: '',
+  dataPath: '',
   enabled: true,
 };
 
@@ -28,6 +29,7 @@ function normaliseForm(bot) {
     name: bot?.name || bot?.module?.manifest?.displayName || '',
     url: bot?.url || '',
     container: bot?.container || '',
+    dataPath: bot?.dataPath || '',
     enabled: bot?.enabled !== false,
   };
 }
@@ -112,6 +114,7 @@ export function BotRegistryScreen({ modules = [], onChanged, restartEnabled, onR
         name,
         url: form.url.trim(),
         container: form.container.trim(),
+        dataPath: form.dataPath.trim(),
         enabled: !!form.enabled,
       };
       if (editing) {
@@ -293,6 +296,16 @@ export function BotRegistryScreen({ modules = [], onChanged, restartEnabled, onR
               <input className="input" value={form.container}
                 placeholder="container name"
                 onChange={(event) => setForm((value) => ({ ...value, container: event.target.value }))}/>
+            </label>
+
+            <label className="registry-field">
+              <span>Data folder (optional)</span>
+              <input className="input" value={form.dataPath}
+                placeholder="/data/windrose"
+                onChange={(event) => setForm((value) => ({ ...value, dataPath: event.target.value }))}/>
+              <span className="registry-field-hint" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                In-container path you mounted in Unraid. Enables the Library (file browser) for this module.
+              </span>
             </label>
 
             <div className="registry-toggle-row">

@@ -43,6 +43,19 @@ function containerManifest(bot) {
   };
 }
 
+// Hat das Modul einen Datenordner konfiguriert, eine „Library"-Seite
+// (Filebrowser, kind 'files') ans Manifest hängen — für Container UND Bots.
+function withFilesPage(bot, manifest) {
+  const cfg = botConfig(bot);
+  if (!cfg?.dataPath?.trim() || !manifest) return manifest;
+  const pages = manifest.pages || [];
+  if (pages.some((p) => (p.kind || p.id) === 'files')) return manifest;
+  return {
+    ...manifest,
+    pages: [...pages, { id: 'files', label: 'Library', icon: 'folder', kind: 'files' }],
+  };
+}
+
 function configuredName(bot) {
   const cfg = botConfig(bot);
   if (cfg?.source !== 'registry') return '';
@@ -159,7 +172,7 @@ export default function botsRoutes() {
             visible: botConfig(bot)?.enabled !== false,
             online: status.online,
             status: withConfiguredName(bot, status),
-            manifest: withConfiguredManifestName(bot, containerManifest(bot)),
+            manifest: withFilesPage(bot, withConfiguredManifestName(bot, containerManifest(bot))),
           };
         }
         const [status, manifest] = await Promise.all([
@@ -171,7 +184,7 @@ export default function botsRoutes() {
           visible: botConfig(bot)?.enabled !== false,
           online: status.online,
           status: withConfiguredName(bot, status),
-          manifest: withConfiguredManifestName(bot, manifest || fallbackManifest(bot, status)),
+          manifest: withFilesPage(bot, withConfiguredManifestName(bot, manifest || fallbackManifest(bot, status))),
         };
       })
     );

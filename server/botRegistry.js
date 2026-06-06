@@ -37,6 +37,9 @@ function normalizeBot(id, raw, source) {
     url: raw.url ? validateUrl(raw.url) : '',
     container: raw.container || '',
     name: raw.name || '',
+    // In-Container-Pfad zum Datenordner des Moduls (vom Admin in Unraid in den
+    // Botboard-Container gemountet). Leer = kein Filebrowser für dieses Modul.
+    dataPath: (raw.dataPath || '').trim(),
     enabled: raw.enabled !== false,
     source,
     readOnly: source === 'env',
@@ -191,6 +194,7 @@ export function upsertRegistryBot(id, input) {
     url: next.url,
     container: next.container,
     name: next.name,
+    dataPath: next.dataPath,
     enabled: next.enabled,
   };
   writeRegistryDocument(current);

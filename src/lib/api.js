@@ -12,7 +12,7 @@ async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
   if (activeGuildId) headers['X-Guild-Id'] = activeGuildId;
   let body = opts.body;
-  if (body && !(body instanceof FormData) && typeof body !== 'string') {
+  if (body && !(body instanceof FormData) && !(body instanceof Blob) && typeof body !== 'string') {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(body);
   }
@@ -133,6 +133,20 @@ export const access = {
 export const botboardConfig = {
   get: () => api('/api/botboard-config'),
   set: (body) => api('/api/botboard-config', { method: 'PUT', body }),
+};
+
+export const files = {
+  list: (bot, path = '') => api(`/api/files/${encodeURIComponent(bot)}/list?path=${encodeURIComponent(path)}`),
+  read: (bot, path) => api(`/api/files/${encodeURIComponent(bot)}/read?path=${encodeURIComponent(path)}`),
+  write: (bot, path, content) => api(`/api/files/${encodeURIComponent(bot)}/write`, { method: 'PUT', body: { path, content } }),
+  rename: (bot, path, newName) => api(`/api/files/${encodeURIComponent(bot)}/rename`, { method: 'PATCH', body: { path, newName } }),
+  remove: (bot, path) => api(`/api/files/${encodeURIComponent(bot)}/delete?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
+  mkdir: (bot, path, name) => api(`/api/files/${encodeURIComponent(bot)}/mkdir`, { method: 'POST', body: { path, name } }),
+  upload: (bot, dir, file) => api(
+    `/api/files/${encodeURIComponent(bot)}/upload?dir=${encodeURIComponent(dir)}&name=${encodeURIComponent(file.name)}`,
+    { method: 'POST', body: file, headers: { 'Content-Type': 'application/octet-stream' } },
+  ),
+  downloadUrl: (bot, path) => `/api/files/${encodeURIComponent(bot)}/download?path=${encodeURIComponent(path)}`,
 };
 
 export const users = {

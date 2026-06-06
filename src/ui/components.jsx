@@ -60,6 +60,8 @@ export const Icon = ({ name, size = 16, className = '', style = {} }) => {
     case 'lavalink': return <svg {...props}><path d="M3 3v18h18"/><path d="M21 9l-7 6-4-3-4 4"/></svg>;
     case 'server': return <svg {...props}><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><line x1="6.5" y1="7.5" x2="6.51" y2="7.5"/><line x1="6.5" y1="16.5" x2="6.51" y2="16.5"/></svg>;
     case 'power': return <svg {...props}><path d="M12 2v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>;
+    case 'folder': return <svg {...props}><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>;
+    case 'file': return <svg {...props}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/></svg>;
     default: return <svg {...props}><circle cx="12" cy="12" r="9"/></svg>;
   }
 };

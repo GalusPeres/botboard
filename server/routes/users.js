@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAdmin } from '../auth.js';
 import { listUsers, setPermissions, recordUser } from '../userRegistry.js';
 import { botIds, botBaseUrl, botAuthHeader } from '../botClient.js';
+import { botTokenConfigured, fetchBotGuildIds, fetchMemberRoleIds } from '../discordBot.js';
 import { logActivity } from '../activityLog.js';
 
 export default function usersRoutes() {
@@ -9,9 +10,26 @@ export default function usersRoutes() {
 
   router.use(requireAdmin);
 
-  router.get('/', (req, res) => {
+  // Nur Mitglieder des aktuell gewählten Servers anzeigen. users.json kennt alle
+  // je eingeloggten User board-weit; wer nicht im Server ist, gehört hier nicht
+  // hin. Mitgliedschaft wird live über den Bot-Token geprüft. Env-Admins werden
+  // immer gezeigt; ohne Bot-Token (oder Bot nicht im Server) wird nicht gefiltert.
+  router.get('/', async (req, res) => {
     try {
-      res.json(listUsers(req.session?.activeGuild));
+      const guildId = req.session?.activeGuild;
+      let users = listUsers(guildId);
+      if (guildId && botTokenConfigured()) {
+        const botGuilds = await fetchBotGuildIds().catch(() => new Set());
+        if (botGuilds.has(guildId)) {
+          const isMember = await Promise.all(users.map(async (u) => {
+            if (u.isEnvAdmin) return true;
+            const roles = await fetchMemberRoleIds(guildId, u.id).catch(() => null);
+            return roles !== null; // null = 404 = nicht im Server
+          }));
+          users = users.filter((_, i) => isMember[i]);
+        }
+      }
+      res.json(users);
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
     }

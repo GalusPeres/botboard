@@ -766,7 +766,7 @@ function DashboardApp(props) {
           {route === 'botboard-logs' && <LogsScreen bot="botboard" botName="Botboard"
             liveLogs={liveLogs.filter(e => e.src === 'botboard')} connection={logConnection}/>}
           {route === 'manage-navigation' && <NavigationSettingsScreen modules={sortedModules} moduleOrder={moduleOrder} onChangeOrder={updateModuleOrder}/>}
-          {route === 'manage-settings' && <BotboardSettingsScreen server={server} modules={sortedModules}/>}
+          {route === 'manage-settings' && <BotboardSettingsScreen server={server} modules={sortedModules} setToast={setToast}/>}
           {/* Alle Bots + alle ihre Seiten immer gemountet, nur das Aktive sichtbar.
               Kein Remount beim Bot- ODER Seitenwechsel = null Flash. */}
           {sortedModules.flatMap(module => {
@@ -886,7 +886,7 @@ const NavigationSettingsScreen = ({ modules, moduleOrder, onChangeOrder }) => {
   );
 };
 
-const BotboardSettingsScreen = ({ server, modules }) => (
+const BotboardSettingsScreen = ({ server, modules, setToast }) => (
   <div className="content-narrow">
     <div className="page-head">
       <div>
@@ -908,30 +908,28 @@ const BotboardSettingsScreen = ({ server, modules }) => (
       </Row>
     </div>
 
-    <AccessBlock server={server}/>
-    <BotBlock/>
+    <AccessBlock server={server} setToast={setToast}/>
+    <BotBlock setToast={setToast}/>
   </div>
 );
 
 // Login-Gate pro Server: optionale Pflichtrolle. Rollen kommen live vom
 // Discord-Bot-Token (Dropdown). "Keine" = Mitgliedschaft im Server reicht.
-const AccessBlock = ({ server }) => {
+const AccessBlock = ({ server, setToast }) => {
   const guildId = server?.id;
   const { data, error, reload } = useFetch(() => API.access.get(guildId), [guildId]);
   const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState('');
 
   const onPick = async (event) => {
     const roleId = event.target.value;
     const role = (data?.roles || []).find((r) => r.id === roleId);
     setSaving(true);
-    setNotice('');
     try {
       await API.access.set(guildId, { requiredRoleId: roleId, requiredRoleName: role?.name || '' });
-      setNotice(roleId ? `Saved — only members with “${role?.name}” can log in or use commands.` : 'Saved — membership in this server is enough.');
+      setToast?.({ msg: roleId ? `Saved — only “${role?.name}” can log in or use commands.` : 'Saved — membership is enough now.', id: Date.now() });
       reload();
     } catch (err) {
-      setNotice('Save failed: ' + err.message);
+      setToast?.({ msg: `Save failed: ${err.message}`, id: Date.now() });
     } finally {
       setSaving(false);
     }
@@ -958,19 +956,17 @@ const AccessBlock = ({ server }) => {
           </select>
         )}
       </Row>
-      {notice && <div className="settings-notice">{notice}</div>}
     </div>
   );
 };
 
 // Globale Bot-Einstellungen: env liefert den Default, das UI überschreibt live.
 // Token bleibt env-only und ist hier bewusst nicht editierbar.
-const BotBlock = () => {
+const BotBlock = ({ setToast }) => {
   const { data, error } = useFetch(() => API.botboardConfig.get(), []);
   const [prefix, setPrefix] = useState('');
   const [statusText, setStatusText] = useState('');
   const [publicUrl, setPublicUrl] = useState('');
-  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     if (data) {
@@ -981,15 +977,14 @@ const BotBlock = () => {
   }, [data]);
 
   const save = async (patch) => {
-    setNotice('');
     try {
       const saved = await API.botboardConfig.set(patch);
       setPrefix(saved.prefix);
       setStatusText(saved.statusText);
       setPublicUrl(saved.publicUrl);
-      setNotice('Saved.');
+      setToast?.({ msg: 'Saved and active now.', id: Date.now() });
     } catch (err) {
-      setNotice('Save failed: ' + err.message);
+      setToast?.({ msg: `Save failed: ${err.message}`, id: Date.now() });
     }
   };
 
@@ -1039,7 +1034,6 @@ const BotBlock = () => {
           </Row>
         </>
       )}
-      {notice && <div className="settings-notice">{notice}</div>}
     </div>
   );
 };

@@ -172,19 +172,20 @@ export const Sidebar = ({
         })}
       </div>
 
-      <SidebarSeparator/>
-
       {(permissions.botModules || permissions.userManagement) && (
-        <SidebarSection
-          name="Manage"
-          fixed
-          collapsed={!!collapsedGroups.__manage}
-          onToggle={() => toggleGroup('__manage')}
-        >
-          {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Modules"/>}
-          {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
-          {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
-        </SidebarSection>
+        <>
+          <SidebarSeparator/>
+          <SidebarSection
+            name="Manage"
+            fixed
+            collapsed={!!collapsedGroups.__manage}
+            onToggle={() => toggleGroup('__manage')}
+          >
+            {permissions.botModules && <NavItem id="bot-modules" route={route} setRoute={setRoute} icon="bot" label="Modules"/>}
+            {permissions.userManagement && <NavItem id="admin" route={route} setRoute={setRoute} icon="users" label="Roles"/>}
+            {permissions.userManagement && <NavItem id="manage-settings" route={route} setRoute={setRoute} icon="settings" label="Settings"/>}
+          </SidebarSection>
+        </>
       )}
 
       <div className="sidebar-user">

@@ -57,9 +57,14 @@ export const config = {
   cookieSecure: boolean('COOKIE_SECURE'),
   devAuthBypass: boolean('DEV_AUTH_BYPASS'),
   dockerRestartEnabled: boolean('DOCKER_RESTART_ENABLED'),
-  // Öffentliche URL des Dashboards (für den /info-Bot-Befehl). Fällt sonst auf
-  // den Origin der OAuth-Redirect-URI zurück.
-  publicUrl: optional('BOTBOARD_PUBLIC_URL'),
+
+  // „Weiche" Bot-Einstellungen: env liefert den Default (auf Unraid setzbar),
+  // das UI kann sie überschreiben. Kein Secret hier — der Token bleibt env-only.
+  botboard: {
+    prefix: optional('BOTBOARD_PREFIX'),
+    statusText: optional('BOTBOARD_STATUS_TEXT'),
+    publicUrl: optional('BOTBOARD_PUBLIC_URL'),
+  },
 
   discord: {
     clientId: optional('DISCORD_CLIENT_ID'),

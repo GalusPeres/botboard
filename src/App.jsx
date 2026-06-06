@@ -931,12 +931,14 @@ const BotCard = () => {
   const { data, error } = useFetch(() => API.botboardConfig.get(), []);
   const [prefix, setPrefix] = useState('');
   const [statusText, setStatusText] = useState('');
+  const [publicUrl, setPublicUrl] = useState('');
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
     if (data) {
       setPrefix(data.prefix || '');
       setStatusText(data.statusText || '');
+      setPublicUrl(data.publicUrl || '');
     }
   }, [data]);
 
@@ -946,11 +948,17 @@ const BotCard = () => {
       const saved = await API.botboardConfig.set(patch);
       setPrefix(saved.prefix);
       setStatusText(saved.statusText);
+      setPublicUrl(saved.publicUrl);
       setNotice('Saved.');
     } catch (err) {
       setNotice('Save failed: ' + err.message);
     }
   };
+
+  // Kleiner Hinweis woher der aktuelle Wert kommt (env-Default vs. hier gesetzt).
+  const srcTag = (key) => data?.source?.[key] === 'env'
+    ? <span className="tag info" style={{ marginLeft: 8 }}>from env</span>
+    : null;
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
@@ -960,21 +968,30 @@ const BotCard = () => {
       {data && (
         <>
           {!data.tokenConfigured && (
-            <ManageSettingsRow label="Status" help="Set DISCORD_BOT_TOKEN (env) to bring the bot online.">
+            <ManageSettingsRow label="Status" help="Set DISCORD_BOT_TOKEN (env only) to bring the bot online.">
               <span className="tag warn">Token not set — bot offline</span>
             </ManageSettingsRow>
           )}
-          <ManageSettingsRow label="Command prefix" help="Prefix for chat commands, e.g. #info. 1–5 characters, no spaces.">
+          <ManageSettingsRow label="Command prefix" help="Prefix for chat commands, e.g. #info. 1–5 characters, no spaces. Default from BOTBOARD_PREFIX.">
             <input className="input" style={{ maxWidth: 120 }} value={prefix}
               onChange={(e) => setPrefix(e.target.value)}
               onBlur={() => prefix !== (data.prefix || '') && save({ prefix })}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+            {srcTag('prefix')}
           </ManageSettingsRow>
-          <ManageSettingsRow label="Status text" help="Shown as “Watching …”. Leave empty for the automatic module count.">
+          <ManageSettingsRow label="Status text" help="Shown as “Watching …”. Empty = automatic module count. Default from BOTBOARD_STATUS_TEXT.">
             <input className="input" value={statusText} placeholder="Auto (X/Y modules online)"
               onChange={(e) => setStatusText(e.target.value)}
               onBlur={() => statusText !== (data.statusText || '') && save({ statusText })}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+            {srcTag('statusText')}
+          </ManageSettingsRow>
+          <ManageSettingsRow label="Dashboard URL" help="Shown by #info. Empty = derived from the OAuth redirect. Default from BOTBOARD_PUBLIC_URL.">
+            <input className="input" value={publicUrl} placeholder="https://botboard.example.com"
+              onChange={(e) => setPublicUrl(e.target.value)}
+              onBlur={() => publicUrl !== (data.publicUrl || '') && save({ publicUrl })}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+            {srcTag('publicUrl')}
           </ManageSettingsRow>
         </>
       )}

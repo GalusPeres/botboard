@@ -19,7 +19,8 @@ function isContainerModule(cfg) {
 }
 
 function publicUrl() {
-  if (config.publicUrl) return config.publicUrl.replace(/\/$/, '');
+  const configured = getBotboardConfig().publicUrl;
+  if (configured) return configured.replace(/\/$/, '');
   try {
     return new URL(config.discord.redirectUri).origin;
   } catch {

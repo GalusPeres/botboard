@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { requireAdmin, requirePermission, userAllowedInGuild } from '../auth.js';
 import { logActivity } from '../activityLog.js';
 import { refreshPresence } from '../discordGateway.js';
+import { botTokenConfigured, fetchBotGuildIds } from '../discordBot.js';
 
 // Bot-Presence sofort aktualisieren, wenn ein Modul über Botboard gestartet/
 // gestoppt wird. Zweiter, verzögerter Refresh fängt HTTP-Bots ab, deren API
@@ -330,6 +331,14 @@ export default function botsRoutes() {
       if (req.session?.userGuilds?.length) {
         const userSet = new Set(req.session.userGuilds);
         guilds = guilds.filter((g) => userSet.has(g.id));
+      }
+
+      // Botboard-Bot muss im Server sein. Nur so funktionieren Rollen-Gate und
+      // Mitglieder-Filter zuverlässig. Ohne Token: kein Filter (Botboard ist
+      // noch nicht als Bot eingerichtet). Discord-Ausfall: nicht filtern.
+      if (botTokenConfigured()) {
+        const botGuilds = await fetchBotGuildIds().catch(() => null);
+        if (botGuilds) guilds = guilds.filter((g) => botGuilds.has(g.id));
       }
 
       // Pro-Server-Rollen-Gate: rollen-geschützte Server nur zeigen, wenn der

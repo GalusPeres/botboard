@@ -634,6 +634,9 @@ ul, ol { list-style: none; }
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  /* Scrollbar-Platz immer reservieren → keine Breiten-Sprünge, wenn eine Seite
+     (z. B. ein Ordner im Filebrowser) mal mehr/weniger Inhalt hat. */
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   padding: 28px;
 }

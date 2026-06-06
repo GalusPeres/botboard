@@ -115,6 +115,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   const [restartConfirm, setRestartConfirm] = useState(null);
+  const [stopConfirm, setStopConfirm] = useState(null);
   const [authConfigured, setAuthConfigured] = useState(true);
   const [restartEnabled, setRestartEnabled] = useState(false);
 
@@ -710,7 +711,7 @@ function DashboardApp(props) {
     botStatus, botInfo, statusData, soundStats, musicStats,
     liveLogs, logConnection,
     settings, saveSettings, soundSettings, musicSettings,
-    restartEnabled, setRestartConfirm, stopBot, startBot,
+    restartEnabled, setRestartConfirm, setStopConfirm, stopBot, startBot,
     guildId, setToast, tweaks,
   };
 
@@ -726,7 +727,7 @@ function DashboardApp(props) {
                modules={sortedModules}
                restartEnabled={restartEnabled}
                onRestart={(bot) => setRestartConfirm(bot)}
-               onStop={stopBot} onStart={startBot}
+               onStop={(bot) => setStopConfirm(bot)} onStart={startBot}
                permissions={perms}/>
       <div className="main">
         <Topbar route={route} server={server}
@@ -817,6 +818,12 @@ function DashboardApp(props) {
                       names={displayNames}
                       onCancel={() => setRestartConfirm(null)}
                       onConfirm={() => { restartBot(restartConfirm); setRestartConfirm(null); }}/>
+      )}
+      {stopConfirm && (
+        <StopModal which={stopConfirm}
+                   names={displayNames}
+                   onCancel={() => setStopConfirm(null)}
+                   onConfirm={() => { stopBot(stopConfirm); setStopConfirm(null); }}/>
       )}
 
       <TweaksUI t={tweaks} setTweak={setTweak}/>
@@ -944,6 +951,31 @@ const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) 
           <button className="btn" onClick={onCancel}>Cancel</button>
           <button className="btn btn-primary" onClick={onConfirm}>
             <Icon name="refresh" size={13}/> Restart
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StopModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) => {
+  const names = { sound: dynamicNames.sound || 'Sound Bot', music: dynamicNames.music || 'Music Bot' };
+  const label = names[which] || dynamicNames[which] || which;
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <h3>Stop {label}?</h3>
+        <p>
+          {which === 'music'
+            ? 'The current track will stop and the queue will be cleared.'
+            : which === 'sound'
+            ? 'Any sound currently playing will stop.'
+            : `${label} will be stopped.`}
+        </p>
+        <div className="modal-actions">
+          <button className="btn" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-danger" onClick={onConfirm}>
+            <Icon name="stop" size={13}/> Stop
           </button>
         </div>
       </div>

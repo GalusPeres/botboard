@@ -85,7 +85,9 @@ const ServicesBlock = ({ botKey, botStatus, canRestart, canStartStop, onStart, o
     <div className="settings-group">
       <div className="settings-group-head"><div className="settings-group-title">Services</div></div>
       <div style={{ display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <Tag kind={online ? 'success' : 'error'}><span className="dot"/> {botStatus || 'offline'}</Tag>
+        <span className={'tag tag-lg ' + (online ? 'success' : 'error')} style={{ fontSize: 13, padding: '6px 12px' }}>
+          <span className="dot"/> {online ? 'Online' : 'Offline'}
+        </span>
         {canStartStop && !online && (
           <button className="btn btn-primary" type="button" onClick={() => onStart(botKey)}>
             <Icon name="play" size={15}/> Start
@@ -367,7 +369,7 @@ export const page = {
         <SoundbotSettingsScreen settings={c.settings} onSave={(patch) => c.saveSettings('sound', patch)}
           settingsLoaded={!!c.soundSettings} botStatus={c.botStatus.sound} botName={c.botName}
           canRestart={canRestart} canStartStop={canStartStop} canConfig={canConfig}
-          onRestart={(b) => c.setRestartConfirm(b)} onStop={c.stopBot} onStart={c.startBot}/>
+          onRestart={(b) => c.setRestartConfirm(b)} onStop={(b) => c.setStopConfirm(b)} onStart={c.startBot}/>
       );
     }
     if (c.parentBot === 'music') {
@@ -375,14 +377,14 @@ export const page = {
         <NewibotSettingsScreen settings={c.settings} onSave={(patch) => c.saveSettings('music', patch)}
           settingsLoaded={!!c.musicSettings} botStatus={c.botStatus.music} botName={c.botName}
           canRestart={canRestart} canStartStop={canStartStop} canConfig={canConfig}
-          onRestart={(b) => c.setRestartConfirm(b)} onStop={c.stopBot} onStart={c.startBot}/>
+          onRestart={(b) => c.setRestartConfirm(b)} onStop={(b) => c.setStopConfirm(b)} onStart={c.startBot}/>
       );
     }
     return (
       <GenericSettingsScreen botId={c.parentBot} botName={c.botName} setToast={c.setToast}
         botStatus={c.botStatus[c.parentBot]}
         canRestart={canRestart} canStartStop={canStartStop} canConfig={canConfig}
-        onRestart={() => c.setRestartConfirm(c.parentBot)} onStop={c.stopBot} onStart={c.startBot}/>
+        onRestart={() => c.setRestartConfirm(c.parentBot)} onStop={(b) => c.setStopConfirm(b)} onStart={c.startBot}/>
     );
   },
 };

@@ -107,8 +107,16 @@ export async function isAllowed(userId, userGuildIds = []) {
   return { allowed: false, reason: 'missing-role' };
 }
 
+// Der aktuell gewählte Server für einen Request: primär der X-Guild-Id-Header
+// (vom Client synchron gesetzt → keine Race), Fallback auf die Session.
+export function reqGuild(req) {
+  const header = req.headers?.['x-guild-id'];
+  if (header && /^\d{5,}$/.test(String(header))) return String(header);
+  return req.session?.activeGuild || null;
+}
+
 // Live permission check — reads from file so changes take effect immediately.
-// Rechte gelten PRO SERVER → guildId ist der aktuell gewählte Server (Session).
+// Rechte gelten PRO SERVER → guildId ist der aktuell gewählte Server.
 export function hasPermission(userId, permission, guildId) {
   if (!userId) return false;
   return getPermissions(userId, guildId)[permission] === true;
@@ -133,7 +141,7 @@ export function requireAuth(req, res, next) {
 
 export function requireAdmin(req, res, next) {
   if (config.devAuthBypass) return next();
-  if (!hasPermission(req.session?.user?.id, 'userManagement', req.session?.activeGuild)) {
+  if (!hasPermission(req.session?.user?.id, 'userManagement', reqGuild(req))) {
     return res.status(403).json({ error: 'forbidden' });
   }
   next();
@@ -142,7 +150,7 @@ export function requireAdmin(req, res, next) {
 export function requirePermission(permission) {
   return (req, res, next) => {
     if (config.devAuthBypass) return next();
-    if (!hasPermission(req.session?.user?.id, permission, req.session?.activeGuild)) {
+    if (!hasPermission(req.session?.user?.id, permission, reqGuild(req))) {
       return res.status(403).json({ error: 'forbidden' });
     }
     next();

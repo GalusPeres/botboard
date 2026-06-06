@@ -273,6 +273,9 @@ function DashboardApp(props) {
 
   const perms = user?.permissions || {};
   const guildId = server.id;
+  // Synchron (vor allen Effects/Fetches) den aktiven Server für die API setzen,
+  // damit jeder Request den X-Guild-Id-Header des GERADE gewählten Servers trägt.
+  API.setActiveGuild(guildId);
   const previewAudioRef = useRef(null);
   const { data: serverOptions } = useFetch(API.bots.servers, [guildId]);
   const { data: modulesData, reload: reloadModules } = usePoll(API.bots.modules, POLL_STATUS_MS, [guildId]);

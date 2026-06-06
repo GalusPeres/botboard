@@ -3,7 +3,7 @@
 
 import { Router } from 'express';
 import { hasBot, botBaseUrl, botAuthHeader } from '../botClient.js';
-import { hasPermission } from '../auth.js';
+import { hasPermission, reqGuild } from '../auth.js';
 import { logActivity } from '../activityLog.js';
 
 const PROXY_PASS_HEADERS = ['content-type', 'content-disposition', 'cache-control'];
@@ -17,7 +17,7 @@ export default function proxyRoutes() {
 
     const subPath = req.params[0];
     const userId = req.session?.user?.id;
-    const guildId = req.session?.activeGuild;
+    const guildId = reqGuild(req);
 
     if (subPath === 'settings' || subPath.startsWith('settings/')) {
       if (!hasPermission(userId, 'settings', guildId)) return res.status(403).json({ error: 'forbidden' });

@@ -2,8 +2,15 @@
 // the session cookie travels. 401 from any call signals "not logged in" — the
 // app reacts by sending the user to the Discord OAuth flow.
 
+// Aktueller Server (Guild). Wird vom App-Shell synchron beim Render gesetzt und
+// als X-Guild-Id-Header mitgeschickt, damit alle per-Server-Checks deterministisch
+// auf den GERADE gewählten Server zielen (keine Race über die Session).
+let activeGuildId = null;
+export function setActiveGuild(id) { activeGuildId = id || null; }
+
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
+  if (activeGuildId) headers['X-Guild-Id'] = activeGuildId;
   let body = opts.body;
   if (body && !(body instanceof FormData) && typeof body !== 'string') {
     headers['Content-Type'] = 'application/json';

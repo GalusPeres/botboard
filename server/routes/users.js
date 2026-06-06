@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAdmin } from '../auth.js';
+import { requireAdmin, reqGuild } from '../auth.js';
 import { listUsers, setPermissions, recordUser } from '../userRegistry.js';
 import { botIds, botBaseUrl, botAuthHeader } from '../botClient.js';
 import { botTokenConfigured, fetchBotGuildIds, fetchMemberRoleIds } from '../discordBot.js';
@@ -16,7 +16,7 @@ export default function usersRoutes() {
   // immer gezeigt; ohne Bot-Token (oder Bot nicht im Server) wird nicht gefiltert.
   router.get('/', async (req, res) => {
     try {
-      const guildId = req.session?.activeGuild;
+      const guildId = reqGuild(req);
       let users = listUsers(guildId);
       if (guildId && botTokenConfigured()) {
         const botGuilds = await fetchBotGuildIds().catch(() => new Set());
@@ -47,7 +47,7 @@ export default function usersRoutes() {
       const { id, username, global_name, avatar } = req.body || {};
       if (!id) return res.status(400).json({ error: 'id is required' });
       recordUser({ id, username: username || id, global_name: global_name || username || id, avatar: avatar || null });
-      const users = listUsers(req.session?.activeGuild);
+      const users = listUsers(reqGuild(req));
       res.status(201).json(users.find((u) => u.id === id) || { id });
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
@@ -57,13 +57,14 @@ export default function usersRoutes() {
   // Update individual permissions for a user.
   router.patch('/:id/permissions', (req, res) => {
     try {
-      const result = setPermissions(req.params.id, req.session?.activeGuild, req.body || {});
+      const guildId = reqGuild(req);
+      const result = setPermissions(req.params.id, guildId, req.body || {});
       const by = req.session?.user?.global_name || req.session?.user?.username || 'admin';
       const target = result.global_name || result.username || req.params.id;
       const changes = Object.entries(req.body || {})
         .map(([k, v]) => `${k}=${v ? 'on' : 'off'}`)
         .join(', ');
-      logActivity(`${by} → Rechte (Server ${req.session?.activeGuild}) für ${target}: ${changes}`);
+      logActivity(`${by} → Rechte (Server ${guildId}) für ${target}: ${changes}`);
       res.json(result);
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });

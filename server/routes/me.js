@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { config, discordOAuthEnabled } from '../config.js';
 import { getPermissions } from '../userRegistry.js';
+import { reqGuild } from '../auth.js';
 
 export default function meRoutes() {
   const router = Router();
@@ -11,11 +12,11 @@ export default function meRoutes() {
     const permissions = user
       ? (config.devAuthBypass
           ? { controlBot: true, restartBot: true, startStop: true, soundLibrary: true, settings: true, userManagement: true, botModules: true }
-          : getPermissions(user.id, req.session.activeGuild))
+          : getPermissions(user.id, reqGuild(req)))
       : null;
     res.json({
       user: user ? { ...user, permissions } : null,
-      activeGuild: req.session?.activeGuild || null,
+      activeGuild: reqGuild(req),
       authConfigured: discordOAuthEnabled(),
       restartEnabled: config.dockerRestartEnabled,
     });

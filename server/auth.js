@@ -65,11 +65,13 @@ function isEnvAdmin(userId) {
 export async function userAllowedInGuild(userId, guildId) {
   if (!botTokenConfigured()) return true;
   if (isEnvAdmin(userId)) return true;
+  if (!guildId) return false;
   const access = getGuildAccess(guildId);
-  if (!access.requiredRoleId) return true;
   try {
     const roleIds = await fetchMemberRoleIds(guildId, userId);
-    return !!(roleIds && roleIds.includes(access.requiredRoleId));
+    if (roleIds === null) return false;                 // nicht (mehr) im Server
+    if (!access.requiredRoleId) return true;            // Mitglied, keine Rolle nötig
+    return roleIds.includes(access.requiredRoleId);     // Mitglied + hat die Rolle
   } catch (err) {
     // Discord-Ausfall darf bestehende Nutzer nicht aussperren → durchlassen.
     console.error('[access] guild role check failed:', err.message);
@@ -139,20 +141,28 @@ export function requireAuth(req, res, next) {
   next();
 }
 
+// Prüft das gespeicherte Recht UND ob der User auf dem Server aktuell zugelassen
+// ist (Mitglied + ggf. Pflichtrolle). Damit gilt „Rolle/Mitgliedschaft weg =
+// kein Zugang" auch hart auf der API, nicht nur im UI. guildId kommt aus dem
+// X-Guild-Id-Header (vom Client), darf also nicht blind vertraut werden.
+function guardPermission(permission) {
+  return (req, res, next) => {
+    if (config.devAuthBypass) return next();
+    const userId = req.session?.user?.id;
+    const guildId = reqGuild(req);
+    if (!hasPermission(userId, permission, guildId)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    userAllowedInGuild(userId, guildId)
+      .then((ok) => ok ? next() : res.status(403).json({ error: 'no access to this server' }))
+      .catch((err) => { console.error('[auth] guard failed:', err.message); res.status(403).json({ error: 'forbidden' }); });
+  };
+}
+
 export function requireAdmin(req, res, next) {
-  if (config.devAuthBypass) return next();
-  if (!hasPermission(req.session?.user?.id, 'userManagement', reqGuild(req))) {
-    return res.status(403).json({ error: 'forbidden' });
-  }
-  next();
+  return guardPermission('userManagement')(req, res, next);
 }
 
 export function requirePermission(permission) {
-  return (req, res, next) => {
-    if (config.devAuthBypass) return next();
-    if (!hasPermission(req.session?.user?.id, permission, reqGuild(req))) {
-      return res.status(403).json({ error: 'forbidden' });
-    }
-    next();
-  };
+  return guardPermission(permission);
 }

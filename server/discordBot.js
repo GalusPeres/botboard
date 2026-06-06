@@ -61,9 +61,19 @@ export async function fetchGuildRoles(guildId) {
 }
 
 // Rollen-IDs eines Mitglieds in einem Server. null = nicht im Server (404).
+// Kurz gecacht, damit Rollen-/Mitgliedschafts-Checks bei jedem Request günstig
+// sind (sie laufen jetzt auch in requirePermission). Fehler werden NICHT
+// gecacht (Aufrufer macht fail-open). Änderungen greifen nach ≤ TTL.
+const memberCache = new Map(); // `${guildId}:${userId}` -> { roles, at }
+const MEMBER_TTL_MS = 30_000;
+
 export async function fetchMemberRoleIds(guildId, userId) {
   if (!botTokenConfigured()) return null;
+  const key = `${guildId}:${userId}`;
+  const hit = memberCache.get(key);
+  if (hit && Date.now() - hit.at < MEMBER_TTL_MS) return hit.roles;
   const member = await botFetch(`/guilds/${guildId}/members/${userId}`);
-  if (!member) return null;
-  return Array.isArray(member.roles) ? member.roles : [];
+  const roles = member ? (Array.isArray(member.roles) ? member.roles : []) : null;
+  memberCache.set(key, { roles, at: Date.now() });
+  return roles;
 }

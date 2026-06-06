@@ -3,7 +3,7 @@
 
 import { Router } from 'express';
 import { hasBot, botBaseUrl, botAuthHeader } from '../botClient.js';
-import { hasPermission, reqGuild } from '../auth.js';
+import { hasPermission, reqGuild, userAllowedInGuild } from '../auth.js';
 import { logActivity } from '../activityLog.js';
 
 const PROXY_PASS_HEADERS = ['content-type', 'content-disposition', 'cache-control'];
@@ -19,15 +19,23 @@ export default function proxyRoutes() {
     const userId = req.session?.user?.id;
     const guildId = reqGuild(req);
 
+    // Geschützte Pfade: gespeichertes Recht UND aktueller Server-Zugang (Rolle/
+    // Mitgliedschaft) — sonst gilt das Recht weiter, obwohl die Rolle weg ist.
+    const denyUnlessAccess = async () => (await userAllowedInGuild(userId, guildId));
+
     if (subPath === 'settings' || subPath.startsWith('settings/')) {
-      if (!hasPermission(userId, 'settings', guildId)) return res.status(403).json({ error: 'forbidden' });
+      if (!hasPermission(userId, 'settings', guildId) || !(await denyUnlessAccess())) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
     }
 
     if (subPath === 'sounds' || subPath.startsWith('sounds/')) {
       const isWrite = !['GET', 'HEAD'].includes(req.method);
       const isDownload = subPath === 'sounds/download-zip' || subPath.endsWith('/file');
       if (isWrite || isDownload) {
-        if (!hasPermission(userId, 'soundLibrary', guildId)) return res.status(403).json({ error: 'forbidden' });
+        if (!hasPermission(userId, 'soundLibrary', guildId) || !(await denyUnlessAccess())) {
+          return res.status(403).json({ error: 'forbidden' });
+        }
       }
     }
     // Log key dashboard actions before forwarding
@@ -52,6 +60,11 @@ export default function proxyRoutes() {
       const headers = { ...req.headers };
       delete headers.host;
       delete headers['content-length'];
+      // Browser-Session-Cookie & vom Client gesetzte Auth nicht an den Bot
+      // weiterreichen — der Bot kriegt nur unseren Bot-Token.
+      delete headers.cookie;
+      delete headers.authorization;
+      delete headers['x-guild-id'];
       const auth = botAuthHeader();
       if (auth) headers.authorization = auth;
       if (req.session?.user?.id) {

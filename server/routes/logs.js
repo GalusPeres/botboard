@@ -5,6 +5,14 @@
 import { Router } from 'express';
 import { botIds, botBaseUrl, botAuthHeader, botFetch } from '../botClient.js';
 import { recentActivity, subscribeActivity } from '../activityLog.js';
+import { hasPermission, reqGuild } from '../auth.js';
+
+// Botboards eigenes Activity-Log (Logins, Rechte-Änderungen, wer was tat) ist
+// admin-relevant → nur für userManagement. Die operativen Bot-Logs bleiben für
+// alle (sie speisen die „Live Logs"-Seite der einzelnen Bots).
+function canSeeActivity(req) {
+  return hasPermission(req.session?.user?.id, 'userManagement', reqGuild(req));
+}
 
 export default function logsRoutes() {
   const router = Router();
@@ -15,7 +23,9 @@ export default function logsRoutes() {
         .then((entries) => entries.map((entry) => ({ bot, ...entry })))
         .catch(() => []))
     );
-    const botboardEntries = recentActivity(100).map((entry) => ({ bot: 'botboard', ...entry }));
+    const botboardEntries = canSeeActivity(req)
+      ? recentActivity(100).map((entry) => ({ bot: 'botboard', ...entry }))
+      : [];
     const all = [...entriesByBot.flat(), ...botboardEntries]
       .sort((a, b) => new Date(a.time) - new Date(b.time))
       .slice(-200);
@@ -33,11 +43,13 @@ export default function logsRoutes() {
 
     const upstreams = botIds().map((bot) => connectUpstream(bot, res));
 
-    // Also stream Botboard's own activity log
-    const unsubBotboard = subscribeActivity((entry) => {
-      res.write(`data: ${JSON.stringify({ bot: 'botboard', ...entry })}\n\n`);
-      res.flush?.();
-    });
+    // Botboards Activity-Log nur für Admins mitstreamen.
+    const unsubBotboard = canSeeActivity(req)
+      ? subscribeActivity((entry) => {
+          res.write(`data: ${JSON.stringify({ bot: 'botboard', ...entry })}\n\n`);
+          res.flush?.();
+        })
+      : () => {};
 
     const heartbeat = setInterval(() => {
       res.write(': ping\n\n');

@@ -920,8 +920,59 @@ const BotboardSettingsScreen = ({ server, modules }) => (
         </ManageSettingsRow>
       </div>
     </div>
+    <AccessCard server={server}/>
   </div>
 );
+
+// Login-Gate pro Server: optionale Pflichtrolle. Rollen kommen live vom
+// Discord-Bot-Token (Dropdown). "Keine" = Mitgliedschaft im Server reicht.
+const AccessCard = ({ server }) => {
+  const guildId = server?.id;
+  const { data, error, reload } = useFetch(() => API.access.get(guildId), [guildId]);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const onPick = async (event) => {
+    const roleId = event.target.value;
+    const role = (data?.roles || []).find((r) => r.id === roleId);
+    setSaving(true);
+    setNotice('');
+    try {
+      await API.access.set(guildId, { requiredRoleId: roleId, requiredRoleName: role?.name || '' });
+      setNotice(roleId ? `Saved — only members with “${role?.name}” can log in.` : 'Saved — membership in this server is enough.');
+      reload();
+    } catch (err) {
+      setNotice('Save failed: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-header"><div className="card-title">Access</div></div>
+      <ManageSettingsRow label="Who can log in" help="Login is always restricted to members of a server Botboard is in. Optionally require a role here.">
+        {!data && !error && <span className="settings-value">Loading…</span>}
+        {error && <span className="tag error">{error.message}</span>}
+        {data && !data.tokenConfigured && (
+          <span className="tag warn">Set DISCORD_BOT_TOKEN to enable</span>
+        )}
+        {data && data.tokenConfigured && !data.botInGuild && (
+          <span className="tag warn">Botboard bot is not in this server</span>
+        )}
+        {data && data.tokenConfigured && data.botInGuild && (
+          <select className="select" value={data.requiredRoleId || ''} onChange={onPick} disabled={saving}>
+            <option value="">No role required (membership is enough)</option>
+            {data.roles.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        )}
+      </ManageSettingsRow>
+      {notice && <div className="settings-notice" style={{ margin: '0 20px 14px' }}>{notice}</div>}
+    </div>
+  );
+};
 
 const ManageSettingsRow = ({ label, help, children }) => (
   <div className="settings-row manage-settings-row">

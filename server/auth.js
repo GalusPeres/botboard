@@ -1,5 +1,7 @@
 import { config, discordOAuthEnabled } from './config.js';
 import { getPermissions } from './userRegistry.js';
+import { botTokenConfigured, fetchBotGuildIds, fetchMemberRoleIds } from './discordBot.js';
+import { getGuildAccess } from './accessRegistry.js';
 
 const OAUTH_BASE = 'https://discord.com/api/oauth2/authorize';
 const TOKEN_URL = 'https://discord.com/api/oauth2/token';
@@ -50,8 +52,56 @@ export async function fetchUserGuilds(accessToken) {
   return res.json();
 }
 
-export function isAllowed() {
-  return true;
+// Env-Admins dürfen immer rein, egal welche Server/Rollen — sonst sperrt man
+// sich beim Einrichten selbst aus.
+function isEnvAdmin(userId) {
+  return new Set([...config.discord.allowedUserIds, ...config.discord.adminUserIds]).has(userId);
+}
+
+// Login-Gate: nur rein, wer in mindestens einem Server ist, in dem Botboard
+// (der Bot) auch drin ist — und dort, falls für den Server eine Pflichtrolle
+// gesetzt ist, diese Rolle hat. Reicht EIN passender Server.
+//
+// Solange kein Bot-Token konfiguriert ist, bleibt das Verhalten wie bisher
+// (jeder rein), damit man sich beim Einrichten nicht aussperrt. Sobald der
+// Token gesetzt ist, greift das Gate.
+export async function isAllowed(userId, userGuildIds = []) {
+  if (!botTokenConfigured()) return { allowed: true };
+  if (isEnvAdmin(userId)) return { allowed: true };
+
+  let botGuildIds;
+  try {
+    botGuildIds = await fetchBotGuildIds();
+  } catch (err) {
+    console.error('[access] could not fetch bot guilds:', err.message);
+    // Discord-Ausfall darf bestehende Nutzer nicht aussperren → durchlassen,
+    // aber laut loggen.
+    return { allowed: true, degraded: true };
+  }
+
+  const shared = userGuildIds.filter((id) => botGuildIds.has(id));
+  if (shared.length === 0) {
+    return { allowed: false, reason: 'no-shared-server' };
+  }
+
+  // Server ohne Pflichtrolle: Mitgliedschaft reicht → sofort erlaubt.
+  const gated = [];
+  for (const guildId of shared) {
+    const access = getGuildAccess(guildId);
+    if (!access.requiredRoleId) return { allowed: true };
+    gated.push({ guildId, roleId: access.requiredRoleId });
+  }
+
+  // Alle gemeinsamen Server haben eine Pflichtrolle → in mind. einem die Rolle?
+  for (const { guildId, roleId } of gated) {
+    try {
+      const roleIds = await fetchMemberRoleIds(guildId, userId);
+      if (roleIds && roleIds.includes(roleId)) return { allowed: true };
+    } catch (err) {
+      console.error('[access] member lookup failed:', err.message);
+    }
+  }
+  return { allowed: false, reason: 'missing-role' };
 }
 
 // Live permission check — reads from file so changes take effect immediately.

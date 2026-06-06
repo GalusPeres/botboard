@@ -117,6 +117,11 @@ export const sound = {
   downloadAllUrl: () => `/api/bots/sound/sounds/download-zip`,
 };
 
+export const access = {
+  get: (guildId) => api(`/api/access/${encodeURIComponent(guildId)}`),
+  set: (guildId, body) => api(`/api/access/${encodeURIComponent(guildId)}`, { method: 'PUT', body }),
+};
+
 export const users = {
   list: () => api('/api/users'),
   add: (user) => api('/api/users', { method: 'POST', body: user }),

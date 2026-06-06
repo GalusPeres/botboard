@@ -64,6 +64,9 @@ export const config = {
     redirectUri: optional('DISCORD_REDIRECT_URI'),
     allowedUserIds: list('ALLOWED_USER_IDS'),
     adminUserIds: list('ADMIN_USER_IDS'),
+    // Bot-Token, damit Botboard sich selbst als Bot kennt (eigene Server-Liste,
+    // Rollen, Mitglieder). Nur per env/Unraid — nicht über die UI editierbar.
+    botToken: optional('DISCORD_BOT_TOKEN'),
   },
 
   bots: {

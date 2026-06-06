@@ -13,6 +13,7 @@ import botsRoutes from './routes/bots.js';
 import proxyRoutes from './routes/proxy.js';
 import logsRoutes from './routes/logs.js';
 import usersRoutes from './routes/users.js';
+import accessRoutes from './routes/access.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -56,6 +57,7 @@ app.use('/api', requireAuth);
 app.use('/api/bots', botsRoutes());
 app.use('/api/logs', logsRoutes());
 app.use('/api/users', usersRoutes());
+app.use('/api/access', accessRoutes());
 app.use('/api/bots', proxyRoutes());
 
 app.use(express.static(distDir, { maxAge: '1h', index: false }));

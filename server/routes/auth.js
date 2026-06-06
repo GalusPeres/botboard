@@ -30,15 +30,21 @@ export default function authRoutes() {
     try {
       const token = await exchangeCode(code);
       const user = await fetchDiscordUser(token.access_token);
+      const guilds = await fetchUserGuilds(token.access_token);
+      const guildIds = guilds.map((g) => g.id);
 
-      if (!isAllowed(user.id)) {
-        return res.status(403).send('Your Discord account is not on the allowlist.');
+      const access = await isAllowed(user.id, guildIds);
+      if (!access.allowed) {
+        const msg = access.reason === 'missing-role'
+          ? 'You do not have the required role on a server that Botboard is in.'
+          : 'You must be a member of a Discord server that Botboard is in.';
+        logActivity(`Login denied (${access.reason}): ${user.global_name || user.username} (@${user.username})`);
+        return res.status(403).send(msg);
       }
 
       const avatar = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : null;
       recordUser({ id: user.id, username: user.username, global_name: user.global_name, avatar });
 
-      const guilds = await fetchUserGuilds(token.access_token);
       req.session.user = {
         id: user.id,
         username: user.username,
@@ -46,7 +52,7 @@ export default function authRoutes() {
         avatar,
         permissions: getPermissions(user.id),
       };
-      req.session.userGuilds = guilds.map((g) => g.id);
+      req.session.userGuilds = guildIds;
       req.session.save((saveErr) => {
         if (saveErr) return res.status(500).send('Login session could not be saved.');
         logActivity(`Login: ${user.global_name || user.username} (@${user.username})`);

@@ -304,8 +304,18 @@ function DashboardApp(props) {
   const moduleById = new Map(sortedModules.map((module) => [module.id, module]));
 
   useEffect(() => {
-    const freshServer = serverOptions?.find((option) => option.id === guildId);
-    if (!freshServer) return;
+    if (!serverOptions) return; // noch nicht geladen
+    const freshServer = serverOptions.find((option) => option.id === guildId);
+    if (!freshServer) {
+      // Aktueller Server nicht (mehr) erlaubt (z. B. Rolle fehlt) → auf einen
+      // erlaubten wechseln, damit eine gecachte Auswahl nicht durchrutscht.
+      if (serverOptions.length > 0) {
+        saveServer(serverOptions[0]);
+        setServer(serverOptions[0]);
+        setRoute('overview');
+      }
+      return;
+    }
     if (freshServer.name === server.name
       && freshServer.icon === server.icon
       && freshServer.members === server.members) return;

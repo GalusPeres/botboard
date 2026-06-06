@@ -3,7 +3,7 @@ import { botIds, hasBot, botStatus, botFetch } from '../botClient.js';
 import { restartContainer, stopContainer, startContainer, containerStatus, containerStats, containerLogs } from '../docker.js';
 import { botConfig, deleteRegistryBot, registrySnapshot, upsertRegistryBot, reorderRegistryBot, setRegistryOrder } from '../botRegistry.js';
 import { config } from '../config.js';
-import { requireAdmin, requirePermission } from '../auth.js';
+import { requireAdmin, requirePermission, userAllowedInGuild } from '../auth.js';
 import { logActivity } from '../activityLog.js';
 import { refreshPresence } from '../discordGateway.js';
 
@@ -331,6 +331,15 @@ export default function botsRoutes() {
         const userSet = new Set(req.session.userGuilds);
         guilds = guilds.filter((g) => userSet.has(g.id));
       }
+
+      // Pro-Server-Rollen-Gate: rollen-geschützte Server nur zeigen, wenn der
+      // User dort die Pflichtrolle hat (sonst gar nicht auswählbar).
+      const userId = req.session?.user?.id;
+      if (userId) {
+        const ok = await Promise.all(guilds.map((g) => userAllowedInGuild(userId, g.id)));
+        guilds = guilds.filter((_, i) => ok[i]);
+      }
+
       res.json(guilds);
     } catch (err) {
       res.status(500).json({ error: err.message });

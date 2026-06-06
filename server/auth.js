@@ -58,13 +58,32 @@ function isEnvAdmin(userId) {
   return new Set([...config.discord.allowedUserIds, ...config.discord.adminUserIds]).has(userId);
 }
 
+// Darf dieser User auf DIESEN Server zugreifen? Ohne gesetzte Pflichtrolle
+// reicht die Mitgliedschaft; mit Pflichtrolle muss er die Rolle haben. Wird
+// sowohl fürs Login-Gate als auch für die Server-Liste benutzt, damit ein User
+// einen rollen-geschützten Server gar nicht erst auswählen kann.
+export async function userAllowedInGuild(userId, guildId) {
+  if (!botTokenConfigured()) return true;
+  if (isEnvAdmin(userId)) return true;
+  const access = getGuildAccess(guildId);
+  if (!access.requiredRoleId) return true;
+  try {
+    const roleIds = await fetchMemberRoleIds(guildId, userId);
+    return !!(roleIds && roleIds.includes(access.requiredRoleId));
+  } catch (err) {
+    // Discord-Ausfall darf bestehende Nutzer nicht aussperren → durchlassen.
+    console.error('[access] guild role check failed:', err.message);
+    return true;
+  }
+}
+
 // Login-Gate: nur rein, wer in mindestens einem Server ist, in dem Botboard
-// (der Bot) auch drin ist — und dort, falls für den Server eine Pflichtrolle
-// gesetzt ist, diese Rolle hat. Reicht EIN passender Server.
+// (der Bot) auch drin ist UND dort (falls Pflichtrolle gesetzt) die Rolle hat.
+// Reicht EIN passender Server. Welche Server er danach sieht, entscheidet die
+// gefilterte Server-Liste (siehe /servers) – ebenfalls per userAllowedInGuild.
 //
-// Solange kein Bot-Token konfiguriert ist, bleibt das Verhalten wie bisher
-// (jeder rein), damit man sich beim Einrichten nicht aussperrt. Sobald der
-// Token gesetzt ist, greift das Gate.
+// Ohne Bot-Token bleibt das Verhalten wie bisher (jeder rein), damit man sich
+// beim Einrichten nicht aussperrt.
 export async function isAllowed(userId, userGuildIds = []) {
   if (!botTokenConfigured()) return { allowed: true };
   if (isEnvAdmin(userId)) return { allowed: true };
@@ -74,8 +93,6 @@ export async function isAllowed(userId, userGuildIds = []) {
     botGuildIds = await fetchBotGuildIds();
   } catch (err) {
     console.error('[access] could not fetch bot guilds:', err.message);
-    // Discord-Ausfall darf bestehende Nutzer nicht aussperren → durchlassen,
-    // aber laut loggen.
     return { allowed: true, degraded: true };
   }
 
@@ -84,22 +101,8 @@ export async function isAllowed(userId, userGuildIds = []) {
     return { allowed: false, reason: 'no-shared-server' };
   }
 
-  // Server ohne Pflichtrolle: Mitgliedschaft reicht → sofort erlaubt.
-  const gated = [];
   for (const guildId of shared) {
-    const access = getGuildAccess(guildId);
-    if (!access.requiredRoleId) return { allowed: true };
-    gated.push({ guildId, roleId: access.requiredRoleId });
-  }
-
-  // Alle gemeinsamen Server haben eine Pflichtrolle → in mind. einem die Rolle?
-  for (const { guildId, roleId } of gated) {
-    try {
-      const roleIds = await fetchMemberRoleIds(guildId, userId);
-      if (roleIds && roleIds.includes(roleId)) return { allowed: true };
-    } catch (err) {
-      console.error('[access] member lookup failed:', err.message);
-    }
+    if (await userAllowedInGuild(userId, guildId)) return { allowed: true };
   }
   return { allowed: false, reason: 'missing-role' };
 }

@@ -3,7 +3,7 @@
 // (useFetch) or periodic (usePoll). Logs come in via SSE.
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Sidebar, Topbar, MobileMoreSheet, routeMeta } from './layout/sidebar.jsx';
-import { Icon } from './ui/components.jsx';
+import { Icon, Row } from './ui/components.jsx';
 import { LoginScreen, ServerSelectScreen } from './screens/auth.jsx';
 import { OverviewScreen } from './screens/overview.jsx';
 import { LogsScreen } from './pages/logs.jsx';
@@ -894,40 +894,78 @@ const BotboardSettingsScreen = ({ server, modules }) => (
         <div className="page-sub">Botboard settings for this Discord server.</div>
       </div>
     </div>
-    <div className="grid-2 botboard-settings-grid">
-      <div className="card">
-        <div className="card-header"><div className="card-title">Server</div></div>
-        <ManageSettingsRow label="Server name" help="Selected Discord server.">
-          <span className="settings-value">{server?.name || 'Unknown'}</span>
-        </ManageSettingsRow>
-        <ManageSettingsRow label="Members" help="Member count reported by Discord.">
-          <span className="settings-value">{server?.members ?? '-'}</span>
-        </ManageSettingsRow>
-        <ManageSettingsRow label="Active modules" help="Modules visible for this server.">
-          <span className="settings-value">{modules.length}</span>
-        </ManageSettingsRow>
-      </div>
-      <div className="card">
-        <div className="card-header"><div className="card-title">Botboard</div></div>
-        <ManageSettingsRow label="Sidebar order" help="Configured on the Navigation page.">
-          <span className="tag info">Per server</span>
-        </ManageSettingsRow>
-        <ManageSettingsRow label="General section" help="Overview and Live Logs stay visible above the scroll area.">
-          <span className="tag success">Always visible</span>
-        </ManageSettingsRow>
-        <ManageSettingsRow label="Manage section" help="Administration stays below the module list.">
-          <span className="tag success">Pinned bottom</span>
-        </ManageSettingsRow>
-      </div>
+
+    <div className="settings-group">
+      <div className="settings-group-head"><div className="settings-group-title">Server</div></div>
+      <Row label="Server name" help="Selected Discord server.">
+        <span className="settings-value">{server?.name || 'Unknown'}</span>
+      </Row>
+      <Row label="Members" help="Member count reported by Discord.">
+        <span className="settings-value">{server?.members ?? '-'}</span>
+      </Row>
+      <Row label="Active modules" help="Modules visible for this server.">
+        <span className="settings-value">{modules.length}</span>
+      </Row>
     </div>
-    <AccessCard server={server}/>
-    <BotCard/>
+
+    <AccessBlock server={server}/>
+    <BotBlock/>
   </div>
 );
 
-// Globale Bot-Einstellungen: Befehls-Prefix + optionaler Status-Text. Token
-// bleibt env-only; hier nur die „weiche" Config.
-const BotCard = () => {
+// Login-Gate pro Server: optionale Pflichtrolle. Rollen kommen live vom
+// Discord-Bot-Token (Dropdown). "Keine" = Mitgliedschaft im Server reicht.
+const AccessBlock = ({ server }) => {
+  const guildId = server?.id;
+  const { data, error, reload } = useFetch(() => API.access.get(guildId), [guildId]);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const onPick = async (event) => {
+    const roleId = event.target.value;
+    const role = (data?.roles || []).find((r) => r.id === roleId);
+    setSaving(true);
+    setNotice('');
+    try {
+      await API.access.set(guildId, { requiredRoleId: roleId, requiredRoleName: role?.name || '' });
+      setNotice(roleId ? `Saved — only members with “${role?.name}” can log in or use commands.` : 'Saved — membership in this server is enough.');
+      reload();
+    } catch (err) {
+      setNotice('Save failed: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="settings-group">
+      <div className="settings-group-head"><div className="settings-group-title">Access</div></div>
+      <Row label="Required role" help="Login and bot commands need this role. Empty = membership in the server is enough.">
+        {!data && !error && <span className="settings-value">Loading…</span>}
+        {error && <span className="tag error">{error.message}</span>}
+        {data && !data.tokenConfigured && (
+          <span className="tag warn">Set DISCORD_BOT_TOKEN to enable</span>
+        )}
+        {data && data.tokenConfigured && !data.botInGuild && (
+          <span className="tag warn">Botboard bot is not in this server</span>
+        )}
+        {data && data.tokenConfigured && data.botInGuild && (
+          <select className="select" value={data.requiredRoleId || ''} onChange={onPick} disabled={saving}>
+            <option value="">No role required (membership is enough)</option>
+            {data.roles.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        )}
+      </Row>
+      {notice && <div className="settings-notice">{notice}</div>}
+    </div>
+  );
+};
+
+// Globale Bot-Einstellungen: env liefert den Default, das UI überschreibt live.
+// Token bleibt env-only und ist hier bewusst nicht editierbar.
+const BotBlock = () => {
   const { data, error } = useFetch(() => API.botboardConfig.get(), []);
   const [prefix, setPrefix] = useState('');
   const [statusText, setStatusText] = useState('');
@@ -955,110 +993,56 @@ const BotCard = () => {
     }
   };
 
-  // Kleiner Hinweis woher der aktuelle Wert kommt (env-Default vs. hier gesetzt).
+  // Kleiner Hinweis, dass der aktuelle Wert aus der env kommt.
   const srcTag = (key) => data?.source?.[key] === 'env'
-    ? <span className="tag info" style={{ marginLeft: 8 }}>from env</span>
+    ? <span className="tag info">from env</span>
     : null;
 
   return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <div className="card-header"><div className="card-title">Bot</div></div>
-      {!data && !error && <ManageSettingsRow label="Loading…"><span className="settings-value">…</span></ManageSettingsRow>}
-      {error && <ManageSettingsRow label="Bot"><span className="tag error">{error.message}</span></ManageSettingsRow>}
+    <div className="settings-group">
+      <div className="settings-group-head"><div className="settings-group-title">Bot</div></div>
+      {!data && !error && <Row label="Bot"><span className="settings-value">Loading…</span></Row>}
+      {error && <Row label="Bot"><span className="tag error">{error.message}</span></Row>}
       {data && (
         <>
           {!data.tokenConfigured && (
-            <ManageSettingsRow label="Status" help="Set DISCORD_BOT_TOKEN (env only) to bring the bot online.">
+            <Row label="Status" help="Set DISCORD_BOT_TOKEN (env only) to bring the bot online.">
               <span className="tag warn">Token not set — bot offline</span>
-            </ManageSettingsRow>
+            </Row>
           )}
-          <ManageSettingsRow label="Command prefix" help="Prefix for chat commands, e.g. #info. 1–5 characters, no spaces. Default from BOTBOARD_PREFIX.">
-            <input className="input" style={{ maxWidth: 120 }} value={prefix}
-              onChange={(e) => setPrefix(e.target.value)}
-              onBlur={() => prefix !== (data.prefix || '') && save({ prefix })}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
-            {srcTag('prefix')}
-          </ManageSettingsRow>
-          <ManageSettingsRow label="Status text" help="Shown as “Watching …”. Empty = automatic module count. Default from BOTBOARD_STATUS_TEXT.">
-            <input className="input" value={statusText} placeholder="Auto (X/Y modules online)"
-              onChange={(e) => setStatusText(e.target.value)}
-              onBlur={() => statusText !== (data.statusText || '') && save({ statusText })}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
-            {srcTag('statusText')}
-          </ManageSettingsRow>
-          <ManageSettingsRow label="Dashboard URL" help="Shown by #info. Empty = derived from the OAuth redirect. Default from BOTBOARD_PUBLIC_URL.">
-            <input className="input" value={publicUrl} placeholder="https://botboard.example.com"
-              onChange={(e) => setPublicUrl(e.target.value)}
-              onBlur={() => publicUrl !== (data.publicUrl || '') && save({ publicUrl })}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
-            {srcTag('publicUrl')}
-          </ManageSettingsRow>
+          <Row label="Command prefix" help="BOTBOARD_PREFIX">
+            <div className="generic-setting-control">
+              <input className="input" style={{ maxWidth: 120 }} value={prefix}
+                onChange={(e) => setPrefix(e.target.value)}
+                onBlur={() => prefix !== (data.prefix || '') && save({ prefix })}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+              {srcTag('prefix')}
+            </div>
+          </Row>
+          <Row label="Status text" help="BOTBOARD_STATUS_TEXT">
+            <div className="generic-setting-control">
+              <input className="input" value={statusText} placeholder="Auto (X/Y modules online)"
+                onChange={(e) => setStatusText(e.target.value)}
+                onBlur={() => statusText !== (data.statusText || '') && save({ statusText })}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+              {srcTag('statusText')}
+            </div>
+          </Row>
+          <Row label="Dashboard URL" help="BOTBOARD_PUBLIC_URL">
+            <div className="generic-setting-control">
+              <input className="input" value={publicUrl} placeholder="https://botboard.example.com"
+                onChange={(e) => setPublicUrl(e.target.value)}
+                onBlur={() => publicUrl !== (data.publicUrl || '') && save({ publicUrl })}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}/>
+              {srcTag('publicUrl')}
+            </div>
+          </Row>
         </>
       )}
-      {notice && <div className="settings-notice" style={{ margin: '0 20px 14px' }}>{notice}</div>}
+      {notice && <div className="settings-notice">{notice}</div>}
     </div>
   );
 };
-
-// Login-Gate pro Server: optionale Pflichtrolle. Rollen kommen live vom
-// Discord-Bot-Token (Dropdown). "Keine" = Mitgliedschaft im Server reicht.
-const AccessCard = ({ server }) => {
-  const guildId = server?.id;
-  const { data, error, reload } = useFetch(() => API.access.get(guildId), [guildId]);
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState('');
-
-  const onPick = async (event) => {
-    const roleId = event.target.value;
-    const role = (data?.roles || []).find((r) => r.id === roleId);
-    setSaving(true);
-    setNotice('');
-    try {
-      await API.access.set(guildId, { requiredRoleId: roleId, requiredRoleName: role?.name || '' });
-      setNotice(roleId ? `Saved — only members with “${role?.name}” can log in.` : 'Saved — membership in this server is enough.');
-      reload();
-    } catch (err) {
-      setNotice('Save failed: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="card" style={{ marginTop: 16 }}>
-      <div className="card-header"><div className="card-title">Access</div></div>
-      <ManageSettingsRow label="Who can log in" help="Login is always restricted to members of a server Botboard is in. Optionally require a role here.">
-        {!data && !error && <span className="settings-value">Loading…</span>}
-        {error && <span className="tag error">{error.message}</span>}
-        {data && !data.tokenConfigured && (
-          <span className="tag warn">Set DISCORD_BOT_TOKEN to enable</span>
-        )}
-        {data && data.tokenConfigured && !data.botInGuild && (
-          <span className="tag warn">Botboard bot is not in this server</span>
-        )}
-        {data && data.tokenConfigured && data.botInGuild && (
-          <select className="select" value={data.requiredRoleId || ''} onChange={onPick} disabled={saving}>
-            <option value="">No role required (membership is enough)</option>
-            {data.roles.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        )}
-      </ManageSettingsRow>
-      {notice && <div className="settings-notice" style={{ margin: '0 20px 14px' }}>{notice}</div>}
-    </div>
-  );
-};
-
-const ManageSettingsRow = ({ label, help, children }) => (
-  <div className="settings-row manage-settings-row">
-    <div className="settings-label-col">
-      <div className="settings-label">{label}</div>
-      {help && <div className="settings-help">{help}</div>}
-    </div>
-    <div className="settings-control">{children}</div>
-  </div>
-);
 
 const RestartModal = ({ which, names: dynamicNames = {}, onCancel, onConfirm }) => {
   const names = { sound: dynamicNames.sound || 'Sound Bot', music: dynamicNames.music || 'Music Bot', all: 'both bots' };

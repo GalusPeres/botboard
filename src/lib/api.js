@@ -32,6 +32,7 @@ function safeJson(text) {
 
 export const auth = {
   me: () => api('/api/me'),
+  setActiveServer: (guildId) => api('/api/auth/active-server', { method: 'POST', body: { guildId } }),
   logout: () => api('/api/auth/logout', { method: 'POST' }),
   loginUrl: '/api/auth/discord',
 };

@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed, isAdmin, hasPermission } from '../auth.js';
+import { buildAuthUrl, exchangeCode, fetchDiscordUser, fetchUserGuilds, isAllowed, userAllowedInGuild } from '../auth.js';
 import { recordUser, getPermissions } from '../userRegistry.js';
-import { discordOAuthEnabled } from '../config.js';
+import { config, discordOAuthEnabled } from '../config.js';
 import { logActivity } from '../activityLog.js';
 
 export default function authRoutes() {
@@ -62,6 +62,34 @@ export default function authRoutes() {
       console.error('OAuth callback failed:', err);
       res.status(500).send('Login failed: ' + err.message);
     }
+  });
+
+  // Aktiven Server für die Session setzen. Hier wird das Rollen-Gate erneut
+  // serverseitig geprüft (Mitglied + ggf. Pflichtrolle). Erst danach gelten die
+  // Rechte für diesen Server (requirePermission liest session.activeGuild).
+  router.post('/active-server', async (req, res) => {
+    const { guildId } = req.body || {};
+    if (!guildId) return res.status(400).json({ error: 'guildId required' });
+
+    if (config.devAuthBypass) {
+      req.session.activeGuild = String(guildId);
+      return req.session.save(() => res.json({
+        user: { ...(req.session.user || { id: 'dev', username: 'dev' }), permissions: { controlBot: true, restartBot: true, startStop: true, soundLibrary: true, settings: true, userManagement: true, botModules: true } },
+      }));
+    }
+
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+    const isMember = !req.session.userGuilds?.length || req.session.userGuilds.includes(String(guildId));
+    const allowed = isMember && await userAllowedInGuild(userId, String(guildId));
+    if (!allowed) return res.status(403).json({ error: 'no access to this server' });
+
+    req.session.activeGuild = String(guildId);
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ error: 'session save failed' });
+      res.json({ user: { ...req.session.user, permissions: getPermissions(userId, String(guildId)) } });
+    });
   });
 
   router.post('/logout', (req, res) => {

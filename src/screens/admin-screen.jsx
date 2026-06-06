@@ -153,8 +153,8 @@ function RolesTable({ users, currentUserId, onToggle, busy, loading }) {
   );
 }
 
-export function AdminScreen({ currentUserId }) {
-  const { data: fetchedUsers, reload, loading } = useFetch(() => API.users.list(), []);
+export function AdminScreen({ currentUserId, server }) {
+  const { data: fetchedUsers, reload, loading } = useFetch(() => API.users.list(), [server?.id]);
   const [users, setUsers] = useState(null);
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
@@ -182,6 +182,7 @@ export function AdminScreen({ currentUserId }) {
       <div className="page-head">
         <div>
           <div className="page-title">Roles</div>
+          <div className="page-sub">Permissions for {server?.name || 'this server'} — set per server.</div>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={() => { setUsers(null); reload(); }}>
           <Icon name="refresh" size={13}/> Refresh

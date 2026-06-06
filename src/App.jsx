@@ -75,7 +75,26 @@ export default function App() {
     setRouteRaw(next);
   };
 
-  // Poll permissions every 15 s so changes made in Roles take effect live.
+  // Aktiven Server serverseitig setzen (validiert das Rollen-Gate) und die
+  // per-Server-Rechte holen. Läuft bei App-Start und jedem Serverwechsel.
+  useEffect(() => {
+    if (stage !== 'app' || !server?.id) return;
+    let cancelled = false;
+    API.auth.setActiveServer(server.id)
+      .then((res) => { if (!cancelled && res?.user) setUser((prev) => ({ ...prev, ...res.user })); })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err.status === 403 || err.status === 401) {
+          // Kein Zugang (mehr) zu diesem Server → zurück zur Serverauswahl.
+          saveServer(null);
+          setServer(null);
+          setStage('server');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [server?.id, stage]);
+
+  // Poll permissions every 2 s so changes made in Roles take effect live.
   useEffect(() => {
     if (stage !== 'app') return;
     const id = setInterval(async () => {

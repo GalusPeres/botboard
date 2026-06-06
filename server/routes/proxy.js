@@ -17,16 +17,17 @@ export default function proxyRoutes() {
 
     const subPath = req.params[0];
     const userId = req.session?.user?.id;
+    const guildId = req.session?.activeGuild;
 
     if (subPath === 'settings' || subPath.startsWith('settings/')) {
-      if (!hasPermission(userId, 'settings')) return res.status(403).json({ error: 'forbidden' });
+      if (!hasPermission(userId, 'settings', guildId)) return res.status(403).json({ error: 'forbidden' });
     }
 
     if (subPath === 'sounds' || subPath.startsWith('sounds/')) {
       const isWrite = !['GET', 'HEAD'].includes(req.method);
       const isDownload = subPath === 'sounds/download-zip' || subPath.endsWith('/file');
       if (isWrite || isDownload) {
-        if (!hasPermission(userId, 'soundLibrary')) return res.status(403).json({ error: 'forbidden' });
+        if (!hasPermission(userId, 'soundLibrary', guildId)) return res.status(403).json({ error: 'forbidden' });
       }
     }
     // Log key dashboard actions before forwarding

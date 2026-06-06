@@ -56,15 +56,34 @@ export function recordUser(user) {
   save(data);
 }
 
-export function getPermissions(userId) {
-  if (envAdminSet().has(userId)) return { ...ALL_PERMISSIONS };
-  const data = load();
-  return { ...DEFAULT_PERMISSIONS, ...(data[userId]?.permissions || {}) };
+// Rechte werden PRO SERVER gespeichert: data[userId].permissions = {
+//   [guildId]: { controlBot, restartBot, ... }
+// }. Ein Snowflake-Key (nur Ziffern) = Server. Alte „flache" Formate (Keys wie
+// controlBot direkt unter permissions) werden ignoriert bzw. beim nächsten
+// Schreiben verworfen, damit globale Altrechte nicht weitergelten.
+function isGuildKey(key) {
+  return /^\d{5,}$/.test(key);
 }
 
-export function setPermissions(userId, incoming) {
+function guildPerms(user, guildId) {
+  const perGuild = guildId ? user?.permissions?.[guildId] : null;
+  return { ...DEFAULT_PERMISSIONS, ...(perGuild && typeof perGuild === 'object' ? perGuild : {}) };
+}
+
+export function getPermissions(userId, guildId) {
+  if (envAdminSet().has(userId)) return { ...ALL_PERMISSIONS };
+  const data = load();
+  return guildPerms(data[userId], guildId);
+}
+
+export function setPermissions(userId, guildId, incoming) {
   if (envAdminSet().has(userId)) {
     const err = new Error('Permissions of ENV admins cannot be changed here.');
+    err.status = 400;
+    throw err;
+  }
+  if (!guildId) {
+    const err = new Error('No active server — permissions are set per server.');
     err.status = 400;
     throw err;
   }
@@ -74,26 +93,35 @@ export function setPermissions(userId, incoming) {
     err.status = 404;
     throw err;
   }
-  const merged = { ...(data[userId].permissions || {}), ...incoming };
-  // Only keep known keys with boolean values.
+
+  const existing = data[userId].permissions && typeof data[userId].permissions === 'object'
+    ? data[userId].permissions : {};
+  const merged = { ...(isGuildKey(guildId) && existing[guildId] ? existing[guildId] : {}), ...incoming };
   for (const key of Object.keys(merged)) {
     if (!PERMISSIONS.includes(key) || typeof merged[key] !== 'boolean') delete merged[key];
   }
-  data[userId].permissions = merged;
+
+  // Sauberen, rein server-gekeyten Block neu aufbauen (verwirft Alt-Flachformat).
+  const clean = {};
+  for (const [k, v] of Object.entries(existing)) {
+    if (isGuildKey(k) && v && typeof v === 'object') clean[k] = v;
+  }
+  clean[guildId] = merged;
+  data[userId].permissions = clean;
   save(data);
-  return serialize(data[userId]);
+  return serialize(data[userId], guildId);
 }
 
-function serialize(u) {
+function serialize(u, guildId) {
   const isEnvAdmin = envAdminSet().has(u.id);
   return {
     ...u,
-    permissions: isEnvAdmin ? { ...ALL_PERMISSIONS } : { ...DEFAULT_PERMISSIONS, ...(u.permissions || {}) },
+    permissions: isEnvAdmin ? { ...ALL_PERMISSIONS } : guildPerms(u, guildId),
     isEnvAdmin,
   };
 }
 
-export function listUsers() {
+export function listUsers(guildId) {
   const data = load();
-  return Object.values(data).map(serialize);
+  return Object.values(data).map((u) => serialize(u, guildId));
 }

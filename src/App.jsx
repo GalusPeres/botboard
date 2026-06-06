@@ -851,7 +851,7 @@ function DashboardApp(props) {
           setRoute={setRoute}
           server={server}
           servers={serverOptions || [server]}
-          onChangeServer={(selectedServer) => { changeServer(selectedServer); setMoreSheetOpen(false); }}
+          onChangeServer={(selectedServer) => changeServer(selectedServer)}
           user={user}
           botStatus={botStatus}
           botInfo={botInfo}

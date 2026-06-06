@@ -14,6 +14,7 @@ import proxyRoutes from './routes/proxy.js';
 import logsRoutes from './routes/logs.js';
 import usersRoutes from './routes/users.js';
 import accessRoutes from './routes/access.js';
+import { startGateway } from './discordGateway.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -74,3 +75,6 @@ app.use((err, req, res, _next) => {
 app.listen(config.port, '0.0.0.0', () => {
   console.log(`Botboard listening on :${config.port}`);
 });
+
+// Discord-Gateway (Bot Online + #info-Befehl). No-op ohne DISCORD_BOT_TOKEN.
+startGateway();

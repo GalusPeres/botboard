@@ -57,6 +57,9 @@ export const config = {
   cookieSecure: boolean('COOKIE_SECURE'),
   devAuthBypass: boolean('DEV_AUTH_BYPASS'),
   dockerRestartEnabled: boolean('DOCKER_RESTART_ENABLED'),
+  // Öffentliche URL des Dashboards (für den /info-Bot-Befehl). Fällt sonst auf
+  // den Origin der OAuth-Redirect-URI zurück.
+  publicUrl: optional('BOTBOARD_PUBLIC_URL'),
 
   discord: {
     clientId: optional('DISCORD_CLIENT_ID'),

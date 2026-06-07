@@ -39,6 +39,7 @@ const soundLibraryBackend = {
   remove: (rel) => API.sound.remove(soundName(rel)),
   upload: (_path, file) => API.sound.upload(file),
   downloadUrl: (rel) => API.sound.downloadUrl(soundName(rel)),
+  previewUrl: (rel) => `${API.sound.previewUrl(soundName(rel))}?preview=1`,
   archiveUrl: (rels) => API.soundArchiveUrl('sound', rels.map(soundName)),
 };
 
@@ -368,6 +369,7 @@ export const page = {
       allowFolders={false}
       allowMove={false}
       allowTextEdit={false}
+      allowDownload={!!c.perms.soundLibrary}
       uploadAccept="audio/mpeg,.mp3"
     />
   ),

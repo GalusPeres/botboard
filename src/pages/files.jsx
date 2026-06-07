@@ -12,6 +12,7 @@ const TEXT_EXT = new Set([
   'css', 'lua', 'py', 'json5', 'list', 'cmd', 'sk',
 ]);
 const AUDIO_EXT = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus', 'webm']);
+const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif']);
 
 function fileExtension(name) {
   const lower = name.toLowerCase();
@@ -24,6 +25,9 @@ function isTextFile(name) {
 }
 function isAudioFile(name) {
   return AUDIO_EXT.has(fileExtension(name));
+}
+function isImageFile(name) {
+  return IMAGE_EXT.has(fileExtension(name));
 }
 function fmtSize(b) {
   if (b == null) return '';
@@ -102,6 +106,7 @@ export const FileBrowserScreen = ({
   allowFolders = true,
   allowMove = true,
   allowTextEdit = true,
+  allowDownload = true,
   uploadAccept,
 }) => {
   const storage = React.useMemo(() => backend || fileBackend(bot), [backend, bot]);
@@ -128,6 +133,7 @@ export const FileBrowserScreen = ({
   const [moving, setMoving] = useState(false);
   const [details, setDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const previewAudioRef = useRef(null);
 
   // Move-Dialog öffnen (für die aktuelle Auswahl oder eine Einzeldatei).
@@ -152,12 +158,19 @@ export const FileBrowserScreen = ({
     previewAudioRef.current?.pause();
     if (previewAudioRef.current?.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
     previewAudioRef.current = null;
+    setImagePreview((current) => {
+      if (current?.url) URL.revokeObjectURL(current.url);
+      return null;
+    });
   }, [path, bot]);
   useEffect(() => () => {
     previewAudioRef.current?.pause();
     if (previewAudioRef.current?.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
     previewAudioRef.current = null;
   }, []);
+  useEffect(() => () => {
+    if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
+  }, [imagePreview]);
 
   const toggleSelect = (name) => setSelected((prev) => {
     const next = new Set(prev);
@@ -230,7 +243,7 @@ export const FileBrowserScreen = ({
       previewAudioRef.current = null;
     }
     try {
-      const response = await fetch(storage.downloadUrl(rel), { credentials: 'include' });
+      const response = await fetch(storage.previewUrl?.(rel) || storage.downloadUrl(rel), { credentials: 'include' });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
       const objectUrl = URL.createObjectURL(await response.blob());
       const audio = new Audio(objectUrl);
@@ -250,6 +263,23 @@ export const FileBrowserScreen = ({
     } catch (e) {
       if (previewAudioRef.current?.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
       previewAudioRef.current = null;
+      toast(`Preview failed: ${e.message}`);
+    }
+  };
+  const closeImagePreview = () => {
+    setImagePreview((current) => {
+      if (current?.url) URL.revokeObjectURL(current.url);
+      return null;
+    });
+  };
+  const previewImage = async (rel) => {
+    closeImagePreview();
+    try {
+      const response = await fetch(storage.previewUrl?.(rel) || storage.downloadUrl(rel), { credentials: 'include' });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      const url = URL.createObjectURL(await response.blob());
+      setImagePreview({ name: rel.split('/').pop(), url });
+    } catch (e) {
       toast(`Preview failed: ${e.message}`);
     }
   };
@@ -414,9 +444,11 @@ export const FileBrowserScreen = ({
               </button>
             </div>
             <div className="fb-toolbar-line fb-toolbar-actions">
-              <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
-                <Icon name="download" size={13}/> Download
-              </button>
+              {allowDownload && (
+                <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
+                  <Icon name="download" size={13}/> Download
+                </button>
+              )}
               {canWrite && allowMove && (
                 <button className="btn" type="button" onClick={() => openMove([...selected].map((n) => joinPath(path, n)))} disabled={!selected.size}>
                   <Icon name="folder" size={13}/> Move
@@ -459,7 +491,8 @@ export const FileBrowserScreen = ({
               const rel = joinPath(path, e.name);
               const isDir = e.type === 'dir';
               const isAudio = !isDir && isAudioFile(e.name);
-              const canOpen = isDir || (allowTextEdit && isTextFile(e.name)) || isAudio;
+              const isImage = !isDir && isImageFile(e.name);
+              const canOpen = isDir || (allowTextEdit && isTextFile(e.name)) || isAudio || isImage;
               const sel = selected.has(e.name);
               return (
                 <div key={e.name}
@@ -471,11 +504,11 @@ export const FileBrowserScreen = ({
                       {sel && <Icon name="check" size={11}/>}
                     </span>
                   )}
-                  <Icon name={isDir ? 'folder' : isAudio ? 'music' : 'file'} size={16}
-                    style={{ color: isDir || isAudio ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
+                  <Icon name={isDir ? 'folder' : isAudio ? 'music' : isImage ? 'image' : 'file'} size={16}
+                    style={{ color: isDir || isAudio || isImage ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
                   <div className="filebrowser-namecell"
                     style={{ cursor: canOpen ? 'pointer' : 'default' }}
-                    onClick={() => { if (isDir) goTo(rel); else if (isAudio) previewAudio(rel); else if (allowTextEdit && isTextFile(e.name)) openFile(e.name); }}>
+                    onClick={() => { if (isDir) goTo(rel); else if (isAudio) previewAudio(rel); else if (isImage) previewImage(rel); else if (allowTextEdit && isTextFile(e.name)) openFile(e.name); }}>
                     <span className="filebrowser-name" style={{ fontWeight: isDir ? 600 : 400 }} title={e.name}>{e.name}</span>
                     <span className="filebrowser-submeta">{isDir ? 'Folder' : fmtSize(e.size)}{e.mtime ? ` · ${fmtDate(e.mtime)}` : ''}</span>
                   </div>
@@ -507,6 +540,22 @@ export const FileBrowserScreen = ({
               <button className="btn btn-primary" onClick={saveEdit} disabled={savingEdit}>
                 <Icon name="check" size={13}/> {savingEdit ? 'Saving...' : 'Save'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image preview */}
+      {imagePreview && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) closeImagePreview(); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(1000px, 92vw)', maxWidth: '92vw' }}>
+            <h3 style={{ fontFamily: 'var(--font-mono)' }}>{imagePreview.name}</h3>
+            <div style={{ display: 'flex', justifyContent: 'center', maxHeight: '70vh', overflow: 'auto' }}>
+              <img src={imagePreview.url} alt={imagePreview.name}
+                style={{ maxWidth: '100%', maxHeight: '68vh', objectFit: 'contain', borderRadius: 8 }}/>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={closeImagePreview}>Close</button>
             </div>
           </div>
         </div>
@@ -555,6 +604,7 @@ export const FileBrowserScreen = ({
               const rel = joinPath(path, e.name);
               const isDir = e.type === 'dir';
               const isAudio = !isDir && isAudioFile(e.name);
+              const isImage = !isDir && isImageFile(e.name);
               return (
                 <>
                   {isDir && (
@@ -564,7 +614,7 @@ export const FileBrowserScreen = ({
                   )}
                   {!isDir && allowTextEdit && isTextFile(e.name) && (
                     <button className="ctx-item" onClick={() => { openFile(e.name); closeMenu(); }}>
-                      <Icon name="edit" size={13}/> Edit
+                      <Icon name="file" size={13}/> Open
                     </button>
                   )}
                   {isAudio && (
@@ -572,13 +622,18 @@ export const FileBrowserScreen = ({
                       <Icon name="music" size={13}/> Open
                     </button>
                   )}
-                  <button className="ctx-item" onClick={() => {
-                    if (isDir) triggerArchive([rel], `${e.name}.zip`);
-                    else triggerDownload(rel, e.name);
-                    closeMenu();
-                  }}>
+                  {isImage && (
+                    <button className="ctx-item" onClick={() => { previewImage(rel); closeMenu(); }}>
+                      <Icon name="image" size={13}/> Open
+                    </button>
+                  )}
+                  {allowDownload && <button className="ctx-item" onClick={() => {
+                      if (isDir) triggerArchive([rel], `${e.name}.zip`);
+                      else triggerDownload(rel, e.name);
+                      closeMenu();
+                    }}>
                       <Icon name="download" size={13}/> Download
-                  </button>
+                  </button>}
                   <button className="ctx-item" onClick={() => openDetails(rel)} disabled={detailsLoading}>
                     <Icon name="info" size={13}/> Details
                   </button>

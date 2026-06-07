@@ -31,7 +31,11 @@ export default function proxyRoutes() {
 
     if (subPath === 'sounds' || subPath.startsWith('sounds/')) {
       const isWrite = !['GET', 'HEAD'].includes(req.method);
-      const isDownload = subPath === 'sounds/download-zip' || subPath.endsWith('/file');
+      const isPreview = subPath.endsWith('/file') && req.query.preview === '1';
+      const isDownload = subPath === 'sounds/download-zip' || (subPath.endsWith('/file') && !isPreview);
+      if (isPreview && !(await denyUnlessAccess())) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
       if (isWrite || isDownload) {
         if (!hasPermission(userId, 'soundLibrary', guildId) || !(await denyUnlessAccess())) {
           return res.status(403).json({ error: 'forbidden' });

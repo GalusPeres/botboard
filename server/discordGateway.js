@@ -2,7 +2,7 @@
 // der Bot Online angezeigt wird, und beantwortet den Text-Befehl `#info`.
 // Läuft nur, wenn DISCORD_BOT_TOKEN gesetzt ist. Reine REST-Abfragen (Login-
 // Gate, Rollen) laufen unabhängig davon weiter.
-import { Client, GatewayIntentBits, Events, ActivityType, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageFlags } from 'discord.js';
+import { Client, GatewayIntentBits, Events, ActivityType, ButtonBuilder, ButtonStyle, ActionRowBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } from 'discord.js';
 import { config } from './config.js';
 import { botTokenConfigured } from './discordBot.js';
 import { registrySnapshot, botConfig } from './botRegistry.js';
@@ -82,53 +82,58 @@ async function commandGate(message) {
   };
 }
 
-// Kleine, dezente Statuszeilen über ANSI (farbiger Punkt + Name) statt großer
-// Emojis. Online = grün, Offline = rot.
-function ansiList(list) {
-  if (!list.length) return '_none_';
-  const lines = list.map((r) => `[0;${r.online ? '32' : '31'}m●[0m ${r.name}`);
-  return '```ansi\n' + lines.join('\n') + '\n```';
+// Eine Modul-Zeile: Name + dezenter Status als Inline-Code-Tag (kein Emoji).
+function statusLine(r) {
+  return `${r.name}  \`${r.online ? 'online' : 'offline'}\``;
 }
 
-// Baut Embed + Buttons — wird sowohl von #info als auch vom Refresh-Button genutzt.
-async function buildInfoPayload(clientUser) {
+// Moderne „Components V2"-Karte: kein Embed, kein Thumbnail, keine Emoji-Spielerei.
+// Linke Akzentleiste zeigt den Gesamtzustand. Wird von #info UND vom Refresh-Button genutzt.
+async function buildInfoPayload() {
   const rows = await collectModuleStatuses();
   const url = publicUrl();
   const onlineCount = rows.filter((r) => r.online).length;
   const bots = rows.filter((r) => r.kind === 'Bot');
   const games = rows.filter((r) => r.kind === 'Gameserver');
 
-  // Akzentfarbe spiegelt den Gesamtzustand.
   const color =
     rows.length === 0 ? 0x6b7280
     : onlineCount === rows.length ? 0x9dda4f
     : onlineCount === 0 ? 0xe05252
     : 0xe5a83b;
 
-  const avatar = clientUser.displayAvatarURL({ size: 128 });
-  const embed = new EmbedBuilder()
-    .setColor(color)
-    .setAuthor({ name: 'Botboard', iconURL: avatar, url: url || undefined })
-    .setThumbnail(avatar)
-    .setDescription(`### ${onlineCount}/${rows.length} modules online`)
-    .setFooter({ text: 'Updated' })
-    .setTimestamp();
+  const stamp = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-  if (bots.length) embed.addFields({ name: '🤖 Bots', value: ansiList(bots) });
-  if (games.length) embed.addFields({ name: '🎮 Gameservers', value: ansiList(games) });
+  const container = new ContainerBuilder().setAccentColor(color);
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`## Botboard\n**${onlineCount} / ${rows.length}** modules online`),
+  );
+  if (bots.length) {
+    container.addSeparatorComponents(new SeparatorBuilder());
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`**Bots**\n${bots.map(statusLine).join('\n')}`),
+    );
+  }
+  if (games.length) {
+    container.addSeparatorComponents(new SeparatorBuilder());
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`**Gameservers**\n${games.map(statusLine).join('\n')}`),
+    );
+  }
+  container.addSeparatorComponents(new SeparatorBuilder());
 
   const buttons = [];
-  if (url) {
-    buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Open dashboard').setEmoji('🔗').setURL(url));
-  }
-  buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('info:refresh').setLabel('Refresh').setEmoji('🔄'));
-  const components = [new ActionRowBuilder().addComponents(...buttons)];
+  if (url) buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Open dashboard').setURL(url));
+  buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('info:refresh').setLabel('Refresh'));
+  container.addActionRowComponents(new ActionRowBuilder().addComponents(...buttons));
 
-  return { embeds: [embed], components };
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Updated ${stamp}`));
+
+  return { components: [container], flags: MessageFlags.IsComponentsV2 };
 }
 
 async function handleInfo(message) {
-  await message.reply(await buildInfoPayload(message.client.user));
+  await message.reply(await buildInfoPayload());
 }
 
 // Rollen-Check für den Refresh-Button (gleiche Regel wie für die Befehle).
@@ -189,7 +194,7 @@ export function startGateway() {
         await interaction.reply({ content: '⛔ You do not have access to this.', flags: MessageFlags.Ephemeral }).catch(() => {});
         return;
       }
-      await interaction.update(await buildInfoPayload(interaction.client.user));
+      await interaction.update(await buildInfoPayload());
     } catch (err) {
       console.error('[gateway] refresh failed:', err.message);
     }

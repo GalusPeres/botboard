@@ -1557,13 +1557,15 @@ ul, ol { list-style: none; }
 .filebrowser-bulkbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+.filebrowser-bulkbar .btn { flex: 0 0 auto; }
 .filebrowser-name {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -2395,6 +2397,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
   display: grid; place-items: center;
   z-index: 100;
   backdrop-filter: blur(4px);
+  padding: 16px;
 }
 .modal {
   background: var(--surface);
@@ -2403,6 +2406,8 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
   padding: 24px;
   max-width: 420px;
   width: 90%;
+  max-height: calc(100dvh - 32px);   /* passt auf kleine Screens, scrollt intern */
+  overflow-y: auto;
   box-shadow: var(--shadow-md);
 }
 .modal h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
@@ -2662,6 +2667,10 @@ button, a, [role="button"],
   .mobile-menu-button:hover { background: transparent; color: var(--text-muted); }
   /* Drag handle */
   .registry-row:hover .registry-drag-handle { opacity: 0.45; background: transparent; }
-  /* Generic buttons — only show active, not hover */
-  .btn:hover:not(:active) { background: var(--surface); border-color: var(--border); }
+  /* Generic buttons — kein klebendes Hover auf Touch: jede Variante auf ihren
+     Grundzustand zurück (sonst bleibt das zuletzt getippte Element markiert). */
+  .btn:hover { background: var(--surface); border-color: var(--border); }
+  .btn-primary:hover { background: var(--accent); border-color: transparent; }
+  .btn-ghost:hover { background: transparent; border-color: transparent; }
+  .btn-danger:hover { background: transparent; border-color: oklch(0.70 0.18 25 / 0.3); }
 }

@@ -251,55 +251,62 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
         </div>
       </div>
 
-      {/* Breadcrumb */}
-      <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
-          <Icon name="home" size={13}/> root
-        </button>
-        {segments.map((seg, i) => (
-          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
-            <button className="btn btn-sm" type="button"
-              onClick={() => goTo(segments.slice(0, i + 1).join('/'))}
-              disabled={i === segments.length - 1}>{seg}</button>
-          </span>
-        ))}
-      </div>
+      {/* Normalmodus: Breadcrumb + Toolbar. Im Select-Modus ersetzt die
+          Bulk-Leiste beide Zeilen (Upload/New folder/Pfad braucht man da nicht),
+          damit die Liste nicht nach unten rutscht. */}
+      {!selectMode && (
+        <>
+          <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
+              <Icon name="home" size={13}/> root
+            </button>
+            {segments.map((seg, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
+                <button className="btn btn-sm" type="button"
+                  onClick={() => goTo(segments.slice(0, i + 1).join('/'))}
+                  disabled={i === segments.length - 1}>{seg}</button>
+              </span>
+            ))}
+          </div>
 
-      <div className="media-toolbar-row media-action-row">
-        <button className={'btn' + (selectMode ? ' btn-primary' : '')} type="button"
-          onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
-          <Icon name="check" size={13}/> {selectMode ? 'Cancel' : 'Select'}
-        </button>
-        {canWrite && (
-          <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-            <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
-            <input type="file" hidden disabled={uploading}
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
-          </label>
-        )}
-        {canWrite && (
-          <button className="btn btn-ghost" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
-            <Icon name="plus" size={13}/> New folder
-          </button>
-        )}
-      </div>
+          <div className="media-toolbar-row media-action-row">
+            <button className="btn" type="button" onClick={() => setSelectMode(true)}>
+              <Icon name="check" size={13}/> Select
+            </button>
+            {canWrite && (
+              <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
+                <input type="file" hidden disabled={uploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
+              </label>
+            )}
+            {canWrite && (
+              <button className="btn btn-ghost" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
+                <Icon name="plus" size={13}/> New folder
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
-      {/* Bulk-Leiste nur im Select-Modus */}
       {selectMode && (
         <div className="filebrowser-bulkbar">
+          <button className="btn btn-ghost btn-icon" type="button" onClick={exitSelect} title="Cancel">
+            <Icon name="x" size={16}/>
+          </button>
           <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.size} selected</span>
-          <div style={{ flex: 1 }}/>
-          <button className="btn btn-sm" type="button" onClick={doBulkDownload} disabled={!selected.size}>
+          <div style={{ flex: 1, minWidth: 8 }}/>
+          <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
             <Icon name="download" size={13}/> Download
           </button>
           {canWrite && (
-            <button className="btn btn-sm" type="button" onClick={() => { setMovePath(path); setMoveOpen(true); }} disabled={!selected.size}>
+            <button className="btn" type="button" onClick={() => { setMovePath(path); setMoveOpen(true); }} disabled={!selected.size}>
               <Icon name="folder" size={13}/> Move
             </button>
           )}
           {canWrite && (
-            <button className="btn btn-sm btn-danger" type="button" onClick={() => setBulkDelete(true)} disabled={!selected.size}>
+            <button className="btn btn-danger" type="button" onClick={() => setBulkDelete(true)} disabled={!selected.size}>
               <Icon name="trash" size={13}/> Delete
             </button>
           )}
@@ -513,7 +520,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
             <div className="modal-actions">
               <button className="btn" onClick={() => setMoveOpen(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={doMove} disabled={moving || movePath === path}>
-                <Icon name="folder" size={13}/> {moving ? 'Moving...' : `Move here → /${movePath}`}
+                <Icon name="folder" size={13}/> {moving ? 'Moving...' : 'Move here'}
               </button>
             </div>
           </div>

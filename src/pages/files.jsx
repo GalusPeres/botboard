@@ -151,7 +151,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     <div className="content-narrow library-screen">
       <div className="page-head media-page-head">
         <div>
-          <div className="page-title">Library</div>
+          <div className="page-title">Files</div>
           <div className="page-sub">{botName} — files</div>
         </div>
         <div className="page-actions media-head-search">

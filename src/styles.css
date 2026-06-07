@@ -1554,18 +1554,35 @@ ul, ol { list-style: none; }
   flex-shrink: 0;
 }
 .fb-check.on { background: var(--accent); border-color: var(--accent); }
-.filebrowser-bulkbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+/* Select-Panel: feste 2-Zeilen-Box (Desktop + Mobil gleich). */
+.fb-selectpanel {
   margin-bottom: 12px;
   padding: 10px 12px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.filebrowser-bulkbar .btn { flex: 0 0 auto; }
+.fb-selectpanel-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fb-selectcount {
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: auto;   /* schiebt den All-Button nach rechts */
+}
+.fb-selectpanel-actions {
+  display: flex;
+  gap: 8px;
+}
+.fb-selectpanel-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
 .filebrowser-namecell {
   min-width: 0;
   display: flex;

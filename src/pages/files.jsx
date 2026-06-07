@@ -106,6 +106,8 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   });
   const clearSelect = () => setSelected(new Set());
   const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
+  const allSelected = (data?.entries?.length || 0) > 0 && (data?.entries || []).every((e) => selected.has(e.name));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set((data?.entries || []).map((e) => e.name)));
 
   const segments = path ? path.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
@@ -253,25 +255,26 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
         </div>
       </div>
 
-      {/* Breadcrumb bleibt immer; nur die EINE Aktionszeile tauscht ihren Inhalt
-          im Select-Modus → exakt gleiche Höhe, die Liste springt nicht. */}
-      <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
-          <Icon name="home" size={13}/> root
-        </button>
-        {segments.map((seg, i) => (
-          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
-            <button className="btn btn-sm" type="button"
-              onClick={() => goTo(segments.slice(0, i + 1).join('/'))}
-              disabled={i === segments.length - 1}>{seg}</button>
-          </span>
-        ))}
-      </div>
+      {/* Normalmodus: Breadcrumb + Toolbar. Select-Modus: festes 2-Zeilen-Panel
+          (oben Cancel/Anzahl/All, unten Download/Move/Delete) — gleich auf
+          Desktop und Mobil. */}
+      {!selectMode ? (
+        <>
+          <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+            <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
+              <Icon name="home" size={13}/> root
+            </button>
+            {segments.map((seg, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
+                <button className="btn btn-sm" type="button"
+                  onClick={() => goTo(segments.slice(0, i + 1).join('/'))}
+                  disabled={i === segments.length - 1}>{seg}</button>
+              </span>
+            ))}
+          </div>
 
-      <div className="media-toolbar-row media-action-row">
-        {!selectMode ? (
-          <>
+          <div className="media-toolbar-row media-action-row">
             <button className="btn" type="button" onClick={() => setSelectMode(true)}>
               <Icon name="check" size={13}/> Select
             </button>
@@ -287,13 +290,20 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                 <Icon name="plus" size={13}/> New folder
               </button>
             )}
-          </>
-        ) : (
-          <>
+          </div>
+        </>
+      ) : (
+        <div className="fb-selectpanel">
+          <div className="fb-selectpanel-top">
             <button className="btn btn-ghost btn-icon" type="button" onClick={exitSelect} title="Cancel">
               <Icon name="x" size={16}/>
             </button>
-            <span style={{ fontSize: 13, fontWeight: 600, marginRight: 'auto' }}>{selected.size} selected</span>
+            <span className="fb-selectcount">{selected.size} selected</span>
+            <button className="btn btn-sm" type="button" onClick={toggleAll} disabled={!(data?.entries?.length)}>
+              <Icon name="check" size={13}/> {allSelected ? 'None' : 'All'}
+            </button>
+          </div>
+          <div className="fb-selectpanel-actions">
             <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
               <Icon name="download" size={13}/> Download
             </button>
@@ -307,9 +317,9 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                 <Icon name="trash" size={13}/> Delete
               </button>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="settings-notice registry-error">{error.message}</div>}
       {loading && !data && <div className="empty"><div>Loading…</div></div>}

@@ -358,7 +358,9 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const canOpen = isDir || isTextFile(e.name);
               const sel = selected.has(e.name);
               return (
-                <div key={e.name} className={'filebrowser-row' + (sel ? ' selected' : '')} onContextMenu={(ev) => openContext(ev, e)}>
+                <div key={e.name}
+                  className={'filebrowser-row' + (sel ? ' selected' : '') + (menu?.entry?.name === e.name ? ' menu-open' : '')}
+                  onContextMenu={(ev) => openContext(ev, e)}>
                   {selectMode && (
                     <span className={'fb-check' + (sel ? ' on' : '')} title="Select"
                       onClick={(ev) => { ev.stopPropagation(); toggleSelect(e.name); }}>
@@ -450,10 +452,6 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const isDir = e.type === 'dir';
               return (
                 <>
-                  <div className="ctx-header">
-                    <Icon name={isDir ? 'folder' : 'file'} size={13} style={{ flexShrink: 0, color: isDir ? 'var(--accent)' : 'var(--text-dim)' }}/>
-                    <span>{e.name}</span>
-                  </div>
                   {isDir && (
                     <button className="ctx-item" onClick={() => { goTo(rel); closeMenu(); }}>
                       <Icon name="folder" size={13}/> Open

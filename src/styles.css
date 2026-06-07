@@ -1526,12 +1526,20 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
 }
-/* Filebrowser-Seite: Header fix, nur die Liste scrollt. */
+/* Filebrowser-Seite: Header fix, nur die Liste scrollt. Die Seite wird in App
+   in einen Wrapper-div gepackt — der muss ebenfalls voll hoch sein, damit die
+   Höhe durchschlägt (gezielt nur für den Filebrowser via :has). */
+.content > div:has(> .filebrowser-screen) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 .filebrowser-screen {
   height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 .filebrowser-screen > .library-table-wrap {
   flex: 1 1 auto;
@@ -1577,6 +1585,7 @@ ul, ol { list-style: none; }
 }
 .filebrowser-row:last-child { border-bottom: none; }
 .filebrowser-row.selected { background: var(--accent-soft); }
+.filebrowser-row.menu-open { background: var(--surface-hover); }
 .fb-check {
   width: 17px;
   height: 17px;
@@ -1666,23 +1675,6 @@ ul, ol { list-style: none; }
   text-align: left;
   border-radius: 7px;
   cursor: pointer;
-}
-.ctx-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px 9px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.ctx-header span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .ctx-item:hover { background: var(--surface-hover); }
 .ctx-danger { color: var(--red); }

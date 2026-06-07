@@ -408,7 +408,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
         <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setEditing(null); }}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(900px, 92vw)', maxWidth: '92vw' }}>
             <h3 style={{ fontFamily: 'var(--font-mono)' }}>{editing.name}</h3>
-            <textarea className="input" value={editVal} onChange={(e) => setEditVal(e.target.value)}
+            <textarea className="input file-editor-input" value={editVal} onChange={(e) => setEditVal(e.target.value)}
               spellCheck={false}
               style={{ width: '100%', height: '55vh', fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.5, resize: 'vertical', whiteSpace: 'pre', overflowWrap: 'normal' }}/>
             <div className="modal-actions">

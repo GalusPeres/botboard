@@ -2486,6 +2486,11 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .modal h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
 .modal p { color: var(--text-muted); margin-bottom: 18px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 560px) {
+  .file-editor-input {
+    font-size: 10.5px !important;
+  }
+}
 
 /* Mini player at bottom (soundboard) */
 .mini-player {

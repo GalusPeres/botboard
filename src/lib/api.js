@@ -142,6 +142,7 @@ export const files = {
   rename: (bot, path, newName) => api(`/api/files/${encodeURIComponent(bot)}/rename`, { method: 'PATCH', body: { path, newName } }),
   remove: (bot, path) => api(`/api/files/${encodeURIComponent(bot)}/delete?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
   mkdir: (bot, path, name) => api(`/api/files/${encodeURIComponent(bot)}/mkdir`, { method: 'POST', body: { path, name } }),
+  move: (bot, paths, dest) => api(`/api/files/${encodeURIComponent(bot)}/move`, { method: 'POST', body: { paths, dest } }),
   upload: (bot, dir, file) => api(
     `/api/files/${encodeURIComponent(bot)}/upload?dir=${encodeURIComponent(dir)}&name=${encodeURIComponent(file.name)}`,
     { method: 'POST', body: file, headers: { 'Content-Type': 'application/octet-stream' } },

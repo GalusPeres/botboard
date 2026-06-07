@@ -31,6 +31,41 @@ function joinPath(dir, name) {
   return dir ? `${dir.replace(/\/+$/, '')}/${name}` : name;
 }
 
+// Ziel-Ordner-Auswahl fürs Verschieben: navigiert nur durch Ordner.
+function MovePicker({ bot, value, onChange }) {
+  const { data } = useFetch(() => API.files.list(bot, value), [bot, value]);
+  const segs = value ? value.split('/').filter(Boolean) : [];
+  const folders = (data?.entries || []).filter((e) => e.type === 'dir');
+  return (
+    <div>
+      <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+        <button className="btn btn-sm" type="button" onClick={() => onChange('')} disabled={!value}>
+          <Icon name="home" size={12}/> root
+        </button>
+        {segs.map((s, i) => (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="chevron-right" size={10} style={{ color: 'var(--text-dim)' }}/>
+            <button className="btn btn-sm" type="button"
+              onClick={() => onChange(segs.slice(0, i + 1).join('/'))} disabled={i === segs.length - 1}>{s}</button>
+          </span>
+        ))}
+      </div>
+      <div className="filebrowser-list" style={{ maxHeight: '38vh', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+        {folders.length === 0 && (
+          <div className="empty" style={{ padding: 14, color: 'var(--text-dim)', fontSize: 13 }}>No subfolders here.</div>
+        )}
+        {folders.map((f) => (
+          <div key={f.name} className="filebrowser-row" style={{ cursor: 'pointer', gridTemplateColumns: '22px minmax(0,1fr)' }}
+            onClick={() => onChange(joinPath(value, f.name))}>
+            <Icon name="folder" size={15} style={{ color: 'var(--accent)', flexShrink: 0 }}/>
+            <span className="filebrowser-name">{f.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [path, setPath] = useState('');
   const { data, error, reload, loading } = useFetch(() => API.files.list(bot, path), [bot, path]);
@@ -45,6 +80,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [mkdirVal, setMkdirVal] = useState('');
   const [uploading, setUploading] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, entry|null }
+  const [selected, setSelected] = useState(() => new Set()); // ausgewählte Namen im aktuellen Ordner
+  const [bulkDelete, setBulkDelete] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [movePath, setMovePath] = useState('');
+  const [moving, setMoving] = useState(false);
 
   // Kontextmenü bei Escape schließen.
   useEffect(() => {
@@ -53,6 +93,16 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [menu]);
+
+  // Auswahl beim Ordner-/Modulwechsel zurücksetzen.
+  useEffect(() => { setSelected(new Set()); }, [path, bot]);
+
+  const toggleSelect = (name) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    return next;
+  });
+  const clearSelect = () => setSelected(new Set());
 
   const segments = path ? path.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
@@ -153,6 +203,39 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
       toast(`Create failed: ${e.message}`);
     }
   };
+  const doBulkDelete = async () => {
+    const rels = [...selected].map((n) => joinPath(path, n));
+    try {
+      for (const rel of rels) await API.files.remove(bot, rel);
+      toast(`Deleted ${rels.length}`);
+    } catch (e) {
+      toast(`Delete failed: ${e.message}`);
+    } finally {
+      setBulkDelete(false);
+      clearSelect();
+      reload();
+    }
+  };
+  const doBulkDownload = () => {
+    const sel = (data?.entries || []).filter((e) => selected.has(e.name) && e.type === 'file');
+    if (!sel.length) { toast('Only files can be downloaded (folders not yet).'); return; }
+    sel.forEach((e, i) => setTimeout(() => triggerDownload(joinPath(path, e.name), e.name), i * 300));
+  };
+  const doMove = async () => {
+    const rels = [...selected].map((n) => joinPath(path, n));
+    setMoving(true);
+    try {
+      await API.files.move(bot, rels, movePath);
+      toast(`Moved ${rels.length}`);
+      setMoveOpen(false);
+      clearSelect();
+      reload();
+    } catch (e) {
+      toast(`Move failed: ${e.message}`);
+    } finally {
+      setMoving(false);
+    }
+  };
 
   return (
     <div className="content-narrow library-screen">
@@ -194,6 +277,30 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
         </div>
       )}
 
+      {/* Bulk-Leiste bei Auswahl */}
+      {selected.size > 0 && (
+        <div className="filebrowser-bulkbar">
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.size} selected</span>
+          <div style={{ flex: 1 }}/>
+          <button className="btn btn-sm" type="button" onClick={doBulkDownload}>
+            <Icon name="download" size={13}/> Download
+          </button>
+          {canWrite && (
+            <button className="btn btn-sm" type="button" onClick={() => { setMovePath(path); setMoveOpen(true); }}>
+              <Icon name="folder" size={13}/> Move
+            </button>
+          )}
+          {canWrite && (
+            <button className="btn btn-sm btn-danger" type="button" onClick={() => setBulkDelete(true)}>
+              <Icon name="trash" size={13}/> Delete
+            </button>
+          )}
+          <button className="btn btn-sm btn-ghost btn-icon" type="button" onClick={clearSelect} title="Clear selection">
+            <Icon name="x" size={14}/>
+          </button>
+        </div>
+      )}
+
       {error && <div className="settings-notice registry-error">{error.message}</div>}
       {loading && !data && <div className="empty"><div>Loading…</div></div>}
 
@@ -203,9 +310,12 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {path && (
               <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
+                <span/>
                 <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
-                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>..</span>
-                <span/><span/><span/>
+                <span className="filebrowser-name" style={{ color: 'var(--text-dim)' }}>..</span>
+                <span className="filebrowser-meta"/>
+                <span className="filebrowser-meta"/>
+                <div className="filebrowser-actions"/>
               </div>
             )}
             {entries.length === 0 && !path && (
@@ -215,8 +325,13 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const rel = joinPath(path, e.name);
               const isDir = e.type === 'dir';
               const canOpen = isDir || isTextFile(e.name);
+              const sel = selected.has(e.name);
               return (
-                <div key={e.name} className="filebrowser-row" onContextMenu={(ev) => openContext(ev, e)}>
+                <div key={e.name} className={'filebrowser-row' + (sel ? ' selected' : '')} onContextMenu={(ev) => openContext(ev, e)}>
+                  <span className={'fb-check' + (sel ? ' on' : '')} title="Select"
+                    onClick={(ev) => { ev.stopPropagation(); toggleSelect(e.name); }}>
+                    {sel && <Icon name="check" size={11}/>}
+                  </span>
                   <Icon name={isDir ? 'folder' : 'file'} size={16}
                     style={{ color: isDir ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
                   <span
@@ -359,6 +474,39 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               <button className="btn" onClick={() => setDeleteConfirm(null)}>Cancel</button>
               <button className="btn btn-danger" onClick={doDelete}>
                 <Icon name="trash" size={13}/> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirm */}
+      {bulkDelete && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setBulkDelete(false); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Delete {selected.size} item{selected.size > 1 ? 's' : ''}?</h3>
+            <p>The selected items (including any folders and their contents) will be permanently deleted.</p>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setBulkDelete(false)}>Cancel</button>
+              <button className="btn btn-danger" onClick={doBulkDelete}>
+                <Icon name="trash" size={13}/> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move modal */}
+      {moveOpen && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setMoveOpen(false); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)' }}>
+            <h3>Move {selected.size} item{selected.size > 1 ? 's' : ''}</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: 13, marginTop: -4 }}>Pick the destination folder:</p>
+            <MovePicker bot={bot} value={movePath} onChange={setMovePath}/>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setMoveOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={doMove} disabled={moving || movePath === path}>
+                <Icon name="folder" size={13}/> {moving ? 'Moving...' : `Move here → /${movePath}`}
               </button>
             </div>
           </div>

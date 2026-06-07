@@ -1528,13 +1528,39 @@ ul, ol { list-style: none; }
 }
 .filebrowser-row {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 84px 140px auto;
+  grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px auto;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 6px 12px;
+  min-height: 44px;            /* feste Höhe → kein Verrutschen beim Navigieren */
   border-bottom: 1px solid var(--border);
 }
 .filebrowser-row:last-child { border-bottom: none; }
+.filebrowser-row.selected { background: var(--accent-soft); }
+.fb-check {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong, #555);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.fb-check:hover { border-color: var(--accent); }
+.fb-check.on { background: var(--accent); border-color: var(--accent); }
+.filebrowser-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
 .filebrowser-name {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -1556,7 +1582,7 @@ ul, ol { list-style: none; }
   gap: 2px;
 }
 @media (max-width: 700px) {
-  .filebrowser-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .filebrowser-row { grid-template-columns: 24px 22px minmax(0, 1fr) auto; }
   .filebrowser-meta { display: none; }
 }
 

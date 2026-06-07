@@ -186,6 +186,32 @@ export default function filesRoutes() {
     }
   });
 
+  // Mehrere Einträge in einen Zielordner verschieben.
+  router.post('/:bot/move', async (req, res) => {
+    const root = resolveRoot(req, res);
+    if (!root) return;
+    try {
+      const { paths, dest } = req.body || {};
+      if (!Array.isArray(paths) || paths.length === 0) return res.status(400).json({ error: 'paths required' });
+      const destDir = safePath(root, dest || '');
+      const dst = await fsp.stat(destDir).catch(() => null);
+      if (!dst || !dst.isDirectory()) return res.status(400).json({ error: 'destination is not a folder' });
+      let moved = 0;
+      for (const rel of paths) {
+        const from = safePath(root, rel);
+        const to = safePath(root, path.join(dest || '', path.basename(rel)));
+        if (from === to) continue;                       // schon am Ziel
+        if (to === from || to.startsWith(from + path.sep)) continue; // Ordner in sich selbst
+        await fsp.rename(from, to);
+        moved++;
+      }
+      logActivity(`${actor(req)} → Verschoben (${moved}) → ${dest || '/'} (${req.params.bot})`);
+      res.json({ ok: true, moved });
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
   // Ordner anlegen.
   router.post('/:bot/mkdir', async (req, res) => {
     const root = resolveRoot(req, res);

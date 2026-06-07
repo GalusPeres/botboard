@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAdmin, reqGuild } from '../auth.js';
 import { listUsers, setPermissions, recordUser } from '../userRegistry.js';
 import { botIds, botBaseUrl, botAuthHeader } from '../botClient.js';
+import { botTokenConfigured, fetchBotGuildIds, fetchMemberRoleIds } from '../discordBot.js';
 import { logActivity } from '../activityLog.js';
 
 export default function usersRoutes() {
@@ -9,11 +10,25 @@ export default function usersRoutes() {
 
   router.use(requireAdmin);
 
-  // listUsers filtert bereits auf Mitglieder des gewählten Servers (anhand der
-  // beim Login gespeicherten Server-Liste) — kein Live-Discord-Call nötig.
-  router.get('/', (req, res) => {
+  // listUsers filtert per gespeicherter Server-Liste. Alt-User OHNE gespeicherte
+  // Liste (guilds === null, vor dem Feature eingeloggt) live über den Bot prüfen,
+  // damit sie nicht auf jedem Server auftauchen. `guilds` nicht an Client leaken.
+  router.get('/', async (req, res) => {
     try {
-      res.json(listUsers(reqGuild(req)));
+      const guildId = reqGuild(req);
+      let users = listUsers(guildId);
+      if (guildId && botTokenConfigured()) {
+        const botGuilds = await fetchBotGuildIds().catch(() => null);
+        if (botGuilds?.has(guildId)) {
+          const ok = await Promise.all(users.map(async (u) => {
+            if (u.isEnvAdmin || Array.isArray(u.guilds)) return true; // Admin oder bekannte Mitgliedschaft
+            try { return (await fetchMemberRoleIds(guildId, u.id)) !== null; }
+            catch { return true; } // Discord-Fehler → nicht ausblenden
+          }));
+          users = users.filter((_, i) => ok[i]);
+        }
+      }
+      res.json(users.map(({ guilds, ...rest }) => rest));
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
     }

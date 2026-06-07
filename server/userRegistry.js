@@ -125,6 +125,7 @@ function serialize(u, guildId) {
     ...u,
     permissions: isEnvAdmin ? { ...ALL_PERMISSIONS } : guildPerms(u, guildId),
     isEnvAdmin,
+    guilds: Array.isArray(u.guilds) ? u.guilds : null,
   };
 }
 

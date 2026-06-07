@@ -1585,7 +1585,7 @@ ul, ol { list-style: none; }
 }
 .filebrowser-row:last-child { border-bottom: none; }
 .filebrowser-row.selected { background: var(--accent-soft); }
-.filebrowser-row.menu-open { background: var(--surface-hover); }
+.filebrowser-row.menu-open { background: oklch(0.185 0.008 250); }
 .fb-check {
   width: 17px;
   height: 17px;

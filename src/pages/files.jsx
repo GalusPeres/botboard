@@ -149,10 +149,12 @@ export const FileBrowserScreen = ({
   useEffect(() => { setSelected(new Set()); }, [path, bot]);
   useEffect(() => {
     previewAudioRef.current?.pause();
+    if (previewAudioRef.current?.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
     previewAudioRef.current = null;
   }, [path, bot]);
   useEffect(() => () => {
     previewAudioRef.current?.pause();
+    if (previewAudioRef.current?.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
     previewAudioRef.current = null;
   }, []);
 
@@ -217,23 +219,30 @@ export const FileBrowserScreen = ({
   const previewAudio = async (rel) => {
     if (previewAudioRef.current) {
       previewAudioRef.current.pause();
+      if (previewAudioRef.current.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
       previewAudioRef.current = null;
     }
-    const audio = new Audio(storage.downloadUrl(rel));
-    previewAudioRef.current = audio;
-    const clear = () => {
-      if (previewAudioRef.current === audio) previewAudioRef.current = null;
-    };
-    audio.onended = clear;
-    audio.onerror = () => {
-      clear();
-      toast('Preview failed');
-    };
     try {
+      const response = await fetch(storage.downloadUrl(rel), { credentials: 'include' });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const audio = new Audio(objectUrl);
+      audio.objectUrl = objectUrl;
+      previewAudioRef.current = audio;
+      const clear = () => {
+        URL.revokeObjectURL(objectUrl);
+        if (previewAudioRef.current === audio) previewAudioRef.current = null;
+      };
+      audio.onended = clear;
+      audio.onerror = () => {
+        clear();
+        toast('Preview playback failed');
+      };
       await audio.play();
       toast(`Previewing ${rel.split('/').pop()} locally`);
     } catch (e) {
-      clear();
+      if (previewAudioRef.current?.objectUrl) URL.revokeObjectURL(previewAudioRef.current.objectUrl);
+      previewAudioRef.current = null;
       toast(`Preview failed: ${e.message}`);
     }
   };

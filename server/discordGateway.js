@@ -166,7 +166,7 @@ async function buildInfoPayload() {
   if (url) {
     container.addSeparatorComponents(new SeparatorBuilder());
     container.addActionRowComponents(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Success).setCustomId('info:open').setLabel('Open dashboard'),
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Open dashboard').setURL(url),
     ));
   }
 
@@ -233,22 +233,6 @@ export function startGateway() {
       await handleInfo(message);
     } catch (err) {
       console.error('[gateway] #info failed:', err.message);
-    }
-  });
-
-  // „Open dashboard"-Button (grün) → blendet den Link privat (ephemeral) ein.
-  // (Discord erlaubt bei direkten Link-Buttons keine Farbe — daher dieser Weg.)
-  client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isButton() || interaction.customId !== 'info:open') return;
-    try {
-      if (!roleAllowed(interaction.guildId, interaction.member)) {
-        await interaction.reply({ content: '⛔ You do not have access to this.', flags: MessageFlags.Ephemeral }).catch(() => {});
-        return;
-      }
-      const url = publicUrl();
-      await interaction.reply({ content: url ? `🔗 ${url}` : 'No dashboard URL configured.', flags: MessageFlags.Ephemeral });
-    } catch (err) {
-      console.error('[gateway] open-dashboard failed:', err.message);
     }
   });
 

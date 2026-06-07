@@ -11,12 +11,14 @@ const soundLibraryBackend = {
     const sounds = await API.sound.list();
     return {
       path: '',
-      entries: sounds.map((sound) => ({
-        name: sound.file || `${sound.name}.mp3`,
-        type: 'file',
-        size: sound.size,
-        mtime: sound.added,
-      })),
+      entries: sounds
+        .map((sound) => ({
+          name: sound.file || `${sound.name}.mp3`,
+          type: 'file',
+          size: sound.size,
+          mtime: sound.added,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })),
     };
   },
   info: async (rel) => {

@@ -366,6 +366,7 @@ export const page = {
       subtitle={`${c.botName} — sounds`}
       canWrite={!!c.perms.soundLibrary}
       setToast={c.setToast}
+      active={c.active}
       allowFolders={false}
       allowMove={false}
       allowTextEdit={false}

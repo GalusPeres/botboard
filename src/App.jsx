@@ -829,7 +829,7 @@ function DashboardApp(props) {
               return (
                 <div key={`${parentBot}/${page.id}`} hidden={!visible}>
                   {render
-                    ? render({ ...pageCtx, parentBot, botName })
+                    ? render({ ...pageCtx, parentBot, botName, active: visible })
                     : (
                       <div className="content-narrow">
                         <div className="empty"><div>No renderer for page kind "{kind}".</div></div>

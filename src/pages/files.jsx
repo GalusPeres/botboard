@@ -100,6 +100,7 @@ export const FileBrowserScreen = ({
   botName,
   canWrite,
   setToast,
+  active = true,
   backend,
   title = 'Files',
   subtitle = `${botName} — files`,
@@ -135,6 +136,12 @@ export const FileBrowserScreen = ({
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const previewAudioRef = useRef(null);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const id = setInterval(reload, 2000);
+    return () => clearInterval(id);
+  }, [active, reload]);
 
   // Move-Dialog öffnen (für die aktuelle Auswahl oder eine Einzeldatei).
   const openMove = (rels) => {
@@ -769,6 +776,7 @@ export const FileBrowserScreen = ({
 export const page = {
   kind: 'files',
   render: (c) => (
-    <FileBrowserScreen bot={c.parentBot} botName={c.botName} canWrite={!!c.perms.fileBrowser} setToast={c.setToast}/>
+    <FileBrowserScreen bot={c.parentBot} botName={c.botName} canWrite={!!c.perms.fileBrowser}
+      setToast={c.setToast} active={c.active}/>
   ),
 };

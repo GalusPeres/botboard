@@ -87,6 +87,7 @@ function fileBackend(bot) {
     move: (paths, dest) => API.files.move(bot, paths, dest),
     upload: (value, file) => API.files.upload(bot, value, file),
     downloadUrl: (rel) => API.files.downloadUrl(bot, rel),
+    archiveUrl: (paths) => API.files.archiveUrl(bot, paths),
   };
 }
 
@@ -177,6 +178,12 @@ export const FileBrowserScreen = ({
   const triggerDownload = (rel, name) => {
     const a = document.createElement('a');
     a.href = storage.downloadUrl(rel);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  const triggerArchive = (rels, name = 'download.zip') => {
+    const a = document.createElement('a');
+    a.href = storage.archiveUrl(rels);
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
   };
@@ -322,9 +329,14 @@ export const FileBrowserScreen = ({
     }
   };
   const doBulkDownload = () => {
-    const sel = (data?.entries || []).filter((e) => selected.has(e.name) && e.type === 'file');
-    if (!sel.length) { toast('Only files can be downloaded (folders not yet).'); return; }
-    sel.forEach((e, i) => setTimeout(() => triggerDownload(joinPath(path, e.name), e.name), i * 300));
+    const sel = (data?.entries || []).filter((e) => selected.has(e.name));
+    if (!sel.length) return;
+    if (sel.length === 1 && sel[0].type === 'file') {
+      triggerDownload(joinPath(path, sel[0].name), sel[0].name);
+      return;
+    }
+    triggerArchive(sel.map((entry) => joinPath(path, entry.name)),
+      sel.length === 1 ? `${sel[0].name}.zip` : 'download.zip');
   };
   const doMove = async () => {
     setMoving(true);
@@ -560,11 +572,13 @@ export const FileBrowserScreen = ({
                       <Icon name="music" size={13}/> Open
                     </button>
                   )}
-                  {!isDir && (
-                    <button className="ctx-item" onClick={() => { triggerDownload(rel, e.name); closeMenu(); }}>
+                  <button className="ctx-item" onClick={() => {
+                    if (isDir) triggerArchive([rel], `${e.name}.zip`);
+                    else triggerDownload(rel, e.name);
+                    closeMenu();
+                  }}>
                       <Icon name="download" size={13}/> Download
-                    </button>
-                  )}
+                  </button>
                   <button className="ctx-item" onClick={() => openDetails(rel)} disabled={detailsLoading}>
                     <Icon name="info" size={13}/> Details
                   </button>

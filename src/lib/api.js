@@ -149,7 +149,12 @@ export const files = {
     { method: 'POST', body: file, headers: { 'Content-Type': 'application/octet-stream' } },
   ),
   downloadUrl: (bot, path) => `/api/files/${encodeURIComponent(bot)}/download?path=${encodeURIComponent(path)}`,
+  archiveUrl: (bot, paths) =>
+    `/api/files/${encodeURIComponent(bot)}/archive?paths=${encodeURIComponent(JSON.stringify(paths))}`,
 };
+
+export const soundArchiveUrl = (bot, names) =>
+  `/api/sound-archive/${encodeURIComponent(bot)}?names=${encodeURIComponent(JSON.stringify(names))}`;
 
 export const users = {
   list: () => api('/api/users'),

@@ -15,6 +15,7 @@ import logsRoutes from './routes/logs.js';
 import usersRoutes from './routes/users.js';
 import accessRoutes from './routes/access.js';
 import filesRoutes from './routes/files.js';
+import soundArchiveRoutes from './routes/soundArchive.js';
 import botboardRoutes from './routes/botboard.js';
 import { startGateway } from './discordGateway.js';
 
@@ -62,6 +63,7 @@ app.use('/api/logs', logsRoutes());
 app.use('/api/users', usersRoutes());
 app.use('/api/access', accessRoutes());
 app.use('/api/files', filesRoutes());
+app.use('/api/sound-archive', soundArchiveRoutes());
 app.use('/api/botboard-config', botboardRoutes());
 app.use('/api/bots', proxyRoutes());
 

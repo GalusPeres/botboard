@@ -37,6 +37,7 @@ const soundLibraryBackend = {
   remove: (rel) => API.sound.remove(soundName(rel)),
   upload: (_path, file) => API.sound.upload(file),
   downloadUrl: (rel) => API.sound.downloadUrl(soundName(rel)),
+  archiveUrl: (rels) => API.soundArchiveUrl('sound', rels.map(soundName)),
 };
 
 function fmtDate(ms) {

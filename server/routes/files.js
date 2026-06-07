@@ -6,6 +6,7 @@ import { Router } from 'express';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import archiver from 'archiver';
 import { hasBot } from '../botClient.js';
 import { botConfig } from '../botRegistry.js';
 import { requirePermission } from '../auth.js';
@@ -116,6 +117,43 @@ export default function filesRoutes() {
       res.download(target, path.basename(target));
     } catch (err) {
       res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  // Eine Auswahl aus Dateien und Ordnern rekursiv als ZIP streamen.
+  router.get('/:bot/archive', async (req, res) => {
+    const root = resolveRoot(req, res);
+    if (!root) return;
+    try {
+      const paths = JSON.parse(String(req.query.paths || '[]'));
+      if (!Array.isArray(paths) || paths.length === 0) {
+        return res.status(400).json({ error: 'paths required' });
+      }
+
+      const items = paths.map((rel) => {
+        const target = safePath(root, rel);
+        if (target === root || !fs.existsSync(target)) {
+          const error = new Error('file or folder not found');
+          error.status = 404;
+          throw error;
+        }
+        return { target, name: path.basename(target), isDirectory: fs.statSync(target).isDirectory() };
+      });
+
+      res.attachment(items.length === 1 && items[0].isDirectory ? `${items[0].name}.zip` : 'download.zip');
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      archive.on('error', (error) => {
+        if (!res.headersSent) res.status(500).json({ error: error.message });
+        else res.destroy(error);
+      });
+      archive.pipe(res);
+      for (const item of items) {
+        if (item.isDirectory) archive.directory(item.target, item.name);
+        else archive.file(item.target, { name: item.name });
+      }
+      await archive.finalize();
+    } catch (err) {
+      if (!res.headersSent) res.status(err.status || 500).json({ error: err.message });
     }
   });
 

@@ -293,7 +293,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                 </label>
               )}
               {canWrite && (
-                <button className="btn btn-ghost" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
+                <button className="btn" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
                   <Icon name="plus" size={13}/> New folder
                 </button>
               )}
@@ -450,6 +450,10 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const isDir = e.type === 'dir';
               return (
                 <>
+                  <div className="ctx-header">
+                    <Icon name={isDir ? 'folder' : 'file'} size={13} style={{ flexShrink: 0, color: isDir ? 'var(--accent)' : 'var(--text-dim)' }}/>
+                    <span>{e.name}</span>
+                  </div>
                   {isDir && (
                     <button className="ctx-item" onClick={() => { goTo(rel); closeMenu(); }}>
                       <Icon name="folder" size={13}/> Open

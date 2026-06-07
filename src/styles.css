@@ -1667,6 +1667,23 @@ ul, ol { list-style: none; }
   border-radius: 7px;
   cursor: pointer;
 }
+.ctx-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 9px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ctx-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ctx-item:hover { background: var(--surface-hover); }
 .ctx-danger { color: var(--red); }
 .ctx-danger:hover { background: oklch(0.70 0.18 25 / 0.12); }

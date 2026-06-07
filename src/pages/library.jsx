@@ -2,6 +2,42 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, SearchField } from '../ui/components.jsx';
 import * as API from '../lib/api.js';
+import { FileBrowserScreen } from './files.jsx';
+
+const soundName = (file) => file.replace(/\.mp3$/i, '');
+
+const soundLibraryBackend = {
+  list: async () => {
+    const sounds = await API.sound.list();
+    return {
+      path: '',
+      entries: sounds.map((sound) => ({
+        name: sound.file || `${sound.name}.mp3`,
+        type: 'file',
+        size: sound.size,
+        mtime: sound.added,
+      })),
+    };
+  },
+  info: async (rel) => {
+    const sounds = await API.sound.list();
+    const sound = sounds.find((entry) => entry.name === soundName(rel));
+    if (!sound) throw new Error('sound not found');
+    return {
+      name: sound.file || `${sound.name}.mp3`,
+      path: rel,
+      type: 'File',
+      size: sound.size,
+      itemCount: null,
+      createdAt: sound.added,
+      modifiedAt: sound.added,
+    };
+  },
+  rename: (rel, name) => API.sound.rename(soundName(rel), soundName(name)),
+  remove: (rel) => API.sound.remove(soundName(rel)),
+  upload: (_path, file) => API.sound.upload(file),
+  downloadUrl: (rel) => API.sound.downloadUrl(soundName(rel)),
+};
 
 function fmtDate(ms) {
   if (!ms) return '—';
@@ -318,7 +354,18 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
 export const page = {
   kind: 'file-library',
   render: (c) => (
-    <LibraryScreen sounds={c.sounds}
-      addSound={c.addSound} deleteSound={c.deleteSound} renameSound={c.renameSound} previewSound={c.previewSound} permissions={c.perms}/>
+    <FileBrowserScreen
+      bot="sound"
+      botName={c.botName}
+      backend={soundLibraryBackend}
+      title="Sound Library"
+      subtitle={`${c.botName} — sounds`}
+      canWrite={!!c.perms.soundLibrary}
+      setToast={c.setToast}
+      allowFolders={false}
+      allowMove={false}
+      allowTextEdit={false}
+      uploadAccept="audio/mpeg,.mp3"
+    />
   ),
 };

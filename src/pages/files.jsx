@@ -75,9 +75,37 @@ function MovePicker({ bot, value, onChange }) {
   );
 }
 
-const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
+function fileBackend(bot) {
+  return {
+    list: (value) => API.files.list(bot, value),
+    info: (rel) => API.files.info(bot, rel),
+    read: (rel) => API.files.read(bot, rel),
+    write: (rel, content) => API.files.write(bot, rel, content),
+    rename: (rel, name) => API.files.rename(bot, rel, name),
+    remove: (rel) => API.files.remove(bot, rel),
+    mkdir: (value, name) => API.files.mkdir(bot, value, name),
+    move: (paths, dest) => API.files.move(bot, paths, dest),
+    upload: (value, file) => API.files.upload(bot, value, file),
+    downloadUrl: (rel) => API.files.downloadUrl(bot, rel),
+  };
+}
+
+export const FileBrowserScreen = ({
+  bot,
+  botName,
+  canWrite,
+  setToast,
+  backend,
+  title = 'Files',
+  subtitle = `${botName} — files`,
+  allowFolders = true,
+  allowMove = true,
+  allowTextEdit = true,
+  uploadAccept,
+}) => {
+  const storage = React.useMemo(() => backend || fileBackend(bot), [backend, bot]);
   const [path, setPath] = useState('');
-  const { data, error, reload, loading } = useFetch(() => API.files.list(bot, path), [bot, path]);
+  const { data, error, reload, loading } = useFetch(() => storage.list(path), [storage, path]);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);   // { path, name }
   const [editVal, setEditVal] = useState('');
@@ -146,7 +174,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
 
   const triggerDownload = (rel, name) => {
     const a = document.createElement('a');
-    a.href = API.files.downloadUrl(bot, rel);
+    a.href = storage.downloadUrl(rel);
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
   };
@@ -168,7 +196,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     closeMenu();
     setDetailsLoading(true);
     try {
-      setDetails(await API.files.info(bot, rel));
+      setDetails(await storage.info(rel));
     } catch (e) {
       toast(`Details failed: ${e.message}`);
     } finally {
@@ -179,7 +207,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const openFile = async (name) => {
     const rel = joinPath(path, name);
     try {
-      const r = await API.files.read(bot, rel);
+      const r = await storage.read(rel);
       setEditing({ path: rel, name });
       setEditVal(r.content);
     } catch (e) {
@@ -191,7 +219,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
       previewAudioRef.current.pause();
       previewAudioRef.current = null;
     }
-    const audio = new Audio(API.files.downloadUrl(bot, rel));
+    const audio = new Audio(storage.downloadUrl(rel));
     previewAudioRef.current = audio;
     const clear = () => {
       if (previewAudioRef.current === audio) previewAudioRef.current = null;
@@ -203,6 +231,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     };
     try {
       await audio.play();
+      toast(`Previewing ${rel.split('/').pop()} locally`);
     } catch (e) {
       clear();
       toast(`Preview failed: ${e.message}`);
@@ -211,7 +240,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const saveEdit = async () => {
     setSavingEdit(true);
     try {
-      await API.files.write(bot, editing.path, editVal);
+      await storage.write(editing.path, editVal);
       toast('Saved');
       setEditing(null);
       reload();
@@ -225,7 +254,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     if (!file) return;
     setUploading(true);
     try {
-      await API.files.upload(bot, path, file);
+      await storage.upload(path, file);
       toast(`Uploaded ${file.name}`);
       reload();
     } catch (e) {
@@ -238,7 +267,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     const name = renameVal.trim();
     if (!name) return;
     try {
-      await API.files.rename(bot, renaming.rel, name);
+      await storage.rename(renaming.rel, name);
       toast('Renamed');
       setRenaming(null);
       reload();
@@ -248,7 +277,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   };
   const doDelete = async () => {
     try {
-      await API.files.remove(bot, deleteConfirm.rel);
+      await storage.remove(deleteConfirm.rel);
       toast('Deleted');
       reload();
     } catch (e) {
@@ -261,7 +290,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     const name = mkdirVal.trim();
     if (!name) return;
     try {
-      await API.files.mkdir(bot, path, name);
+      await storage.mkdir(path, name);
       toast('Folder created');
       setMkdirOpen(false);
       setMkdirVal('');
@@ -273,7 +302,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const doBulkDelete = async () => {
     const rels = [...selected].map((n) => joinPath(path, n));
     try {
-      for (const rel of rels) await API.files.remove(bot, rel);
+      for (const rel of rels) await storage.remove(rel);
       toast(`Deleted ${rels.length}`);
     } catch (e) {
       toast(`Delete failed: ${e.message}`);
@@ -291,7 +320,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const doMove = async () => {
     setMoving(true);
     try {
-      await API.files.move(bot, moveItems, movePath);
+      await storage.move(moveItems, movePath);
       toast(`Moved ${moveItems.length}`);
       setMoveOpen(false);
       setMoveConfirming(false);
@@ -308,8 +337,8 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     <div className="content-narrow filebrowser-screen">
       <div className="page-head media-page-head">
         <div>
-          <div className="page-title">Files</div>
-          <div className="page-sub">{botName} — files</div>
+          <div className="page-title">{title}</div>
+          {subtitle && <div className="page-sub">{subtitle}</div>}
         </div>
         <div className="page-actions media-head-search">
           <SearchField value={search} placeholder="Search in folder..." onChange={(e) => setSearch(e.target.value)}/>
@@ -341,11 +370,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               {canWrite && (
                 <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
                   <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
-                  <input type="file" hidden disabled={uploading}
+                  <input type="file" hidden disabled={uploading} accept={uploadAccept}
                     onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
                 </label>
               )}
-              {canWrite && (
+              {canWrite && allowFolders && (
                 <button className="btn" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
                   <Icon name="plus" size={13}/> New folder
                 </button>
@@ -367,7 +396,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
                 <Icon name="download" size={13}/> Download
               </button>
-              {canWrite && (
+              {canWrite && allowMove && (
                 <button className="btn" type="button" onClick={() => openMove([...selected].map((n) => joinPath(path, n)))} disabled={!selected.size}>
                   <Icon name="folder" size={13}/> Move
                 </button>
@@ -409,7 +438,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const rel = joinPath(path, e.name);
               const isDir = e.type === 'dir';
               const isAudio = !isDir && isAudioFile(e.name);
-              const canOpen = isDir || isTextFile(e.name) || isAudio;
+              const canOpen = isDir || (allowTextEdit && isTextFile(e.name)) || isAudio;
               const sel = selected.has(e.name);
               return (
                 <div key={e.name}
@@ -421,11 +450,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                       {sel && <Icon name="check" size={11}/>}
                     </span>
                   )}
-                  <Icon name={isDir ? 'folder' : isAudio ? 'volume' : 'file'} size={16}
+                  <Icon name={isDir ? 'folder' : isAudio ? 'music' : 'file'} size={16}
                     style={{ color: isDir || isAudio ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
                   <div className="filebrowser-namecell"
                     style={{ cursor: canOpen ? 'pointer' : 'default' }}
-                    onClick={() => { if (isDir) goTo(rel); else if (isAudio) previewAudio(rel); else if (isTextFile(e.name)) openFile(e.name); }}>
+                    onClick={() => { if (isDir) goTo(rel); else if (isAudio) previewAudio(rel); else if (allowTextEdit && isTextFile(e.name)) openFile(e.name); }}>
                     <span className="filebrowser-name" style={{ fontWeight: isDir ? 600 : 400 }} title={e.name}>{e.name}</span>
                     <span className="filebrowser-submeta">{isDir ? 'Folder' : fmtSize(e.size)}{e.mtime ? ` · ${fmtDate(e.mtime)}` : ''}</span>
                   </div>
@@ -512,14 +541,14 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                       <Icon name="folder" size={13}/> Open
                     </button>
                   )}
-                  {!isDir && isTextFile(e.name) && (
+                  {!isDir && allowTextEdit && isTextFile(e.name) && (
                     <button className="ctx-item" onClick={() => { openFile(e.name); closeMenu(); }}>
                       <Icon name="edit" size={13}/> Edit
                     </button>
                   )}
                   {isAudio && (
                     <button className="ctx-item" onClick={() => { previewAudio(rel); closeMenu(); }}>
-                      <Icon name="volume" size={13}/> Open
+                      <Icon name="music" size={13}/> Open
                     </button>
                   )}
                   {!isDir && (
@@ -535,7 +564,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                       <Icon name="edit" size={13}/> Rename
                     </button>
                   )}
-                  {canWrite && (
+                  {canWrite && allowMove && (
                     <button className="ctx-item" onClick={() => { openMove([rel]); closeMenu(); }}>
                       <Icon name="folder" size={13}/> Move
                     </button>
@@ -550,12 +579,15 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
             })() : (
               canWrite ? (
                 <>
-                  <button className="ctx-item" onClick={() => { setMkdirVal(''); setMkdirOpen(true); closeMenu(); }}>
-                    <Icon name="plus" size={13}/> New folder
-                  </button>
+                  {allowFolders && (
+                    <button className="ctx-item" onClick={() => { setMkdirVal(''); setMkdirOpen(true); closeMenu(); }}>
+                      <Icon name="plus" size={13}/> New folder
+                    </button>
+                  )}
                   <label className="ctx-item" style={{ cursor: 'pointer' }}>
                     <Icon name="upload" size={13}/> Upload
-                    <input type="file" hidden onChange={(ev) => { const f = ev.target.files?.[0]; ev.target.value = ''; closeMenu(); doUpload(f); }}/>
+                    <input type="file" hidden accept={uploadAccept}
+                      onChange={(ev) => { const f = ev.target.files?.[0]; ev.target.value = ''; closeMenu(); doUpload(f); }}/>
                   </label>
                 </>
               ) : (

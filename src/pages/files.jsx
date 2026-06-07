@@ -293,17 +293,20 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
           </div>
         </>
       ) : (
-        <div className="fb-selectpanel">
-          <div className="fb-selectpanel-top">
-            <button className="btn btn-ghost btn-icon" type="button" onClick={exitSelect} title="Cancel">
-              <Icon name="x" size={16}/>
-            </button>
-            <span className="fb-selectcount">{selected.size} selected</span>
+        <>
+          {/* Zeile 1 (wie Breadcrumb-Zeile): links Anzahl + All, rechts Cancel. */}
+          <div className="media-toolbar-row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontWeight: 600, fontSize: 13 }}>{selected.size} selected</span>
             <button className="btn btn-sm" type="button" onClick={toggleAll} disabled={!(data?.entries?.length)}>
               <Icon name="check" size={13}/> {allSelected ? 'None' : 'All'}
             </button>
+            <button className="btn btn-sm" type="button" onClick={exitSelect} style={{ marginLeft: 'auto' }}>
+              <Icon name="x" size={13}/> Cancel
+            </button>
           </div>
-          <div className="fb-selectpanel-actions">
+
+          {/* Zeile 2 (wie Toolbar): rechtsbündig die Aktionen, normale Größe. */}
+          <div className="media-toolbar-row media-action-row">
             <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
               <Icon name="download" size={13}/> Download
             </button>
@@ -318,7 +321,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               </button>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {error && <div className="settings-notice registry-error">{error.message}</div>}

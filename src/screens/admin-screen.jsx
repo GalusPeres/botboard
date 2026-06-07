@@ -9,7 +9,7 @@ const PERM_LABELS = {
   controlBot:     'Control',
   restartBot:     'Restart',
   startStop:      'Start/Stop',
-  soundLibrary:   'Sounds',
+  soundLibrary:   'Library',
   fileBrowser:    'Files',
   settings:       'Config',
   botModules:     'Modules',

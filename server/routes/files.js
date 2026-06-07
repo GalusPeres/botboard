@@ -38,8 +38,9 @@ function actor(req) {
 export default function filesRoutes() {
   const router = Router();
 
-  // Library-Recht (pro Server) für ALLE Datei-Operationen.
-  router.use('/:bot', requirePermission('soundLibrary'));
+  // Files-Recht (pro Server) für ALLE Datei-Operationen. Bewusst getrennt von
+  // soundLibrary („Sounds") — der Filebrowser ist eher Serververwaltung.
+  router.use('/:bot', requirePermission('fileBrowser'));
 
   // Root-Check + 404 für unbekanntes/un-konfiguriertes Modul.
   function resolveRoot(req, res) {

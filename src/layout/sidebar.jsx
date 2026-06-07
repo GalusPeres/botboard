@@ -139,7 +139,7 @@ export const Sidebar = ({
           const pages = modulePages(module).filter((p) => {
             const kind = p.kind || p.id;
             if (kind === 'settings') return canSeeSettings;
-            if (kind === 'files') return !!permissions.soundLibrary;
+            if (kind === 'files') return !!permissions.fileBrowser;
             return true;
           });
           if (pages.length === 0) return null;

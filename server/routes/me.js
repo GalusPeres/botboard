@@ -12,7 +12,7 @@ export default function meRoutes() {
     // Live, PER-SERVER permissions for the currently active server.
     const permissions = user
       ? (config.devAuthBypass
-          ? { controlBot: true, restartBot: true, startStop: true, soundLibrary: true, settings: true, userManagement: true, botModules: true }
+          ? { controlBot: true, restartBot: true, startStop: true, soundLibrary: true, fileBrowser: true, settings: true, userManagement: true, botModules: true }
           : getPermissions(user.id, guildId))
       : null;
     // Live-Zugangscheck: ist der User auf dem aktiven Server noch zugelassen?

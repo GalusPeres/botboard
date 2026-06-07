@@ -74,7 +74,7 @@ export default function authRoutes() {
     if (config.devAuthBypass) {
       req.session.activeGuild = String(guildId);
       return req.session.save(() => res.json({
-        user: { ...(req.session.user || { id: 'dev', username: 'dev' }), permissions: { controlBot: true, restartBot: true, startStop: true, soundLibrary: true, settings: true, userManagement: true, botModules: true } },
+        user: { ...(req.session.user || { id: 'dev', username: 'dev' }), permissions: { controlBot: true, restartBot: true, startStop: true, soundLibrary: true, fileBrowser: true, settings: true, userManagement: true, botModules: true } },
       }));
     }
 

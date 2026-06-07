@@ -132,7 +132,7 @@ export function requireAuth(req, res, next) {
   if (config.devAuthBypass) {
     req.session.user = req.session.user || {
       id: 'dev', username: 'dev', avatar: null, dev: true,
-      permissions: { controlBot: true, soundLibrary: true, settings: true, userManagement: true, botModules: true },
+      permissions: { controlBot: true, soundLibrary: true, fileBrowser: true, settings: true, userManagement: true, botModules: true },
     };
     return next();
   }

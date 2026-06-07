@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { config } from './config.js';
 
-export const PERMISSIONS = ['controlBot', 'restartBot', 'startStop', 'soundLibrary', 'settings', 'userManagement', 'botModules'];
+export const PERMISSIONS = ['controlBot', 'restartBot', 'startStop', 'soundLibrary', 'fileBrowser', 'settings', 'userManagement', 'botModules'];
 
 const DEFAULT_PERMISSIONS = {
   controlBot: true,
@@ -10,7 +10,10 @@ const DEFAULT_PERMISSIONS = {
   // purpose so a public Botboard doesn't let everyone start/stop containers.
   restartBot: false,
   startStop: false,
+  // soundLibrary = "Sounds" (Soundboard-Bibliothek, locker/breit).
+  // fileBrowser = "Files" (generischer Dateibrowser, eher Serververwaltung).
   soundLibrary: false,
+  fileBrowser: false,
   settings: false,
   userManagement: false,
   botModules: false,

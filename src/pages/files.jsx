@@ -378,6 +378,6 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
 export const page = {
   kind: 'files',
   render: (c) => (
-    <FileBrowserScreen bot={c.parentBot} botName={c.botName} canWrite={!!c.perms.soundLibrary} setToast={c.setToast}/>
+    <FileBrowserScreen bot={c.parentBot} botName={c.botName} canWrite={!!c.perms.fileBrowser} setToast={c.setToast}/>
   ),
 };

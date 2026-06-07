@@ -31,8 +31,6 @@ function joinPath(dir, name) {
   return dir ? `${dir.replace(/\/+$/, '')}/${name}` : name;
 }
 
-const ICON_BTN = { textDecoration: 'none' };
-
 const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [path, setPath] = useState('');
   const { data, error, reload, loading } = useFetch(() => API.files.list(bot, path), [bot, path]);
@@ -68,9 +66,18 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
   };
-  const openContext = (event, entry) => {
-    event.preventDefault();
-    setMenu({ x: Math.min(event.clientX, window.innerWidth - 190), y: Math.min(event.clientY, window.innerHeight - 230), entry });
+  const openMenuAt = (x, y, entry) => setMenu({
+    x: Math.max(8, Math.min(x, window.innerWidth - 184)),
+    y: Math.min(y, window.innerHeight - 240),
+    entry,
+  });
+  // Rechtsklick (Maus).
+  const openContext = (event, entry) => { event.preventDefault(); openMenuAt(event.clientX, event.clientY, entry); };
+  // ⋮-Button (funktioniert auch auf Touch) — Menü unter dem Button verankern.
+  const openMenuButton = (event, entry) => {
+    event.stopPropagation();
+    const r = event.currentTarget.getBoundingClientRect();
+    openMenuAt(r.right - 176, r.bottom + 4, entry);
   };
   const closeMenu = () => setMenu(null);
 
@@ -222,24 +229,10 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                   <span className="filebrowser-meta">{isDir ? '' : fmtSize(e.size)}</span>
                   <span className="filebrowser-meta">{fmtDate(e.mtime)}</span>
                   <div className="filebrowser-actions">
-                    {!isDir && (
-                      <a className="btn btn-icon btn-ghost btn-sm" style={ICON_BTN}
-                        href={API.files.downloadUrl(bot, rel)} download={e.name} title="Download">
-                        <Icon name="download" size={13}/>
-                      </a>
-                    )}
-                    {canWrite && (
-                      <button className="btn btn-icon btn-ghost btn-sm"
-                        onClick={() => { setRenaming({ rel, name: e.name }); setRenameVal(e.name); }} title="Rename">
-                        <Icon name="edit" size={13}/>
-                      </button>
-                    )}
-                    {canWrite && (
-                      <button className="btn btn-icon btn-ghost btn-sm" style={{ color: 'var(--red)' }}
-                        onClick={() => setDeleteConfirm({ rel, name: e.name, type: e.type })} title="Delete">
-                        <Icon name="trash" size={13}/>
-                      </button>
-                    )}
+                    <button className="btn btn-icon btn-ghost btn-sm" title="Actions"
+                      onClick={(ev) => openMenuButton(ev, e)}>
+                      <Icon name="more" size={16}/>
+                    </button>
                   </div>
                 </div>
               );

@@ -1589,7 +1589,7 @@ ul, ol { list-style: none; }
   border-radius: 7px;
   cursor: pointer;
 }
-.ctx-item:hover { background: var(--surface-3); }
+.ctx-item:hover { background: var(--surface-hover); }
 .ctx-danger { color: var(--red); }
 .ctx-danger:hover { background: oklch(0.70 0.18 25 / 0.12); }
 

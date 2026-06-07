@@ -40,6 +40,7 @@ export const Icon = ({ name, size = 16, className = '', style = {} }) => {
     case 'star-fill': return <svg {...props} fill="currentColor"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>;
     case 'chevron-down': return <svg {...props}><polyline points="6 9 12 15 18 9"/></svg>;
     case 'chevron-up': return <svg {...props}><polyline points="6 15 12 9 18 15"/></svg>;
+    case 'chevron-left': return <svg {...props}><polyline points="15 6 9 12 15 18"/></svg>;
     case 'chevron-right': return <svg {...props}><polyline points="9 6 15 12 9 18"/></svg>;
     case 'menu': return <svg {...props}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
     case 'more': return <svg {...props}><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></svg>;

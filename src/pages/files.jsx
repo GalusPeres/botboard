@@ -192,6 +192,10 @@ export const FileBrowserScreen = ({
 
   const segments = path ? path.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
+  const imageEntries = (data?.entries || []).filter((entry) => entry.type === 'file' && isImageFile(entry.name));
+  const imagePreviewIndex = imagePreview
+    ? imageEntries.findIndex((entry) => entry.name === imagePreview.name)
+    : -1;
 
   const toast = (msg) => setToast?.({ msg, id: Date.now() });
   const goTo = (p) => { setPath(p); setSearch(''); };
@@ -281,12 +285,14 @@ export const FileBrowserScreen = ({
     });
   };
   const previewImage = async (rel) => {
-    closeImagePreview();
     try {
       const response = await fetch(storage.previewUrl?.(rel) || storage.downloadUrl(rel), { credentials: 'include' });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
       const url = URL.createObjectURL(await response.blob());
-      setImagePreview({ name: rel.split('/').pop(), url });
+      setImagePreview((current) => {
+        if (current?.url) URL.revokeObjectURL(current.url);
+        return { name: rel.split('/').pop(), url };
+      });
     } catch (e) {
       toast(`Preview failed: ${e.message}`);
     }
@@ -557,6 +563,16 @@ export const FileBrowserScreen = ({
       {imagePreview && (
         <ImageViewer src={imagePreview.url} name={imagePreview.name}
           canDownload={allowDownload}
+          canPrevious={imagePreviewIndex > 0}
+          canNext={imagePreviewIndex >= 0 && imagePreviewIndex < imageEntries.length - 1}
+          onPrevious={() => {
+            if (imagePreviewIndex > 0) previewImage(joinPath(path, imageEntries[imagePreviewIndex - 1].name));
+          }}
+          onNext={() => {
+            if (imagePreviewIndex >= 0 && imagePreviewIndex < imageEntries.length - 1) {
+              previewImage(joinPath(path, imageEntries[imagePreviewIndex + 1].name));
+            }
+          }}
           onDownload={() => triggerDownload(joinPath(path, imagePreview.name), imagePreview.name)}
           onClose={closeImagePreview}/>
       )}

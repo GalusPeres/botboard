@@ -80,6 +80,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [mkdirVal, setMkdirVal] = useState('');
   const [uploading, setUploading] = useState(false);
   const [menu, setMenu] = useState(null); // { x, y, entry|null }
+  const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(() => new Set()); // ausgewählte Namen im aktuellen Ordner
   const [bulkDelete, setBulkDelete] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -103,6 +104,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     return next;
   });
   const clearSelect = () => setSelected(new Set());
+  const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
 
   const segments = path ? path.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
@@ -264,40 +266,43 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
         ))}
       </div>
 
-      {canWrite && (
-        <div className="media-toolbar-row media-action-row">
+      <div className="media-toolbar-row media-action-row">
+        <button className={'btn' + (selectMode ? ' btn-primary' : '')} type="button"
+          onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
+          <Icon name="check" size={13}/> {selectMode ? 'Cancel' : 'Select'}
+        </button>
+        {canWrite && (
           <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
             <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
             <input type="file" hidden disabled={uploading}
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
           </label>
+        )}
+        {canWrite && (
           <button className="btn btn-ghost" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
             <Icon name="plus" size={13}/> New folder
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Bulk-Leiste bei Auswahl */}
-      {selected.size > 0 && (
+      {/* Bulk-Leiste nur im Select-Modus */}
+      {selectMode && (
         <div className="filebrowser-bulkbar">
           <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.size} selected</span>
           <div style={{ flex: 1 }}/>
-          <button className="btn btn-sm" type="button" onClick={doBulkDownload}>
+          <button className="btn btn-sm" type="button" onClick={doBulkDownload} disabled={!selected.size}>
             <Icon name="download" size={13}/> Download
           </button>
           {canWrite && (
-            <button className="btn btn-sm" type="button" onClick={() => { setMovePath(path); setMoveOpen(true); }}>
+            <button className="btn btn-sm" type="button" onClick={() => { setMovePath(path); setMoveOpen(true); }} disabled={!selected.size}>
               <Icon name="folder" size={13}/> Move
             </button>
           )}
           {canWrite && (
-            <button className="btn btn-sm btn-danger" type="button" onClick={() => setBulkDelete(true)}>
+            <button className="btn btn-sm btn-danger" type="button" onClick={() => setBulkDelete(true)} disabled={!selected.size}>
               <Icon name="trash" size={13}/> Delete
             </button>
           )}
-          <button className="btn btn-sm btn-ghost btn-icon" type="button" onClick={clearSelect} title="Clear selection">
-            <Icon name="x" size={14}/>
-          </button>
         </div>
       )}
 
@@ -306,11 +311,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
 
       {data && (
         <div className="library-table-wrap">
-          <div className="filebrowser-list" style={{ minHeight: 80 }}
+          <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {path && (
               <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
-                <span/>
+                {selectMode && <span/>}
                 <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
                 <span className="filebrowser-name" style={{ color: 'var(--text-dim)' }}>..</span>
                 <span className="filebrowser-meta"/>
@@ -328,10 +333,12 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const sel = selected.has(e.name);
               return (
                 <div key={e.name} className={'filebrowser-row' + (sel ? ' selected' : '')} onContextMenu={(ev) => openContext(ev, e)}>
-                  <span className={'fb-check' + (sel ? ' on' : '')} title="Select"
-                    onClick={(ev) => { ev.stopPropagation(); toggleSelect(e.name); }}>
-                    {sel && <Icon name="check" size={11}/>}
-                  </span>
+                  {selectMode && (
+                    <span className={'fb-check' + (sel ? ' on' : '')} title="Select"
+                      onClick={(ev) => { ev.stopPropagation(); toggleSelect(e.name); }}>
+                      {sel && <Icon name="check" size={11}/>}
+                    </span>
+                  )}
                   <Icon name={isDir ? 'folder' : 'file'} size={16}
                     style={{ color: isDir ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
                   <span

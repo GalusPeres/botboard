@@ -1,7 +1,7 @@
 // Generischer Filebrowser für ein Modul (Datenordner). Browsen, öffnen/ansehen,
 // Text/Config/JSON editieren, Upload, Download, Umbenennen, Löschen, Ordner.
 // Abgesichert per Library-Recht (Server-seitig); Schreib-Aktionen nur mit canWrite.
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon, SearchField } from '../ui/components.jsx';
 import { useFetch } from '../lib/hooks.js';
 import * as API from '../lib/api.js';
@@ -46,12 +46,33 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [mkdirOpen, setMkdirOpen] = useState(false);
   const [mkdirVal, setMkdirVal] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [menu, setMenu] = useState(null); // { x, y, entry|null }
+
+  // Kontextmenü bei Escape schließen.
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e) => { if (e.key === 'Escape') setMenu(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menu]);
 
   const segments = path ? path.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
 
   const toast = (msg) => setToast?.({ msg, id: Date.now() });
   const goTo = (p) => { setPath(p); setSearch(''); };
+
+  const triggerDownload = (rel, name) => {
+    const a = document.createElement('a');
+    a.href = API.files.downloadUrl(bot, rel);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  const openContext = (event, entry) => {
+    event.preventDefault();
+    setMenu({ x: Math.min(event.clientX, window.innerWidth - 190), y: Math.min(event.clientY, window.innerHeight - 230), entry });
+  };
+  const closeMenu = () => setMenu(null);
 
   const openFile = async (name) => {
     const rel = joinPath(path, name);
@@ -171,7 +192,8 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
 
       {data && (
         <div className="library-table-wrap">
-          <div className="filebrowser-list">
+          <div className="filebrowser-list" style={{ minHeight: 80 }}
+            onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {path && (
               <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
                 <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
@@ -187,7 +209,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const isDir = e.type === 'dir';
               const canOpen = isDir || isTextFile(e.name);
               return (
-                <div key={e.name} className="filebrowser-row">
+                <div key={e.name} className="filebrowser-row" onContextMenu={(ev) => openContext(ev, e)}>
                   <Icon name={isDir ? 'folder' : 'file'} size={16}
                     style={{ color: isDir ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
                   <span
@@ -273,6 +295,65 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Rechtsklick-Kontextmenü */}
+      {menu && (
+        <>
+          <div className="ctx-backdrop"
+            onClick={closeMenu}
+            onContextMenu={(e) => { e.preventDefault(); closeMenu(); }}/>
+          <div className="ctx-menu" style={{ top: menu.y, left: menu.x }}>
+            {menu.entry ? (() => {
+              const e = menu.entry;
+              const rel = joinPath(path, e.name);
+              const isDir = e.type === 'dir';
+              return (
+                <>
+                  {isDir && (
+                    <button className="ctx-item" onClick={() => { goTo(rel); closeMenu(); }}>
+                      <Icon name="folder" size={13}/> Open
+                    </button>
+                  )}
+                  {!isDir && isTextFile(e.name) && (
+                    <button className="ctx-item" onClick={() => { openFile(e.name); closeMenu(); }}>
+                      <Icon name="edit" size={13}/> Edit
+                    </button>
+                  )}
+                  {!isDir && (
+                    <button className="ctx-item" onClick={() => { triggerDownload(rel, e.name); closeMenu(); }}>
+                      <Icon name="download" size={13}/> Download
+                    </button>
+                  )}
+                  {canWrite && (
+                    <button className="ctx-item" onClick={() => { setRenaming({ rel, name: e.name }); setRenameVal(e.name); closeMenu(); }}>
+                      <Icon name="edit" size={13}/> Rename
+                    </button>
+                  )}
+                  {canWrite && (
+                    <button className="ctx-item ctx-danger" onClick={() => { setDeleteConfirm({ rel, name: e.name, type: e.type }); closeMenu(); }}>
+                      <Icon name="trash" size={13}/> Delete
+                    </button>
+                  )}
+                </>
+              );
+            })() : (
+              canWrite ? (
+                <>
+                  <button className="ctx-item" onClick={() => { setMkdirVal(''); setMkdirOpen(true); closeMenu(); }}>
+                    <Icon name="plus" size={13}/> New folder
+                  </button>
+                  <label className="ctx-item" style={{ cursor: 'pointer' }}>
+                    <Icon name="upload" size={13}/> Upload
+                    <input type="file" hidden onChange={(ev) => { const f = ev.target.files?.[0]; ev.target.value = ''; closeMenu(); doUpload(f); }}/>
+                  </label>
+                </>
+              ) : (
+                <div className="ctx-item" style={{ opacity: 0.5, cursor: 'default' }}>No actions</div>
+              )
+            )}
+          </div>
+        </>
       )}
 
       {/* Delete confirm */}

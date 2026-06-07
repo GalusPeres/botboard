@@ -29,7 +29,8 @@ function publicUrl() {
   }
 }
 
-// Alle aktiven Module mit Online/Offline — gleiche Quellen wie das Dashboard.
+// Alle aktiven Module mit Online/Offline + Startzeit (für Uptime). Quellen wie
+// im Dashboard. Es wird NICHT zwischen Bot und Gameserver unterschieden.
 async function collectModuleStatuses() {
   const bots = registrySnapshot().bots.filter((b) => b.enabled !== false);
   return Promise.all(
@@ -38,16 +39,32 @@ async function collectModuleStatuses() {
       const name = cfg?.name?.trim() || b.id;
       const isContainer = isContainerModule(cfg);
       let online = false;
+      let since = null;
       try {
-        online = isContainer
-          ? (await containerStatus(b.id)).online
-          : (await botStatus(b.id)).online;
+        const st = isContainer ? await containerStatus(b.id) : await botStatus(b.id);
+        online = !!st.online;
+        if (online) {
+          if (st.startedAt) since = Date.parse(st.startedAt) || null;
+          else if (typeof st.uptime === 'number') since = Date.now() - st.uptime * 1000;
+        }
       } catch {
         online = false;
       }
-      return { name, online, kind: isContainer ? 'Gameserver' : 'Bot' };
+      return { name, online, since };
     })
   );
+}
+
+function fmtUptime(sinceMs) {
+  if (!sinceMs) return '';
+  let s = Math.floor((Date.now() - sinceMs) / 1000);
+  if (s < 0) return '';
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600); s -= h * 3600;
+  const m = Math.floor(s / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 export async function refreshPresence() {
@@ -82,19 +99,27 @@ async function commandGate(message) {
   };
 }
 
-// Eine Modul-Zeile: Name + dezenter Status als Inline-Code-Tag (kein Emoji).
-function statusLine(r) {
-  return `${r.name}  \`${r.online ? 'online' : 'offline'}\``;
+// Modul-Liste als farbiger ANSI-Block: grüner/roter Punkt + Name + Status +
+// Uptime. Eine Liste „modules", keine Bot/Gameserver-Trennung.
+function moduleListBlock(rows) {
+  if (!rows.length) return '_no modules_';
+  const G = '[0;32m', R = '[0;31m', X = '[0m';
+  const nameW = Math.max(4, ...rows.map((r) => r.name.length));
+  const lines = rows.map((r) => {
+    const c = r.online ? G : R;
+    const status = (r.online ? 'online' : 'offline').padEnd(7);
+    const up = r.online ? fmtUptime(r.since) : '';
+    return `${c}●${X} ${r.name.padEnd(nameW)}   ${c}${status}${X}${up ? `  ${up}` : ''}`;
+  });
+  return '```ansi\n' + lines.join('\n') + '\n```';
 }
 
-// Moderne „Components V2"-Karte: kein Embed, kein Thumbnail, keine Emoji-Spielerei.
-// Linke Akzentleiste zeigt den Gesamtzustand. Wird von #info UND vom Refresh-Button genutzt.
+// Moderne „Components V2"-Karte: kein Embed, kein Thumbnail. Akzentleiste zeigt
+// den Gesamtzustand. Wird von #info UND vom Refresh-Button genutzt.
 async function buildInfoPayload() {
   const rows = await collectModuleStatuses();
   const url = publicUrl();
   const onlineCount = rows.filter((r) => r.online).length;
-  const bots = rows.filter((r) => r.kind === 'Bot');
-  const games = rows.filter((r) => r.kind === 'Gameserver');
 
   const color =
     rows.length === 0 ? 0x6b7280
@@ -104,29 +129,17 @@ async function buildInfoPayload() {
 
   const stamp = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
+  const header = `## Botboard\n**${onlineCount} / ${rows.length}** modules online`
+    + (url ? `\n**[Open dashboard ↗](${url})**` : '');
+
   const container = new ContainerBuilder().setAccentColor(color);
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`## Botboard\n**${onlineCount} / ${rows.length}** modules online`),
-  );
-  if (bots.length) {
-    container.addSeparatorComponents(new SeparatorBuilder());
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`**Bots**\n${bots.map(statusLine).join('\n')}`),
-    );
-  }
-  if (games.length) {
-    container.addSeparatorComponents(new SeparatorBuilder());
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`**Gameservers**\n${games.map(statusLine).join('\n')}`),
-    );
-  }
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
   container.addSeparatorComponents(new SeparatorBuilder());
-
-  const buttons = [];
-  if (url) buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Open dashboard').setURL(url));
-  buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('info:refresh').setLabel('Refresh'));
-  container.addActionRowComponents(new ActionRowBuilder().addComponents(...buttons));
-
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(moduleListBlock(rows)));
+  container.addSeparatorComponents(new SeparatorBuilder());
+  container.addActionRowComponents(new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('info:refresh').setLabel('Refresh status'),
+  ));
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# Updated ${stamp}`));
 
   return { components: [container], flags: MessageFlags.IsComponentsV2 };

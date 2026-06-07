@@ -2,7 +2,7 @@
 // der Bot Online angezeigt wird, und beantwortet den Text-Befehl `#info`.
 // Läuft nur, wenn DISCORD_BOT_TOKEN gesetzt ist. Reine REST-Abfragen (Login-
 // Gate, Rollen) laufen unabhängig davon weiter.
-import { Client, GatewayIntentBits, Events, ActivityType, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, Events, ActivityType, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageFlags } from 'discord.js';
 import { config } from './config.js';
 import { botTokenConfigured } from './discordBot.js';
 import { registrySnapshot, botConfig } from './botRegistry.js';
@@ -82,40 +82,64 @@ async function commandGate(message) {
   };
 }
 
-async function handleInfo(message) {
+// Kleine, dezente Statuszeilen über ANSI (farbiger Punkt + Name) statt großer
+// Emojis. Online = grün, Offline = rot.
+function ansiList(list) {
+  if (!list.length) return '_none_';
+  const lines = list.map((r) => `[0;${r.online ? '32' : '31'}m●[0m ${r.name}`);
+  return '```ansi\n' + lines.join('\n') + '\n```';
+}
+
+// Baut Embed + Buttons — wird sowohl von #info als auch vom Refresh-Button genutzt.
+async function buildInfoPayload(clientUser) {
   const rows = await collectModuleStatuses();
   const url = publicUrl();
-  const prefix = getBotboardConfig().prefix || '#';
   const onlineCount = rows.filter((r) => r.online).length;
-
-  const render = (list) =>
-    list.length ? list.map((r) => `${r.online ? '🟢' : '🔴'} ${r.name}`).join('\n') : '—';
   const bots = rows.filter((r) => r.kind === 'Bot');
   const games = rows.filter((r) => r.kind === 'Gameserver');
 
-  // Farbe spiegelt den Gesamtzustand: grün = alles online, gelb = teilweise,
-  // rot = alles offline, grau = nichts konfiguriert.
+  // Akzentfarbe spiegelt den Gesamtzustand.
   const color =
     rows.length === 0 ? 0x6b7280
     : onlineCount === rows.length ? 0x9dda4f
     : onlineCount === 0 ? 0xe05252
     : 0xe5a83b;
 
-  const avatar = message.client.user.displayAvatarURL({ size: 128 });
+  const avatar = clientUser.displayAvatarURL({ size: 128 });
   const embed = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: 'Botboard', iconURL: avatar, url: url || undefined })
     .setThumbnail(avatar)
-    .setDescription(url ? `🔗 **[Open dashboard](${url})**` : 'Discord bot dashboard')
-    .addFields(
-      { name: '🤖 Bots', value: render(bots), inline: true },
-      { name: '🎮 Gameservers', value: render(games), inline: true },
-      { name: '💬 Commands', value: `\`${prefix}info\` — show this overview`, inline: false },
-    )
-    .setFooter({ text: `${onlineCount}/${rows.length} modules online` })
+    .setDescription(`### ${onlineCount}/${rows.length} modules online`)
+    .setFooter({ text: 'Updated' })
     .setTimestamp();
 
-  await message.reply({ embeds: [embed] });
+  if (bots.length) embed.addFields({ name: '🤖 Bots', value: ansiList(bots) });
+  if (games.length) embed.addFields({ name: '🎮 Gameservers', value: ansiList(games) });
+
+  const buttons = [];
+  if (url) {
+    buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Open dashboard').setEmoji('🔗').setURL(url));
+  }
+  buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('info:refresh').setLabel('Refresh').setEmoji('🔄'));
+  const components = [new ActionRowBuilder().addComponents(...buttons)];
+
+  return { embeds: [embed], components };
+}
+
+async function handleInfo(message) {
+  await message.reply(await buildInfoPayload(message.client.user));
+}
+
+// Rollen-Check für den Refresh-Button (gleiche Regel wie für die Befehle).
+function interactionAllowed(interaction) {
+  if (!interaction.guildId) return false;
+  const access = getGuildAccess(interaction.guildId);
+  if (!access.requiredRoleId) return true;
+  const roles = interaction.member?.roles;
+  if (roles?.cache) return roles.cache.has(access.requiredRoleId);
+  if (Array.isArray(roles)) return roles.includes(access.requiredRoleId);
+  return false;
 }
 
 export function startGateway() {
@@ -155,6 +179,19 @@ export function startGateway() {
       await handleInfo(message);
     } catch (err) {
       console.error('[gateway] #info failed:', err.message);
+    }
+  });
+
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton() || interaction.customId !== 'info:refresh') return;
+    try {
+      if (!interactionAllowed(interaction)) {
+        await interaction.reply({ content: '⛔ You do not have access to this.', flags: MessageFlags.Ephemeral }).catch(() => {});
+        return;
+      }
+      await interaction.update(await buildInfoPayload(interaction.client.user));
+    } catch (err) {
+      console.error('[gateway] refresh failed:', err.message);
     }
   });
 

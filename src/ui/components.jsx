@@ -29,6 +29,8 @@ export const Icon = ({ name, size = 16, className = '', style = {} }) => {
     case 'volume-off': return <svg {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19" fill="currentColor" strokeWidth="0"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>;
     case 'search': return <svg {...props}><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>;
     case 'plus': return <svg {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+    case 'minus': return <svg {...props}><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+    case 'rotate': return <svg {...props}><polyline points="20 7 20 3 16 3"/><path d="M20 3a9 9 0 1 0 2 9"/></svg>;
     case 'upload': return <svg {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
     case 'trash': return <svg {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
     case 'edit': return <svg {...props}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>;

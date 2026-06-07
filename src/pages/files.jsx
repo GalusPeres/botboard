@@ -3,6 +3,7 @@
 // Abgesichert per Library-Recht (Server-seitig); Schreib-Aktionen nur mit canWrite.
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon, SearchField } from '../ui/components.jsx';
+import { ImageViewer } from '../ui/image-viewer.jsx';
 import { useFetch } from '../lib/hooks.js';
 import * as API from '../lib/api.js';
 
@@ -552,20 +553,12 @@ export const FileBrowserScreen = ({
         </div>
       )}
 
-      {/* Image preview */}
+      {/* Full-screen image viewer */}
       {imagePreview && (
-        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) closeImagePreview(); }}>
-          <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(1000px, 92vw)', maxWidth: '92vw' }}>
-            <h3 style={{ fontFamily: 'var(--font-mono)' }}>{imagePreview.name}</h3>
-            <div style={{ display: 'flex', justifyContent: 'center', maxHeight: '70vh', overflow: 'auto' }}>
-              <img src={imagePreview.url} alt={imagePreview.name}
-                style={{ maxWidth: '100%', maxHeight: '68vh', objectFit: 'contain', borderRadius: 8 }}/>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={closeImagePreview}>Close</button>
-            </div>
-          </div>
-        </div>
+        <ImageViewer src={imagePreview.url} name={imagePreview.name}
+          canDownload={allowDownload}
+          onDownload={() => triggerDownload(joinPath(path, imagePreview.name), imagePreview.name)}
+          onClose={closeImagePreview}/>
       )}
 
       {/* Rename modal */}

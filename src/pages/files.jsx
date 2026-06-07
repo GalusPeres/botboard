@@ -1,7 +1,7 @@
 // Generischer Filebrowser für ein Modul (Datenordner). Browsen, öffnen/ansehen,
 // Text/Config/JSON editieren, Upload, Download, Umbenennen, Löschen, Ordner.
 // Abgesichert per Library-Recht (Server-seitig); Schreib-Aktionen nur mit canWrite.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon, SearchField } from '../ui/components.jsx';
 import { useFetch } from '../lib/hooks.js';
 import * as API from '../lib/api.js';
@@ -11,10 +11,19 @@ const TEXT_EXT = new Set([
   'env', 'md', 'xml', 'toml', 'js', 'ts', 'mjs', 'cjs', 'sh', 'bat', 'csv', 'html',
   'css', 'lua', 'py', 'json5', 'list', 'cmd', 'sk',
 ]);
+const AUDIO_EXT = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus', 'webm']);
+
+function fileExtension(name) {
+  const lower = name.toLowerCase();
+  return lower.includes('.') ? lower.split('.').pop() : '';
+}
 function isTextFile(name) {
   const lower = name.toLowerCase();
   if (!lower.includes('.')) return ['dockerfile', 'readme', 'license', 'gitignore'].includes(lower);
-  return TEXT_EXT.has(lower.split('.').pop());
+  return TEXT_EXT.has(fileExtension(lower));
+}
+function isAudioFile(name) {
+  return AUDIO_EXT.has(fileExtension(name));
 }
 function fmtSize(b) {
   if (b == null) return '';
@@ -90,6 +99,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [moving, setMoving] = useState(false);
   const [details, setDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const previewAudioRef = useRef(null);
 
   // Move-Dialog öffnen (für die aktuelle Auswahl oder eine Einzeldatei).
   const openMove = (rels) => {
@@ -109,6 +119,14 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
 
   // Auswahl beim Ordner-/Modulwechsel zurücksetzen.
   useEffect(() => { setSelected(new Set()); }, [path, bot]);
+  useEffect(() => {
+    previewAudioRef.current?.pause();
+    previewAudioRef.current = null;
+  }, [path, bot]);
+  useEffect(() => () => {
+    previewAudioRef.current?.pause();
+    previewAudioRef.current = null;
+  }, []);
 
   const toggleSelect = (name) => setSelected((prev) => {
     const next = new Set(prev);
@@ -166,6 +184,28 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
       setEditVal(r.content);
     } catch (e) {
       toast(`Open failed: ${e.message}`);
+    }
+  };
+  const previewAudio = async (rel) => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    const audio = new Audio(API.files.downloadUrl(bot, rel));
+    previewAudioRef.current = audio;
+    const clear = () => {
+      if (previewAudioRef.current === audio) previewAudioRef.current = null;
+    };
+    audio.onended = clear;
+    audio.onerror = () => {
+      clear();
+      toast('Preview failed');
+    };
+    try {
+      await audio.play();
+    } catch (e) {
+      clear();
+      toast(`Preview failed: ${e.message}`);
     }
   };
   const saveEdit = async () => {
@@ -368,7 +408,8 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
             {entries.map((e) => {
               const rel = joinPath(path, e.name);
               const isDir = e.type === 'dir';
-              const canOpen = isDir || isTextFile(e.name);
+              const isAudio = !isDir && isAudioFile(e.name);
+              const canOpen = isDir || isTextFile(e.name) || isAudio;
               const sel = selected.has(e.name);
               return (
                 <div key={e.name}
@@ -380,11 +421,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                       {sel && <Icon name="check" size={11}/>}
                     </span>
                   )}
-                  <Icon name={isDir ? 'folder' : 'file'} size={16}
-                    style={{ color: isDir ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
+                  <Icon name={isDir ? 'folder' : isAudio ? 'volume' : 'file'} size={16}
+                    style={{ color: isDir || isAudio ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
                   <div className="filebrowser-namecell"
                     style={{ cursor: canOpen ? 'pointer' : 'default' }}
-                    onClick={() => { if (isDir) goTo(rel); else if (isTextFile(e.name)) openFile(e.name); }}>
+                    onClick={() => { if (isDir) goTo(rel); else if (isAudio) previewAudio(rel); else if (isTextFile(e.name)) openFile(e.name); }}>
                     <span className="filebrowser-name" style={{ fontWeight: isDir ? 600 : 400 }} title={e.name}>{e.name}</span>
                     <span className="filebrowser-submeta">{isDir ? 'Folder' : fmtSize(e.size)}{e.mtime ? ` · ${fmtDate(e.mtime)}` : ''}</span>
                   </div>
@@ -463,6 +504,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               const e = menu.entry;
               const rel = joinPath(path, e.name);
               const isDir = e.type === 'dir';
+              const isAudio = !isDir && isAudioFile(e.name);
               return (
                 <>
                   {isDir && (
@@ -473,6 +515,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                   {!isDir && isTextFile(e.name) && (
                     <button className="ctx-item" onClick={() => { openFile(e.name); closeMenu(); }}>
                       <Icon name="edit" size={13}/> Edit
+                    </button>
+                  )}
+                  {isAudio && (
+                    <button className="ctx-item" onClick={() => { previewAudio(rel); closeMenu(); }}>
+                      <Icon name="volume" size={13}/> Open
                     </button>
                   )}
                   {!isDir && (

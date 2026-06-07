@@ -256,7 +256,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
           damit die Liste nicht nach unten rutscht. */}
       {!selectMode && (
         <>
-          <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
             <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
               <Icon name="home" size={13}/> root
             </button>
@@ -324,7 +324,9 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
                 {selectMode && <span/>}
                 <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
-                <span className="filebrowser-name" style={{ color: 'var(--text-dim)' }}>..</span>
+                <div className="filebrowser-namecell">
+                  <span className="filebrowser-name" style={{ color: 'var(--text-dim)' }}>..</span>
+                </div>
                 <span className="filebrowser-meta"/>
                 <span className="filebrowser-meta"/>
                 <div className="filebrowser-actions"/>
@@ -348,13 +350,12 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                   )}
                   <Icon name={isDir ? 'folder' : 'file'} size={16}
                     style={{ color: isDir ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }}/>
-                  <span
-                    className="filebrowser-name"
-                    style={{ cursor: canOpen ? 'pointer' : 'default', fontWeight: isDir ? 600 : 400 }}
-                    onClick={() => { if (isDir) goTo(rel); else if (isTextFile(e.name)) openFile(e.name); }}
-                    title={e.name}>
-                    {e.name}
-                  </span>
+                  <div className="filebrowser-namecell"
+                    style={{ cursor: canOpen ? 'pointer' : 'default' }}
+                    onClick={() => { if (isDir) goTo(rel); else if (isTextFile(e.name)) openFile(e.name); }}>
+                    <span className="filebrowser-name" style={{ fontWeight: isDir ? 600 : 400 }} title={e.name}>{e.name}</span>
+                    <span className="filebrowser-submeta">{isDir ? 'Folder' : fmtSize(e.size)}{e.mtime ? ` · ${fmtDate(e.mtime)}` : ''}</span>
+                  </div>
                   <span className="filebrowser-meta">{isDir ? '' : fmtSize(e.size)}</span>
                   <span className="filebrowser-meta">{fmtDate(e.mtime)}</span>
                   <div className="filebrowser-actions">

@@ -1598,8 +1598,8 @@ ul, ol { list-style: none; }
 @media (max-width: 700px) {
   .filebrowser-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
   .filebrowser-list.selecting .filebrowser-row { grid-template-columns: 24px 22px minmax(0, 1fr) auto; }
-  .filebrowser-meta { display: none; }       /* eigene Spalten weg ... */
-  .filebrowser-submeta { display: block; }   /* ... dafür Unterzeile zeigen */
+  .filebrowser-meta { display: none; }                      /* eigene Spalten weg ... */
+  .filebrowser-submeta { display: block; min-height: 15px; } /* ... Unterzeile (auch leer = gleiche Höhe) */
 }
 
 /* Rechtsklick-Kontextmenü im Filebrowser */

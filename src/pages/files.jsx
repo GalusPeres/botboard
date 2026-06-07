@@ -85,8 +85,17 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [bulkDelete, setBulkDelete] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [movePath, setMovePath] = useState('');
+  const [moveItems, setMoveItems] = useState([]); // rel-Pfade die verschoben werden (Auswahl ODER Einzeldatei)
   const [moveConfirming, setMoveConfirming] = useState(false);
   const [moving, setMoving] = useState(false);
+
+  // Move-Dialog öffnen (für die aktuelle Auswahl oder eine Einzeldatei).
+  const openMove = (rels) => {
+    setMoveItems(rels);
+    setMovePath(path);
+    setMoveConfirming(false);
+    setMoveOpen(true);
+  };
 
   // Kontextmenü bei Escape schließen.
   useEffect(() => {
@@ -227,11 +236,10 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     sel.forEach((e, i) => setTimeout(() => triggerDownload(joinPath(path, e.name), e.name), i * 300));
   };
   const doMove = async () => {
-    const rels = [...selected].map((n) => joinPath(path, n));
     setMoving(true);
     try {
-      await API.files.move(bot, rels, movePath);
-      toast(`Moved ${rels.length}`);
+      await API.files.move(bot, moveItems, movePath);
+      toast(`Moved ${moveItems.length}`);
       setMoveOpen(false);
       setMoveConfirming(false);
       clearSelect();
@@ -311,7 +319,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               <Icon name="download" size={13}/> Download
             </button>
             {canWrite && (
-              <button className="btn" type="button" onClick={() => { setMovePath(path); setMoveConfirming(false); setMoveOpen(true); }} disabled={!selected.size}>
+              <button className="btn" type="button" onClick={() => openMove([...selected].map((n) => joinPath(path, n)))} disabled={!selected.size}>
                 <Icon name="folder" size={13}/> Move
               </button>
             )}
@@ -337,6 +345,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                 <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
                 <div className="filebrowser-namecell">
                   <span className="filebrowser-name" style={{ color: 'var(--text-dim)' }}>..</span>
+                  <span className="filebrowser-submeta">{' '}</span>
                 </div>
                 <span className="filebrowser-meta"/>
                 <span className="filebrowser-meta"/>
@@ -465,6 +474,11 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                     </button>
                   )}
                   {canWrite && (
+                    <button className="ctx-item" onClick={() => { openMove([rel]); closeMenu(); }}>
+                      <Icon name="folder" size={13}/> Move
+                    </button>
+                  )}
+                  {canWrite && (
                     <button className="ctx-item ctx-danger" onClick={() => { setDeleteConfirm({ rel, name: e.name, type: e.type }); closeMenu(); }}>
                       <Icon name="trash" size={13}/> Delete
                     </button>
@@ -528,7 +542,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
           <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)' }}>
             {!moveConfirming ? (
               <>
-                <h3>Move {selected.size} item{selected.size > 1 ? 's' : ''}</h3>
+                <h3>Move {moveItems.length} item{moveItems.length > 1 ? 's' : ''}</h3>
                 <p style={{ color: 'var(--text-dim)', fontSize: 13, marginTop: -4 }}>Pick the destination folder:</p>
                 <MovePicker bot={bot} value={movePath} onChange={setMovePath}/>
                 <div className="modal-actions" style={{ marginTop: 20 }}>
@@ -540,7 +554,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
               </>
             ) : (
               <>
-                <h3>Move {selected.size} item{selected.size > 1 ? 's' : ''}?</h3>
+                <h3>Move {moveItems.length} item{moveItems.length > 1 ? 's' : ''}?</h3>
                 <p>Destination: <strong>/{movePath || ''}</strong></p>
                 <div className="modal-actions" style={{ marginTop: 20 }}>
                   <button className="btn" onClick={() => setMoveConfirming(false)}>Back</button>

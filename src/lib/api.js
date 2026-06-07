@@ -137,6 +137,7 @@ export const botboardConfig = {
 
 export const files = {
   list: (bot, path = '') => api(`/api/files/${encodeURIComponent(bot)}/list?path=${encodeURIComponent(path)}`),
+  info: (bot, path) => api(`/api/files/${encodeURIComponent(bot)}/info?path=${encodeURIComponent(path)}`),
   read: (bot, path) => api(`/api/files/${encodeURIComponent(bot)}/read?path=${encodeURIComponent(path)}`),
   write: (bot, path, content) => api(`/api/files/${encodeURIComponent(bot)}/write`, { method: 'PUT', body: { path, content } }),
   rename: (bot, path, newName) => api(`/api/files/${encodeURIComponent(bot)}/rename`, { method: 'PATCH', body: { path, newName } }),

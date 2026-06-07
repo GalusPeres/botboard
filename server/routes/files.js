@@ -80,6 +80,30 @@ export default function filesRoutes() {
     }
   });
 
+  // Metadaten für die Details-Ansicht einer Datei oder eines Ordners.
+  router.get('/:bot/info', async (req, res) => {
+    const root = resolveRoot(req, res);
+    if (!root) return;
+    try {
+      const rel = req.query.path || '';
+      const target = safePath(root, rel);
+      const st = await fsp.stat(target);
+      const isDir = st.isDirectory();
+      const itemCount = isDir ? (await fsp.readdir(target)).length : null;
+      res.json({
+        name: path.basename(target),
+        path: rel,
+        type: isDir ? 'Folder' : 'File',
+        size: isDir ? null : st.size,
+        itemCount,
+        createdAt: st.birthtimeMs || null,
+        modifiedAt: st.mtimeMs || null,
+      });
+    } catch (err) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
   // Datei zum Download streamen.
   router.get('/:bot/download', (req, res) => {
     const root = resolveRoot(req, res);

@@ -88,6 +88,8 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   const [moveItems, setMoveItems] = useState([]); // rel-Pfade die verschoben werden (Auswahl ODER Einzeldatei)
   const [moveConfirming, setMoveConfirming] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [details, setDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   // Move-Dialog öffnen (für die aktuelle Auswahl oder eine Einzeldatei).
   const openMove = (rels) => {
@@ -144,6 +146,17 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
     openMenuAt(r.right - 176, r.bottom + 4, entry);
   };
   const closeMenu = () => setMenu(null);
+  const openDetails = async (rel) => {
+    closeMenu();
+    setDetailsLoading(true);
+    try {
+      setDetails(await API.files.info(bot, rel));
+    } catch (e) {
+      toast(`Details failed: ${e.message}`);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   const openFile = async (name) => {
     const rel = joinPath(path, name);
@@ -467,6 +480,9 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
                       <Icon name="download" size={13}/> Download
                     </button>
                   )}
+                  <button className="ctx-item" onClick={() => openDetails(rel)} disabled={detailsLoading}>
+                    <Icon name="info" size={13}/> Details
+                  </button>
                   {canWrite && (
                     <button className="ctx-item" onClick={() => { setRenaming({ rel, name: e.name }); setRenameVal(e.name); closeMenu(); }}>
                       <Icon name="edit" size={13}/> Rename
@@ -501,6 +517,29 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
             )}
           </div>
         </>
+      )}
+
+      {/* File/folder details */}
+      {details && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setDetails(null); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Details</h3>
+            <div className="file-details">
+              <div><span>Name</span><strong>{details.name}</strong></div>
+              <div><span>Type</span><strong>{details.type}</strong></div>
+              <div><span>Path</span><strong>/{details.path}</strong></div>
+              <div>
+                <span>{details.type === 'Folder' ? 'Items' : 'Size'}</span>
+                <strong>{details.type === 'Folder' ? details.itemCount : fmtSize(details.size)}</strong>
+              </div>
+              <div><span>Created</span><strong>{fmtDate(details.createdAt) || '-'}</strong></div>
+              <div><span>Modified</span><strong>{fmtDate(details.modifiedAt) || '-'}</strong></div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={() => setDetails(null)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete confirm */}

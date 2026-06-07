@@ -1526,6 +1526,42 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
 }
+/* Filebrowser-Seite: Header fix, nur die Liste scrollt. */
+.filebrowser-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.filebrowser-screen > .library-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Header-Rahmen (Breadcrumb/Toolbar bzw. Select), gleiche Größe in beiden Modi. */
+.fb-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.fb-toolbar-active {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.fb-toolbar-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fb-toolbar-actions { justify-content: flex-end; }
+
 .filebrowser-row {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) 84px 140px auto;

@@ -50,7 +50,7 @@ function MovePicker({ bot, value, onChange }) {
           </span>
         ))}
       </div>
-      <div className="filebrowser-list" style={{ maxHeight: '38vh', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+      <div className="filebrowser-list" style={{ height: '320px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
         {folders.length === 0 && (
           <div className="empty" style={{ padding: 14, color: 'var(--text-dim)', fontSize: 13 }}>No subfolders here.</div>
         )}
@@ -252,7 +252,7 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
   };
 
   return (
-    <div className="content-narrow library-screen">
+    <div className="content-narrow filebrowser-screen">
       <div className="page-head media-page-head">
         <div>
           <div className="page-title">Files</div>
@@ -263,74 +263,71 @@ const FileBrowserScreen = ({ bot, botName, canWrite, setToast }) => {
         </div>
       </div>
 
-      {/* Normalmodus: Breadcrumb + Toolbar. Select-Modus: festes 2-Zeilen-Panel
-          (oben Cancel/Anzahl/All, unten Download/Move/Delete) — gleich auf
-          Desktop und Mobil. */}
-      {!selectMode ? (
-        <>
-          <div className="media-toolbar-row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-            <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
-              <Icon name="home" size={13}/> root
-            </button>
-            {segments.map((seg, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
-                <button className="btn btn-sm" type="button"
-                  onClick={() => goTo(segments.slice(0, i + 1).join('/'))}
-                  disabled={i === segments.length - 1}>{seg}</button>
-              </span>
-            ))}
-          </div>
-
-          <div className="media-toolbar-row media-action-row">
-            <button className="btn" type="button" onClick={() => setSelectMode(true)}>
-              <Icon name="check" size={13}/> Select
-            </button>
-            {canWrite && (
-              <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
-                <input type="file" hidden disabled={uploading}
-                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
-              </label>
-            )}
-            {canWrite && (
-              <button className="btn btn-ghost" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
-                <Icon name="plus" size={13}/> New folder
+      {/* Ein Container-Rahmen für beide Modi → gleiche Größe. Im Select-Modus
+          nur eine leicht andere Hintergrundfarbe. */}
+      <div className={'fb-toolbar' + (selectMode ? ' fb-toolbar-active' : '')}>
+        {!selectMode ? (
+          <>
+            <div className="fb-toolbar-line">
+              <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
+                <Icon name="home" size={13}/> root
               </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Zeile 1 (wie Breadcrumb-Zeile): links Anzahl + All, rechts Cancel. */}
-          <div className="media-toolbar-row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontWeight: 600, fontSize: 13 }}>{selected.size} selected</span>
-            <button className="btn btn-sm" type="button" onClick={toggleAll} disabled={!(data?.entries?.length)}>
-              <Icon name="check" size={13}/> {allSelected ? 'None' : 'All'}
-            </button>
-            <button className="btn btn-sm" type="button" onClick={exitSelect} style={{ marginLeft: 'auto' }}>
-              <Icon name="x" size={13}/> Cancel
-            </button>
-          </div>
-
-          {/* Zeile 2 (wie Toolbar): rechtsbündig die Aktionen, normale Größe. */}
-          <div className="media-toolbar-row media-action-row">
-            <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
-              <Icon name="download" size={13}/> Download
-            </button>
-            {canWrite && (
-              <button className="btn" type="button" onClick={() => openMove([...selected].map((n) => joinPath(path, n)))} disabled={!selected.size}>
-                <Icon name="folder" size={13}/> Move
+              {segments.map((seg, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name="chevron-right" size={11} style={{ color: 'var(--text-dim)' }}/>
+                  <button className="btn btn-sm" type="button"
+                    onClick={() => goTo(segments.slice(0, i + 1).join('/'))}
+                    disabled={i === segments.length - 1}>{seg}</button>
+                </span>
+              ))}
+            </div>
+            <div className="fb-toolbar-line fb-toolbar-actions">
+              <button className="btn" type="button" onClick={() => setSelectMode(true)}>
+                <Icon name="check" size={13}/> Select
               </button>
-            )}
-            {canWrite && (
-              <button className="btn btn-danger" type="button" onClick={() => setBulkDelete(true)} disabled={!selected.size}>
-                <Icon name="trash" size={13}/> Delete
+              {canWrite && (
+                <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                  <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
+                  <input type="file" hidden disabled={uploading}
+                    onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
+                </label>
+              )}
+              {canWrite && (
+                <button className="btn btn-ghost" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
+                  <Icon name="plus" size={13}/> New folder
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="fb-toolbar-line">
+              <button className="btn btn-sm" type="button" onClick={toggleAll} disabled={!(data?.entries?.length)}>
+                <Icon name="check" size={13}/> {allSelected ? 'None' : 'All'}
               </button>
-            )}
-          </div>
-        </>
-      )}
+              <span style={{ fontWeight: 600, fontSize: 13 }}>{selected.size} selected</span>
+              <button className="btn btn-sm" type="button" onClick={exitSelect} style={{ marginLeft: 'auto' }}>
+                <Icon name="x" size={13}/> Cancel
+              </button>
+            </div>
+            <div className="fb-toolbar-line fb-toolbar-actions">
+              <button className="btn" type="button" onClick={doBulkDownload} disabled={!selected.size}>
+                <Icon name="download" size={13}/> Download
+              </button>
+              {canWrite && (
+                <button className="btn" type="button" onClick={() => openMove([...selected].map((n) => joinPath(path, n)))} disabled={!selected.size}>
+                  <Icon name="folder" size={13}/> Move
+                </button>
+              )}
+              {canWrite && (
+                <button className="btn btn-danger" type="button" onClick={() => setBulkDelete(true)} disabled={!selected.size}>
+                  <Icon name="trash" size={13}/> Delete
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       {error && <div className="settings-notice registry-error">{error.message}</div>}
       {loading && !data && <div className="empty"><div>Loading…</div></div>}

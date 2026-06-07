@@ -2486,6 +2486,20 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .modal h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
 .modal p { color: var(--text-muted); margin-bottom: 18px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.file-editor-input::-webkit-scrollbar { width: 10px; cursor: pointer; }
+.file-editor-input::-webkit-scrollbar-track {
+  margin-block: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+.file-editor-input::-webkit-scrollbar-thumb {
+  border: 2px solid var(--bg-deeper);
+  border-radius: 10px;
+  background: var(--border);
+  cursor: pointer;
+}
+.file-editor-input::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+.file-editor-input::-webkit-scrollbar-corner { background: transparent; }
 @media (max-width: 560px) {
   .file-editor-input {
     font-size: 10.5px !important;

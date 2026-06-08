@@ -10,14 +10,15 @@ const statsStreams = new Map();
 
 function client() {
   if (!docker) {
-    // Optionaler docker-socket-proxy: nur aktiv, wenn DOCKER_HOST gesetzt ist
-    // (z.B. tcp://socket-proxy:2375). Ohne die Variable läuft alles wie bisher
-    // über den lokalen Socket — nichts ändert sich am bestehenden Setup.
+    // Zwei getrennte Variablen, entweder/oder:
+    //   DOCKER_HOST  (z.B. tcp://172.17.0.7:2375) → über den socket-proxy
+    //   DOCKER_SOCKET (Pfad, Standard)            → lokaler Socket
+    // Ist DOCKER_HOST gesetzt, hat es Vorrang; sonst der Socket.
     const host = process.env.DOCKER_HOST;
     if (host) {
       try {
         const u = new URL(host);
-        docker = new Docker({ host: u.hostname, port: u.port || 2375, protocol: u.protocol === 'https:' ? 'https' : 'http' });
+        docker = new Docker({ host: u.hostname, port: Number(u.port) || 2375, protocol: u.protocol === 'https:' ? 'https' : 'http' });
         console.log(`[docker] using DOCKER_HOST proxy: ${u.hostname}:${u.port || 2375}`);
       } catch (err) {
         console.error('[docker] invalid DOCKER_HOST, falling back to socket:', err.message);
@@ -32,7 +33,7 @@ function client() {
 
 function requireDocker(bot) {
   if (!config.dockerRestartEnabled) {
-    const error = new Error('container restart is disabled; set DOCKER_RESTART_ENABLED=true in Docker');
+    const error = new Error('docker control is disabled; set DOCKER_CONTROL_ENABLED=true in Docker');
     error.status = 503;
     throw error;
   }

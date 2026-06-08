@@ -1558,9 +1558,10 @@ ul, ol { list-style: none; }
   border: 1px solid var(--border);
   border-radius: 12px;
 }
+/* Select-Modus: gleicher Look wie außerhalb (kein abweichender Hintergrund). */
 .fb-toolbar-active {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
+  background: var(--surface);
+  border-color: var(--border);
 }
 .fb-toolbar-line {
   display: flex;
@@ -1578,6 +1579,8 @@ ul, ol { list-style: none; }
   gap: 10px;
   padding: 2px 12px 6px;
 }
+/* Im Select-Modus zusätzliche Checkbox-Spalte vorne (gleiches Grid wie die Zeilen). */
+.filebrowser-head.selecting { grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px auto; }
 .fb-sort {
   background: none; border: none; padding: 0; cursor: pointer; text-align: left;
   font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;

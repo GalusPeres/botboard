@@ -511,30 +511,33 @@ export const FileBrowserScreen = ({
 
       {data && (
         <div className="library-table-wrap">
-          {/* Dezenter Sortier-Kopf (Desktop) + kleines Dropdown (Mobil). */}
-          {!selectMode && (
-            <>
-              <div className="filebrowser-head">
-                <span/>
-                <button className="fb-sort" type="button" onClick={() => toggleSort('name')}>Name{sortArrow('name')}</button>
-                <button className="fb-sort" type="button" onClick={() => toggleSort('size')}>Size{sortArrow('size')}</button>
-                <button className="fb-sort" type="button" onClick={() => toggleSort('added')}>Added{sortArrow('added')}</button>
-                <span/>
-              </div>
-              <div className="filebrowser-sort-mobile">
-                <label>Sort</label>
-                <select className="select" value={`${sortBy}-${sortDir}`}
-                  onChange={(e) => { const [k, d] = e.target.value.split('-'); setSortBy(k); setSortDir(d); }}>
-                  <option value="name-asc">Name A–Z</option>
-                  <option value="name-desc">Name Z–A</option>
-                  <option value="added-desc">Newest</option>
-                  <option value="added-asc">Oldest</option>
-                  <option value="size-desc">Largest</option>
-                  <option value="size-asc">Smallest</option>
-                </select>
-              </div>
-            </>
-          )}
+          {/* Dezenter Sortier-Kopf (Desktop) + kleines Dropdown (Mobil) – auch im Select-Modus.
+              Im Select-Modus zusätzlich eine Select-All-Checkbox vorne. */}
+          <div className={'filebrowser-head' + (selectMode ? ' selecting' : '')}>
+            {selectMode && (
+              <span className={'fb-check' + (allSelected ? ' on' : '')} title="Select all"
+                onClick={toggleAll}>
+                {allSelected && <Icon name="check" size={11}/>}
+              </span>
+            )}
+            <span/>
+            <button className="fb-sort" type="button" onClick={() => toggleSort('name')}>Name{sortArrow('name')}</button>
+            <button className="fb-sort" type="button" onClick={() => toggleSort('size')}>Size{sortArrow('size')}</button>
+            <button className="fb-sort" type="button" onClick={() => toggleSort('added')}>Added{sortArrow('added')}</button>
+            <span/>
+          </div>
+          <div className="filebrowser-sort-mobile">
+            <label>Sort</label>
+            <select className="select" value={`${sortBy}-${sortDir}`}
+              onChange={(e) => { const [k, d] = e.target.value.split('-'); setSortBy(k); setSortDir(d); }}>
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+              <option value="added-desc">Newest</option>
+              <option value="added-asc">Oldest</option>
+              <option value="size-desc">Largest</option>
+              <option value="size-asc">Smallest</option>
+            </select>
+          </div>
           <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {dir && (

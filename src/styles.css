@@ -2884,6 +2884,16 @@ button, a, [role="button"],
 .sound-source-yt { display: inline-flex; align-items: center; gap: 8px; flex: 1; min-width: 220px; }
 .sound-source-yt .lib-search { flex: 1; min-width: 0; }
 .sound-rec-canvas { width: 100%; height: 110px; display: block; }
+/* Alle Bedienelemente in der Leiste exakt gleich hoch (Upload/Record/Load/Seg/Suche). */
+.sound-source-bar .btn,
+.sound-source-bar .seg,
+.sound-source-bar .lib-search {
+  height: 36px;
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.sound-source-bar .seg-btn { padding-top: 0; padding-bottom: 0; height: 100%; }
 
 /* Kopf: groß „Sound Library", darunter ‹ Zurück + „Sound Editor". */
 /* Kopf: kleiner „‹ Sound Library"-Button OBEN im freien Padding-Bereich –

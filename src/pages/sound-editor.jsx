@@ -397,8 +397,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
               <Icon name="mic" size={13}/> Record
             </button>
           ) : (
-            <button className="btn" disabled>
-              <span className="rec-dot" style={{ marginRight: 4 }}>●</span> Recording…
+            <button className="btn btn-danger" onClick={stopRecording}>
+              <Icon name="stop" size={13}/> Stop
             </button>
           )}
         </div>
@@ -421,9 +421,6 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
             <div className="sound-transport">
               <span className="rec-dot">● recording…</span>
               <span className="sound-times">{fmtTime(recSeconds)}</span>
-              <button className="btn btn-danger" onClick={stopRecording} style={{ marginLeft: 'auto' }}>
-                <Icon name="stop" size={13}/> Stop
-              </button>
             </div>
           </>
         ) : hasSource ? (

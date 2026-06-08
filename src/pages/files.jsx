@@ -13,14 +13,6 @@ const TEXT_EXT = new Set([
   'css', 'lua', 'py', 'json5', 'list', 'cmd', 'sk',
 ]);
 const AUDIO_EXT = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus', 'webm']);
-const SORT_OPTIONS = [
-  { value: 'name-asc', label: 'Name A–Z' },
-  { value: 'name-desc', label: 'Name Z–A' },
-  { value: 'added-desc', label: 'Newest' },
-  { value: 'added-asc', label: 'Oldest' },
-  { value: 'size-desc', label: 'Largest' },
-  { value: 'size-asc', label: 'Smallest' },
-];
 const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif']);
 
 function fileExtension(name) {
@@ -127,7 +119,6 @@ export const FileBrowserScreen = ({
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');   // 'name' | 'added' | 'size'
   const [sortDir, setSortDir] = useState('asc');   // 'asc' | 'desc'
-  const [sortMenu, setSortMenu] = useState(false); // mobiles Sortier-Dropdown
   const [editing, setEditing] = useState(null);   // { path, name }
   const [editVal, setEditVal] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -535,25 +526,14 @@ export const FileBrowserScreen = ({
             <button className="fb-sort" type="button" onClick={() => toggleSort('added')}>Added{sortArrow('added')}</button>
             <span/>
           </div>
-          {/* Mobil: dezenter „Sort"-Kopf, öffnet ein Dropdown im App-Stil. */}
+          {/* Mobil: drei Sortier-Buttons statt Kopfzeile. */}
           <div className="filebrowser-sort-mobile">
-            <button className="fb-sort fb-sort-trigger" type="button" onClick={() => setSortMenu((v) => !v)}>
-              <Icon name="sort" size={13}/> Sort{sortArrow(sortBy)}
-            </button>
-            {sortMenu && (
-              <>
-                <div className="ctx-backdrop" onClick={() => setSortMenu(false)}/>
-                <div className="ctx-menu fb-sortmenu">
-                  {SORT_OPTIONS.map((o) => (
-                    <button key={o.value} type="button"
-                      className={'ctx-item' + (`${sortBy}-${sortDir}` === o.value ? ' active' : '')}
-                      onClick={() => { const [k, d] = o.value.split('-'); setSortBy(k); setSortDir(d); setSortMenu(false); }}>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            {[['name', 'Name'], ['size', 'Size'], ['added', 'Added']].map(([key, label]) => (
+              <button key={key} type="button" className="btn btn-sm" onClick={() => toggleSort(key)}
+                style={sortBy === key ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'transparent' } : undefined}>
+                {label}{sortArrow(key)}
+              </button>
+            ))}
           </div>
           <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>

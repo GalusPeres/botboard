@@ -1578,6 +1578,11 @@ ul, ol { list-style: none; }
   align-items: center;
   gap: 10px;
   padding: 2px 12px 6px;
+  /* Bleibt oben stehen, scrollt nicht mit der Liste weg. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
 }
 /* Im Select-Modus zusätzliche Checkbox-Spalte vorne (gleiches Grid wie die Zeilen). */
 .filebrowser-head.selecting { grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px auto; }
@@ -1588,13 +1593,7 @@ ul, ol { list-style: none; }
   white-space: nowrap;
 }
 .fb-sort:hover { color: var(--text); }
-/* Size-Spalte rechtsbündig → Kopf steht genau über den Zahlen. */
-.fb-col-size { text-align: right; }
-.filebrowser-sort-mobile { display: none; position: relative; }
-.fb-sort-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; }
-/* Sortier-Dropdown unter dem „Sort"-Button (Look = Kontextmenü). */
-.ctx-menu.fb-sortmenu { position: absolute; top: calc(100% + 4px); left: 0; }
-.ctx-item.active { background: var(--accent-soft); color: var(--accent); }
+.filebrowser-sort-mobile { display: none; }
 
 .filebrowser-row {
   display: grid;
@@ -1671,9 +1670,12 @@ ul, ol { list-style: none; }
   .filebrowser-list.selecting .filebrowser-row { grid-template-columns: 24px 22px minmax(0, 1fr) auto; }
   .filebrowser-meta { display: none; }                      /* eigene Spalten weg ... */
   .filebrowser-submeta { display: block; min-height: 15px; } /* ... Unterzeile (auch leer = gleiche Höhe) */
-  /* Mehrspaltiger Kopf weg, stattdessen dezenter „Sort"-Trigger + Dropdown. */
+  /* Mehrspaltiger Kopf weg, stattdessen drei Sortier-Buttons (sticky). */
   .filebrowser-head { display: none; }
-  .filebrowser-sort-mobile { display: flex; align-items: center; padding: 0 2px 8px; }
+  .filebrowser-sort-mobile {
+    display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 0 8px;
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+  }
 }
 
 /* Rechtsklick-Kontextmenü im Filebrowser */

@@ -298,8 +298,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
             <Icon name="chevron-left" size={18}/>
           </button>
           <div>
-            <button type="button" className="sound-crumb" onClick={onClose}>Sound Library</button>
-            <div className="page-title">Sound Editor{sourceLabel ? <span className="sound-crumb-src"> · {sourceLabel}</span> : ''}</div>
+            <div className="page-title">Sound Library</div>
+            <div className="page-sub">Sound Editor{sourceLabel ? ` · ${sourceLabel}` : ''}</div>
           </div>
         </div>
       </div>

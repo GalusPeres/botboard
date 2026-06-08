@@ -361,13 +361,13 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     <div className="content-narrow sound-editor-screen">
       <div className="page-head media-page-head">
         <div>
-          <div className="page-title">Sound Library</div>
-          <div className="sound-subline">
+          <div className="sound-topbar">
             <button className="btn btn-icon btn-ghost btn-sm" onClick={onClose} title="Back to Sound Library">
               <Icon name="chevron-left" size={16}/>
             </button>
-            <span className="sound-editor-label">Sound Editor{sourceLabel ? ` · ${sourceLabel}` : ''}</span>
+            <button type="button" className="sound-crumb" onClick={onClose}>Sound Library</button>
           </div>
+          <div className="page-title">Sound Editor{sourceLabel ? <span className="sound-title-src"> · {sourceLabel}</span> : ''}</div>
         </div>
       </div>
 

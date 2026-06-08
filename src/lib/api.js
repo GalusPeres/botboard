@@ -125,6 +125,43 @@ export const sound = {
   downloadAllUrl: () => `/api/bots/sound/sounds/download-zip`,
 };
 
+// Raw-Request, der einen Blob (z.B. fertiges MP3) zurückgibt statt JSON.
+async function apiBlob(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (activeGuildId) headers['X-Guild-Id'] = activeGuildId;
+  const res = await fetch(path, {
+    method: opts.method || 'GET',
+    credentials: 'include',
+    headers,
+    body: opts.body,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    const data = text ? safeJson(text) : null;
+    const err = new Error(data?.error || `${res.status} ${res.statusText}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.blob();
+}
+
+// Sound-Editor: YouTube-Import + Render (Trim/Lautstärke) → MP3-Blob.
+export const soundTools = {
+  youtube: (url) => apiBlob('/api/sound-tools/youtube', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  }),
+  render: (blob, { start = 0, end = 0, gain = 0, fadeIn = 0, fadeOut = 0 } = {}) => {
+    const qs = new URLSearchParams({ start, end, gain, fadeIn, fadeOut }).toString();
+    return apiBlob(`/api/sound-tools/render?${qs}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: blob,
+    });
+  },
+};
+
 export const access = {
   get: (guildId) => api(`/api/access/${encodeURIComponent(guildId)}`),
   set: (guildId, body) => api(`/api/access/${encodeURIComponent(guildId)}`, { method: 'PUT', body }),

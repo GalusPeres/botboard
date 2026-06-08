@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, SearchField } from '../ui/components.jsx';
 import * as API from '../lib/api.js';
 import { FileBrowserScreen } from './files.jsx';
+import { SoundEditorScreen } from './sound-editor.jsx';
 
 const soundName = (file) => file.replace(/\.mp3$/i, '');
 
@@ -355,23 +356,56 @@ export const LibraryScreen = ({ sounds, addSound, deleteSound, renameSound, prev
 };
 
 
-export const page = {
-  kind: 'file-library',
-  render: (c) => (
+// Library mit eingebettetem Sound-Editor: „Edit"/„New sound" tauschen die Liste
+// gegen den Editor (eigene Page-Optik), „Back" kehrt zurück.
+function SoundLibraryPage({ ctx }) {
+  const canWrite = !!ctx.perms.soundLibrary;
+  const [editor, setEditor] = useState(null); // null | { name } | { name: null } (new)
+  const [names, setNames] = useState([]);
+
+  const loadNames = React.useCallback(async () => {
+    try {
+      const sounds = await API.sound.list();
+      setNames(sounds.map((s) => s.name));
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => { loadNames(); }, [loadNames]);
+
+  if (editor) {
+    return (
+      <SoundEditorScreen
+        initialName={editor.name}
+        botName={ctx.botName}
+        existingNames={names}
+        setToast={ctx.setToast}
+        onClose={() => setEditor(null)}
+        onSaved={() => { loadNames(); setEditor(null); }}
+      />
+    );
+  }
+
+  return (
     <FileBrowserScreen
       bot="sound"
-      botName={c.botName}
+      botName={ctx.botName}
       backend={soundLibraryBackend}
       title="Sound Library"
-      subtitle={`${c.botName} — sounds`}
-      canWrite={!!c.perms.soundLibrary}
-      setToast={c.setToast}
-      active={c.active}
+      subtitle={`${ctx.botName} — sounds`}
+      canWrite={canWrite}
+      setToast={ctx.setToast}
+      active={ctx.active}
       allowFolders={false}
       allowMove={false}
       allowTextEdit={false}
-      allowDownload={!!c.perms.soundLibrary}
+      allowDownload={canWrite}
       uploadAccept="audio/mpeg,.mp3"
+      onEditAudio={canWrite ? (file) => setEditor({ name: soundName(file) }) : undefined}
+      onNewSound={canWrite ? () => setEditor({ name: null }) : undefined}
     />
-  ),
+  );
+}
+
+export const page = {
+  kind: 'file-library',
+  render: (c) => <SoundLibraryPage ctx={c}/>,
 };

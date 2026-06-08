@@ -1,6 +1,6 @@
 {
   "name": "botboard",
-  "version": "0.5.26",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -28,6 +28,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "wavesurfer.js": "^7.12.7"
   }
 }

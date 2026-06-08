@@ -110,6 +110,8 @@ export const FileBrowserScreen = ({
   allowTextEdit = true,
   allowDownload = true,
   uploadAccept,
+  onEditAudio,   // (name) => void — wenn gesetzt: Audio-Zeilen bieten Play + Edit statt Open
+  onNewSound,    // () => void — wenn gesetzt: „New sound"-Button in der Toolbar
 }) => {
   const storage = React.useMemo(() => backend || fileBackend(bot), [backend, bot]);
   const [path, setPath] = useState('');
@@ -432,6 +434,11 @@ export const FileBrowserScreen = ({
               <button className="btn" type="button" onClick={() => setSelectMode(true)}>
                 <Icon name="check" size={13}/> Select
               </button>
+              {canWrite && onNewSound && (
+                <button className="btn" type="button" onClick={onNewSound}>
+                  <Icon name="plus" size={13}/> New sound
+                </button>
+              )}
               {canWrite && (
                 <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
                   <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
@@ -635,7 +642,12 @@ export const FileBrowserScreen = ({
                   )}
                   {isAudio && (
                     <button className="ctx-item" onClick={() => { previewAudio(rel); closeMenu(); }}>
-                      <Icon name="music" size={13}/> Open
+                      <Icon name="play" size={13}/> Play
+                    </button>
+                  )}
+                  {isAudio && onEditAudio && (
+                    <button className="ctx-item" onClick={() => { onEditAudio(e.name); closeMenu(); }}>
+                      <Icon name="edit" size={13}/> Edit
                     </button>
                   )}
                   {isImage && (

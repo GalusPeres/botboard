@@ -7,7 +7,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
-import { Icon } from '../ui/components.jsx';
+import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.esm.js';
+import { Icon, SearchField } from '../ui/components.jsx';
 import * as API from '../lib/api.js';
 
 const cleanName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -36,6 +37,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const analyserRef = useRef(null);
   const rafRef = useRef(null);
   const historyRef = useRef([]);
+  const recTimerRef = useRef(null);
 
   const [sourceBlob, setSourceBlob] = useState(null);
   const [sourceLabel, setSourceLabel] = useState('');
@@ -47,8 +49,10 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
 
   const [recMode, setRecMode] = useState('mic'); // 'mic' | 'system'
   const [recording, setRecording] = useState(false);
+  const [recSeconds, setRecSeconds] = useState(0);
   const [ytUrl, setYtUrl] = useState('');
   const [ytLoading, setYtLoading] = useState(false);
+  const [trimming, setTrimming] = useState(false);
 
   const [gainDb, setGainDb] = useState(0);
   const [fadeIn, setFadeIn] = useState(0);
@@ -91,6 +95,10 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       cursorColor: '#e6edf3',
       barWidth: 2, barGap: 1, barRadius: 2,
     });
+    ws.registerPlugin(TimelinePlugin.create({
+      height: 16, insertPosition: 'beforebegin',
+      style: { color: 'var(--text-dim)', fontSize: '10px' },
+    }));
     const regions = ws.registerPlugin(RegionsPlugin.create());
     wsRef.current = ws;
     regionsRef.current = regions;
@@ -104,7 +112,12 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       });
       setReady(true);
     });
-    regions.on('region-updated', (r) => { regionRef.current = r; setTrim({ start: r.start, end: r.end }); });
+    regions.on('region-updated', (r) => {
+      regionRef.current = r;
+      setTrim({ start: r.start, end: r.end });
+      // Auswahl beim Ändern nicht weiterlaufen lassen.
+      if (ws.isPlaying()) { ws.pause(); selEndRef.current = null; }
+    });
     ws.on('play', () => setPlaying(true));
     ws.on('pause', () => { setPlaying(false); selEndRef.current = null; });
     ws.on('finish', () => { setPlaying(false); selEndRef.current = null; });
@@ -123,6 +136,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const cleanupRecording = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+    if (recTimerRef.current) clearInterval(recTimerRef.current);
+    recTimerRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
     analyserRef.current = null;
@@ -148,7 +163,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     ctx.fillStyle = '#9dda4f';
     const mid = canvas.height / 2;
     for (let i = 0; i < hist.length; i++) {
-      const h = Math.max(2, hist[i] * canvas.height * 0.92);
+      const h = Math.max(2, hist[i] * canvas.height * 0.55); // weniger „rangezoomt"
       ctx.fillRect(i * step, mid - h / 2, 3, h);
     }
     rafRef.current = requestAnimationFrame(drawLive);
@@ -195,7 +210,10 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       setSourceBlob(null);  // alte Bearbeitung verwerfen, Canvas zeigen
       setReady(false);
       setRecording(true);
+      setRecSeconds(0);
       mr.start();
+      const startedAt = Date.now();
+      recTimerRef.current = setInterval(() => setRecSeconds((Date.now() - startedAt) / 1000), 200);
       // Canvas-Größe setzen + Loop starten (nach Render).
       requestAnimationFrame(() => {
         const canvas = canvasRef.current;
@@ -231,6 +249,19 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const resetTrim = () => {
     if (regionRef.current) { regionRef.current.setOptions({ start: 0, end: duration }); setTrim({ start: 0, end: duration }); }
   };
+  // Auswahl fest zuschneiden: rendert den Ausschnitt und lädt ihn als neue Quelle.
+  const doTrim = async () => {
+    if (!sourceBlob || trim.end - trim.start < 0.05) return;
+    setTrimming(true);
+    try {
+      const cut = await API.soundTools.render(sourceBlob, { start: trim.start, end: trim.end, gain: 0, fadeIn: 0, fadeOut: 0 });
+      pickSource(cut, sourceLabel ? `${sourceLabel} (trimmed)` : 'Trimmed');
+    } catch (e) {
+      toast(`Trim failed: ${e.message}`);
+    } finally {
+      setTrimming(false);
+    }
+  };
 
   const doSave = async (overwrite) => {
     const clean = cleanName(name);
@@ -247,10 +278,13 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       toast(`Save failed: ${e.message}`);
     } finally { setSaving(false); }
   };
-  const onSaveClick = () => {
+  const onSaveClick = async () => {
     const clean = cleanName(name);
     if (!clean) { toast('Please enter a name'); return; }
-    if (existingNames.includes(clean)) setOverwriteAsk(true);
+    // Frisch prüfen (existingNames kann veraltet sein) → Überschreiben-Modal.
+    let names = existingNames;
+    try { names = (await API.sound.list()).map((s) => s.name); } catch { /* fallback */ }
+    if (names.includes(clean)) setOverwriteAsk(true);
     else doSave(false);
   };
 
@@ -264,8 +298,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
             <Icon name="chevron-left" size={18}/>
           </button>
           <div>
-            <div className="page-title">Sound Editor</div>
-            <div className="page-sub">{botName} — Sound Library{sourceLabel ? ` · ${sourceLabel}` : ''}</div>
+            <button type="button" className="sound-crumb" onClick={onClose}>Sound Library</button>
+            <div className="page-title">Sound Editor{sourceLabel ? <span className="sound-crumb-src"> · {sourceLabel}</span> : ''}</div>
           </div>
         </div>
       </div>
@@ -297,9 +331,9 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         </div>
 
         <div className="sound-source-yt">
-          <input className="input" placeholder="YouTube link…" value={ytUrl}
+          <SearchField value={ytUrl} placeholder="YouTube link…" type="text" className="sound-yt-search"
             onChange={(e) => setYtUrl(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') loadYoutube(); }} disabled={recording}/>
+            onKeyDown={(e) => { if (e.key === 'Enter') loadYoutube(); }}/>
           <button className="btn" onClick={loadYoutube} disabled={ytLoading || !ytUrl.trim() || recording}>
             {ytLoading ? 'Loading…' : 'Load'}
           </button>
@@ -313,6 +347,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
             <canvas ref={canvasRef} className="sound-rec-canvas"/>
             <div className="sound-transport">
               <span className="rec-dot">● recording…</span>
+              <span className="sound-times">{fmtTime(recSeconds)}</span>
               <button className="btn btn-danger" onClick={stopRecording} style={{ marginLeft: 'auto' }}>
                 <Icon name="stop" size={13}/> Stop
               </button>
@@ -332,8 +367,13 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
               <span className="sound-times">
                 {fmtTime(trim.start)} – {fmtTime(trim.end)} <span style={{ opacity: 0.5 }}>/ {fmtTime(duration)}</span>
               </span>
-              <button className="btn btn-sm btn-ghost" onClick={resetTrim} disabled={!ready} style={{ marginLeft: 'auto' }}>
-                Reset trim
+              <button className="btn btn-sm" onClick={doTrim}
+                disabled={!ready || trimming || (trim.start <= 0.001 && trim.end >= duration - 0.001)}
+                style={{ marginLeft: 'auto' }}>
+                <Icon name="edit" size={12}/> {trimming ? 'Trimming…' : 'Trim'}
+              </button>
+              <button className="btn btn-sm" onClick={resetTrim} disabled={!ready}>
+                <Icon name="rotate" size={12}/> Reset
               </button>
             </div>
           </>

@@ -2945,6 +2945,11 @@ button, a, [role="button"],
 .sound-rec-canvas { width: 100%; height: 120px; display: block; }
 .sound-rec-spacer { height: 16px; }
 .sound-wave-card .empty { height: 136px; display: flex; align-items: center; justify-content: center; }
+/* Deaktivierte Bedienelemente im Editor klar ausgrauen. */
+.sound-editor-screen .btn:disabled,
+.sound-editor-screen .seg-btn:disabled { opacity: 0.4; pointer-events: none; }
+/* Drag-&-Drop-Zone Hervorhebung. */
+.sound-wave-card.dragover { border-color: var(--accent); background: var(--accent-soft); }
 .sound-transport {
   display: flex;
   align-items: center;

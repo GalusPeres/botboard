@@ -94,6 +94,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
 
   const [recMode, setRecMode] = useState('mic'); // 'mic' | 'system'
   const [recording, setRecording] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const [ytUrl, setYtUrl] = useState('');
   const [ytLoading, setYtLoading] = useState(false);
@@ -421,8 +422,18 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       </div>
 
       {/* EINE Ansicht: Wave-Bereich (immer gleich hoch) + immer dieselbe Transport-
-          Zeile. Bei Aufnahme/ohne Quelle sind die Buttons nur ausgegraut. */}
-      <div className="sound-wave-card">
+          Zeile. Bei Aufnahme/ohne Quelle sind die Buttons nur ausgegraut.
+          Leeres Feld = Drag-&-Drop-Zone für Audiodateien. */}
+      <div className={'sound-wave-card' + (dragOver ? ' dragover' : '')}
+        onDragOver={(e) => { if (!recording) { e.preventDefault(); setDragOver(true); } }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault(); setDragOver(false);
+          if (recording) return;
+          const f = e.dataTransfer.files?.[0];
+          if (f && f.type.startsWith('audio')) onUploadFile(f);
+          else if (f) toast('Please drop an audio file');
+        }}>
         {recording ? (
           <>
             <canvas ref={canvasRef} className="sound-rec-canvas"/>
@@ -431,7 +442,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         ) : hasSource ? (
           <div ref={waveRef} className="sound-wave"/>
         ) : (
-          <div className="empty">{loadingSource ? 'Loading…' : 'Pick a file, record, or load a YouTube link above to start.'}</div>
+          <div className="empty">{loadingSource ? 'Loading…' : 'Drop an audio file here — or pick a file, record, or load a YouTube link above.'}</div>
         )}
 
         <div className="sound-transport">

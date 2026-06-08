@@ -117,6 +117,8 @@ export const FileBrowserScreen = ({
   const [path, setPath] = useState('');
   const { data, error, reload, loading } = useFetch(() => storage.list(path), [storage, path]);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('name');   // 'name' | 'added'
+  const [sortDir, setSortDir] = useState('asc');   // 'asc' | 'desc'
   const [editing, setEditing] = useState(null);   // { path, name }
   const [editVal, setEditVal] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -198,6 +200,20 @@ export const FileBrowserScreen = ({
   const dir = data?.path ?? path;
   const segments = dir ? dir.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
+  // Sortierung (Ordner immer oben), nach Name oder Hinzugefügt, auf-/absteigend.
+  const sortedEntries = React.useMemo(() => {
+    const mul = sortDir === 'asc' ? 1 : -1;
+    return [...entries].sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      if (sortBy === 'added') return mul * ((a.mtime || 0) - (b.mtime || 0));
+      return mul * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+  }, [entries, sortBy, sortDir]);
+  const toggleSort = (key) => {
+    if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(key); setSortDir(key === 'added' ? 'desc' : 'asc'); }
+  };
+  const sortArrow = (key) => (sortBy === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
   const imageEntries = (data?.entries || []).filter((entry) => entry.type === 'file' && isImageFile(entry.name));
   const imagePreviewIndex = imagePreview
     ? imageEntries.findIndex((entry) => entry.name === imagePreview.name)
@@ -494,6 +510,28 @@ export const FileBrowserScreen = ({
 
       {data && (
         <div className="library-table-wrap">
+          {/* Dezenter Sortier-Kopf (Desktop) + kleines Dropdown (Mobil). */}
+          {!selectMode && (
+            <>
+              <div className="filebrowser-head">
+                <span/>
+                <button className="fb-sort" type="button" onClick={() => toggleSort('name')}>Name{sortArrow('name')}</button>
+                <span/>
+                <button className="fb-sort" type="button" onClick={() => toggleSort('added')}>Added{sortArrow('added')}</button>
+                <span/>
+              </div>
+              <div className="filebrowser-sort-mobile">
+                <label>Sort</label>
+                <select className="select" value={`${sortBy}-${sortDir}`}
+                  onChange={(e) => { const [k, d] = e.target.value.split('-'); setSortBy(k); setSortDir(d); }}>
+                  <option value="name-asc">Name A–Z</option>
+                  <option value="name-desc">Name Z–A</option>
+                  <option value="added-desc">Newest</option>
+                  <option value="added-asc">Oldest</option>
+                </select>
+              </div>
+            </>
+          )}
           <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {dir && (
@@ -512,7 +550,7 @@ export const FileBrowserScreen = ({
             {entries.length === 0 && !dir && (
               <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>Empty folder.</div>
             )}
-            {entries.map((e) => {
+            {sortedEntries.map((e) => {
               const rel = joinPath(dir, e.name);
               const isDir = e.type === 'dir';
               const isAudio = !isDir && isAudioFile(e.name);

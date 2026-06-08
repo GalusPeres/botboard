@@ -2886,8 +2886,11 @@ button, a, [role="button"],
 .sound-rec-canvas { width: 100%; height: 110px; display: block; }
 
 /* Kopf: groß „Sound Library", darunter ‹ Zurück + „Sound Editor". */
-/* Kopf: kleiner „‹ Sound Library"-Button im freien Bereich über dem Titel. */
-.sound-topbar { display: flex; align-items: center; margin-bottom: 8px; }
+/* Kopf: kleiner „‹ Sound Library"-Button OBEN im freien Padding-Bereich –
+   absolut platziert, damit der Titel nicht nach unten geschoben wird. */
+.sound-editor-screen { position: relative; }
+.sound-topbar { position: absolute; top: -24px; left: 0; display: flex; align-items: center; }
+.sound-topbar .btn { padding: 2px 8px; font-size: 12px; }
 
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg-btn {

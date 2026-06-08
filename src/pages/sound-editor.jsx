@@ -8,6 +8,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
+import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.esm.js';
 import { Icon, SearchField } from '../ui/components.jsx';
 import * as API from '../lib/api.js';
 
@@ -142,6 +143,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       cursorColor: '#e6edf3',
       barWidth: 2, barGap: 1, barRadius: 2,
     });
+    ws.registerPlugin(TimelinePlugin.create({ height: 16, style: { color: '#7a8595', fontSize: '10px' } }));
     const regions = ws.registerPlugin(RegionsPlugin.create());
     wsRef.current = ws;
     regionsRef.current = regions;
@@ -423,6 +425,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         {recording ? (
           <>
             <canvas ref={canvasRef} className="sound-rec-canvas"/>
+            <div className="sound-rec-spacer"/>{/* reserviert die Timeline-Höhe → gleiche Box wie im Editor */}
             <div className="sound-transport">
               <span className="rec-dot">● recording…</span>
               <span className="sound-times">{fmtTime(recSeconds)}</span>

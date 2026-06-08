@@ -2938,10 +2938,13 @@ button, a, [role="button"],
   padding: 14px;
   margin-bottom: 16px;
 }
-/* Wave-Bereich IMMER exakt gleich hoch (Aufnahme = Editor = leer) → kein Springen. */
-.sound-wave { width: 100%; height: 120px; }
+/* Wave-Bereich IMMER exakt gleich hoch (Aufnahme = Editor = leer) → kein Springen.
+   Editor: 120px Wave + 16px Timeline = 136px. Aufnahme: 120px Canvas + 16px Spacer.
+   Leer: 136px. So sitzt die Wave überall an derselben Position. */
+.sound-wave { width: 100%; }
 .sound-rec-canvas { width: 100%; height: 120px; display: block; }
-.sound-wave-card .empty { height: 120px; display: flex; align-items: center; justify-content: center; }
+.sound-rec-spacer { height: 16px; }
+.sound-wave-card .empty { height: 136px; display: flex; align-items: center; justify-content: center; }
 .sound-transport {
   display: flex;
   align-items: center;

@@ -2243,7 +2243,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 /* Kein separater 400px-Breakpoint mehr nötig — Compact-Button löst das */
 
 @media (max-width: 560px) {
-  .content { padding: 14px 12px 20px; }
+  .content { padding: 24px 12px 20px; }
   .page-title { font-size: 19px; }
   /* Row mit Wrap — kein Column, sonst landen Buttons in eigener Zeile */
   .page-head { flex-direction: row; align-items: center; flex-wrap: wrap; }

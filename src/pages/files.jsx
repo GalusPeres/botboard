@@ -206,12 +206,13 @@ export const FileBrowserScreen = ({
     return [...entries].sort((a, b) => {
       if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
       if (sortBy === 'added') return mul * ((a.mtime || 0) - (b.mtime || 0));
+      if (sortBy === 'size') return mul * ((a.size || 0) - (b.size || 0));
       return mul * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
   }, [entries, sortBy, sortDir]);
   const toggleSort = (key) => {
     if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortBy(key); setSortDir(key === 'added' ? 'desc' : 'asc'); }
+    else { setSortBy(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
   };
   const sortArrow = (key) => (sortBy === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
   const imageEntries = (data?.entries || []).filter((entry) => entry.type === 'file' && isImageFile(entry.name));
@@ -516,7 +517,7 @@ export const FileBrowserScreen = ({
               <div className="filebrowser-head">
                 <span/>
                 <button className="fb-sort" type="button" onClick={() => toggleSort('name')}>Name{sortArrow('name')}</button>
-                <span/>
+                <button className="fb-sort" type="button" onClick={() => toggleSort('size')}>Size{sortArrow('size')}</button>
                 <button className="fb-sort" type="button" onClick={() => toggleSort('added')}>Added{sortArrow('added')}</button>
                 <span/>
               </div>
@@ -528,6 +529,8 @@ export const FileBrowserScreen = ({
                   <option value="name-desc">Name Z–A</option>
                   <option value="added-desc">Newest</option>
                   <option value="added-asc">Oldest</option>
+                  <option value="size-desc">Largest</option>
+                  <option value="size-asc">Smallest</option>
                 </select>
               </div>
             </>

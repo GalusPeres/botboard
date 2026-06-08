@@ -638,8 +638,7 @@ ul, ol { list-style: none; }
      (z. B. ein Ordner im Filebrowser) mal mehr/weniger Inhalt hat. */
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
-  /* Etwas mehr Luft oben, damit die Überschrift nicht direkt an der Topbar klebt. */
-  padding: 38px 28px 28px;
+  padding: 28px;
 }
 .content-narrow { width: 100%; max-width: 1240px; min-width: 0; margin: 0 auto; }
 

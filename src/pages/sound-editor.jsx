@@ -306,8 +306,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
 
       {/* Quellen direkt im Editor */}
       <div className="sound-source-bar">
-        <label className="btn" style={{ cursor: 'pointer' }}>
-          <Icon name="upload" size={13}/> From device
+        <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+          <Icon name="upload" size={13}/> Upload
           <input type="file" hidden accept="audio/*"
             onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) pickSource(f, f.name); }}/>
         </label>

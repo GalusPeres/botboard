@@ -1,8 +1,9 @@
 // Sound-Editor: eine eigene Page (gleicher Look wie Library/Files). Die Quellen
-// (vorhandener Sound, Geräte-Upload, Aufnahme von Mikro/System-Sound, YouTube)
-// sind direkt im Editor integriert. Aufnahmen zeigen eine LIVE-Waveform; danach
-// gibt es eine Waveform mit Schnitt-Auswahl, Lautstärke + Fades. Gespeichert
-// wird als MP3 in die Sound-Library (mit Überschreib-Bestätigung). Render
+// (Upload, Aufnahme von Mikro/System-Sound, YouTube) sind direkt im Editor
+// integriert. Aufnahmen bauen eine LIVE-Waveform auf (wie Audacity); danach gibt
+// es eine Waveform mit Schnitt-Auswahl + Timeline, Lautstärke + Fades. Trim
+// läuft lokal im Browser (sofort, mit Undo). Gespeichert wird als MP3 in die
+// Sound-Library (mit Bestätigungs-/Überschreib-Modal). Der finale Render
 // (Trim/Lautstärke→MP3) + YouTube laufen server-seitig via ffmpeg/yt-dlp.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
@@ -21,13 +22,56 @@ const fmtTime = (s) => {
 // Aufnahme ohne Sprach-„Aufbereitung" (sonst klingt System-/Discord-Audio blechern).
 const RAW_AUDIO = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
+// Audio-Blob lokal in einen AudioBuffer dekodieren.
+async function blobToAudioBuffer(blob) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    return await ctx.decodeAudioData(await blob.arrayBuffer());
+  } finally {
+    ctx.close().catch(() => {});
+  }
+}
+// Ausschnitt [start,end] eines AudioBuffers herauskopieren.
+function sliceBuffer(buf, start, end) {
+  const rate = buf.sampleRate;
+  const s = Math.max(0, Math.floor(start * rate));
+  const e = Math.min(buf.length, Math.floor(end * rate));
+  const len = Math.max(1, e - s);
+  const out = new AudioBuffer({ length: len, numberOfChannels: buf.numberOfChannels, sampleRate: rate });
+  for (let ch = 0; ch < buf.numberOfChannels; ch++) out.copyToChannel(buf.getChannelData(ch).subarray(s, e), ch);
+  return out;
+}
+// AudioBuffer → 16-bit PCM WAV-Blob (verlustfrei, fürs lokale Bearbeiten).
+function audioBufferToWav(buffer) {
+  const numCh = buffer.numberOfChannels, rate = buffer.sampleRate;
+  const dataLen = buffer.length * numCh * 2;
+  const ab = new ArrayBuffer(44 + dataLen);
+  const view = new DataView(ab);
+  let p = 0;
+  const str = (s) => { for (let i = 0; i < s.length; i++) view.setUint8(p++, s.charCodeAt(i)); };
+  const u32 = (v) => { view.setUint32(p, v, true); p += 4; };
+  const u16 = (v) => { view.setUint16(p, v, true); p += 2; };
+  str('RIFF'); u32(36 + dataLen); str('WAVE'); str('fmt '); u32(16); u16(1); u16(numCh);
+  u32(rate); u32(rate * numCh * 2); u16(numCh * 2); u16(16); str('data'); u32(dataLen);
+  const chans = [];
+  for (let c = 0; c < numCh; c++) chans.push(buffer.getChannelData(c));
+  for (let i = 0; i < buffer.length; i++) {
+    for (let c = 0; c < numCh; c++) {
+      const v = Math.max(-1, Math.min(1, chans[c][i]));
+      view.setInt16(p, v < 0 ? v * 0x8000 : v * 0x7fff, true); p += 2;
+    }
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
 export const SoundEditorScreen = ({ initialName = null, botName, existingNames = [], onClose, onSaved, setToast }) => {
   const toast = useCallback((msg) => setToast?.({ msg, id: Date.now() }), [setToast]);
   const waveRef = useRef(null);
   const wsRef = useRef(null);
   const regionsRef = useRef(null);
   const regionRef = useRef(null);
-  const selEndRef = useRef(null);   // Endzeit beim Abspielen der Auswahl
+  const selTimerRef = useRef(null);  // stoppt die Auswahl-Wiedergabe am Ende
+  const undoRef = useRef([]);        // vorherige Quellen (für Undo nach Trim)
 
   // Live-Aufnahme
   const canvasRef = useRef(null);
@@ -46,6 +90,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [trim, setTrim] = useState({ start: 0, end: 0 });
+  const [canUndo, setCanUndo] = useState(false);
 
   const [recMode, setRecMode] = useState('mic'); // 'mic' | 'system'
   const [recording, setRecording] = useState(false);
@@ -60,7 +105,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
 
   const [name, setName] = useState(cleanName(initialName) || '');
   const [saving, setSaving] = useState(false);
-  const [overwriteAsk, setOverwriteAsk] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(null); // null | { clean, exists }
 
   const pickSource = useCallback((blob, label) => {
     setSourceBlob(blob); setSourceLabel(label); setLoadingSource(false);
@@ -95,10 +140,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       cursorColor: '#e6edf3',
       barWidth: 2, barGap: 1, barRadius: 2,
     });
-    ws.registerPlugin(TimelinePlugin.create({
-      height: 16, insertPosition: 'beforebegin',
-      style: { color: 'var(--text-dim)', fontSize: '10px' },
-    }));
+    ws.registerPlugin(TimelinePlugin.create({ height: 16, style: { color: '#7a8595', fontSize: '10px' } }));
     const regions = ws.registerPlugin(RegionsPlugin.create());
     wsRef.current = ws;
     regionsRef.current = regions;
@@ -115,17 +157,15 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     regions.on('region-updated', (r) => {
       regionRef.current = r;
       setTrim({ start: r.start, end: r.end });
-      // Auswahl beim Ändern nicht weiterlaufen lassen.
-      if (ws.isPlaying()) { ws.pause(); selEndRef.current = null; }
+      clearTimeout(selTimerRef.current);
+      if (ws.isPlaying()) ws.pause(); // beim Ändern nicht weiterlaufen
     });
     ws.on('play', () => setPlaying(true));
-    ws.on('pause', () => { setPlaying(false); selEndRef.current = null; });
-    ws.on('finish', () => { setPlaying(false); selEndRef.current = null; });
-    // Auswahl-Wiedergabe am Auswahl-Ende stoppen.
-    ws.on('timeupdate', (t) => { if (selEndRef.current != null && t >= selEndRef.current) { ws.pause(); } });
+    ws.on('pause', () => { setPlaying(false); clearTimeout(selTimerRef.current); });
+    ws.on('finish', () => setPlaying(false));
 
     ws.loadBlob(sourceBlob).catch((e) => toast(`Decode failed: ${e.message}`));
-    return () => { try { ws.destroy(); } catch {} wsRef.current = null; };
+    return () => { clearTimeout(selTimerRef.current); try { ws.destroy(); } catch {} wsRef.current = null; };
   }, [sourceBlob, recording, toast]);
 
   // Vorschau-Lautstärke an Gain koppeln (Boost >0 dB nur beim Export hörbar).
@@ -145,6 +185,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     stopTracks();
   }, []);
 
+  // Live-Waveform: ganze Aufnahme sichtbar, baut sich auf und staucht sich dann.
   const drawLive = useCallback(() => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
@@ -154,17 +195,24 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     analyser.getByteTimeDomainData(buf);
     let peak = 0;
     for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i] - 128) / 128; if (v > peak) peak = v; }
-    const step = 4; // 3px Balken + 1px Lücke
-    const maxBars = Math.floor(canvas.width / step);
+    historyRef.current.push(peak);
+
+    const W = canvas.width, H = canvas.height, mid = H / 2;
+    const step = 3; // 2px Balken + 1px Lücke
+    const maxBars = Math.max(1, Math.floor(W / step));
     const hist = historyRef.current;
-    hist.push(peak);
-    if (hist.length > maxBars) hist.splice(0, hist.length - maxBars);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const n = hist.length;
+    ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#9dda4f';
-    const mid = canvas.height / 2;
-    for (let i = 0; i < hist.length; i++) {
-      const h = Math.max(2, hist[i] * canvas.height * 0.55); // weniger „rangezoomt"
-      ctx.fillRect(i * step, mid - h / 2, 3, h);
+    const bar = (x, p) => { const h = Math.max(2, p * H * 0.7); ctx.fillRect(x, mid - h / 2, 2, h); };
+    if (n <= maxBars) {
+      for (let i = 0; i < n; i++) bar(i * step, hist[i]); // links → rechts aufbauen
+    } else {
+      for (let b = 0; b < maxBars; b++) {               // ganze Aufnahme zusammenstauchen
+        const s = Math.floor((b * n) / maxBars), e = Math.floor(((b + 1) * n) / maxBars);
+        let p = 0; for (let i = s; i < e; i++) if (hist[i] > p) p = hist[i];
+        bar(b * step, p);
+      }
     }
     rafRef.current = requestAnimationFrame(drawLive);
   }, []);
@@ -179,22 +227,20 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           stream.getTracks().forEach((t) => t.stop());
           throw new Error('no system audio shared (tick "Share audio" in the dialog)');
         }
-        stream.getVideoTracks().forEach((t) => t.stop()); // nur Audio behalten
+        stream.getVideoTracks().forEach((t) => t.stop());
       } else {
         stream = await navigator.mediaDevices.getUserMedia({ audio: RAW_AUDIO });
       }
       streamRef.current = stream;
 
-      // Live-Visualizer (Analyser nicht an die Ausgabe hängen → kein Echo).
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
-      ctx.createMediaStreamSource(stream).connect(analyser);
+      ctx.createMediaStreamSource(stream).connect(analyser); // nicht an Ausgabe → kein Echo
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
       historyRef.current = [];
 
-      // Recorder (hohe Bitrate → weniger blechern).
       const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
       const chunks = [];
       const mr = new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 192000 });
@@ -203,18 +249,17 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         cleanupRecording();
         setRecording(false);
         const blob = new Blob(chunks, { type: mime });
-        if (blob.size) pickSource(blob, mode === 'system' ? 'System recording' : 'Mic recording');
+        if (blob.size) { undoRef.current = []; setCanUndo(false); pickSource(blob, mode === 'system' ? 'System recording' : 'Mic recording'); }
       };
       recorderRef.current = mr;
 
-      setSourceBlob(null);  // alte Bearbeitung verwerfen, Canvas zeigen
+      setSourceBlob(null);
       setReady(false);
       setRecording(true);
       setRecSeconds(0);
       mr.start();
       const startedAt = Date.now();
       recTimerRef.current = setInterval(() => setRecSeconds((Date.now() - startedAt) / 1000), 200);
-      // Canvas-Größe setzen + Loop starten (nach Render).
       requestAnimationFrame(() => {
         const canvas = canvasRef.current;
         if (canvas) { canvas.width = canvas.offsetWidth; canvas.height = 110; }
@@ -232,74 +277,96 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const loadYoutube = async () => {
     if (!ytUrl.trim()) return;
     setYtLoading(true);
-    try { pickSource(await API.soundTools.youtube(ytUrl.trim()), 'YouTube'); setYtUrl(''); }
+    try { undoRef.current = []; setCanUndo(false); pickSource(await API.soundTools.youtube(ytUrl.trim()), 'YouTube'); setYtUrl(''); }
     catch (e) { toast(`YouTube import failed: ${e.message}`); }
     finally { setYtLoading(false); }
   };
+  const onUploadFile = (f) => { if (f) { undoRef.current = []; setCanUndo(false); pickSource(f, f.name); } };
 
-  // ── Transport / Save ─────────────────────────────────────────────────────────
-  const playAll = () => { selEndRef.current = null; wsRef.current?.playPause(); };
+  // ── Transport ────────────────────────────────────────────────────────────────
+  const playAll = () => {
+    const ws = wsRef.current; if (!ws) return;
+    clearTimeout(selTimerRef.current);
+    ws.playPause();
+  };
   const playSelection = () => {
     const ws = wsRef.current, r = regionRef.current;
     if (!ws || !r) return;
-    selEndRef.current = r.end;
+    clearTimeout(selTimerRef.current);
+    if (ws.isPlaying()) { ws.pause(); return; }
     ws.setTime(r.start);
     ws.play();
+    // robust per Timer am Auswahl-Ende stoppen (kein Verlass auf stale timeupdate).
+    selTimerRef.current = setTimeout(() => { try { ws.pause(); } catch {} }, Math.max(60, (r.end - r.start) * 1000));
   };
   const resetTrim = () => {
     if (regionRef.current) { regionRef.current.setOptions({ start: 0, end: duration }); setTrim({ start: 0, end: duration }); }
   };
-  // Auswahl fest zuschneiden: rendert den Ausschnitt und lädt ihn als neue Quelle.
+  // Lokaler Trim: Ausschnitt sofort herausschneiden (kein Server), mit Undo.
   const doTrim = async () => {
     if (!sourceBlob || trim.end - trim.start < 0.05) return;
     setTrimming(true);
     try {
-      const cut = await API.soundTools.render(sourceBlob, { start: trim.start, end: trim.end, gain: 0, fadeIn: 0, fadeOut: 0 });
-      pickSource(cut, sourceLabel ? `${sourceLabel} (trimmed)` : 'Trimmed');
+      const ab = await blobToAudioBuffer(sourceBlob);
+      const wav = audioBufferToWav(sliceBuffer(ab, trim.start, trim.end));
+      undoRef.current.push({ blob: sourceBlob, label: sourceLabel });
+      setCanUndo(true);
+      const base = sourceLabel.replace(/\s*\(trimmed\)$/, '');
+      pickSource(wav, `${base} (trimmed)`);
     } catch (e) {
       toast(`Trim failed: ${e.message}`);
     } finally {
       setTrimming(false);
     }
   };
-
-  const doSave = async (overwrite) => {
-    const clean = cleanName(name);
-    if (!clean) { toast('Please enter a name'); return; }
-    setSaving(true); setOverwriteAsk(false);
-    try {
-      const mp3 = await API.soundTools.render(sourceBlob, { start: trim.start, end: trim.end, gain: gainDb, fadeIn, fadeOut });
-      const file = new File([mp3], `${clean}.mp3`, { type: 'audio/mpeg' });
-      if (overwrite) await API.sound.remove(clean).catch(() => {});
-      await API.sound.upload(file, clean);
-      toast(`Saved ${clean}.mp3`);
-      onSaved?.();
-    } catch (e) {
-      toast(`Save failed: ${e.message}`);
-    } finally { setSaving(false); }
+  const undoTrim = () => {
+    const prev = undoRef.current.pop();
+    if (!prev) return;
+    setCanUndo(undoRef.current.length > 0);
+    pickSource(prev.blob, prev.label);
   };
+
+  // ── Speichern ─────────────────────────────────────────────────────────────────
   const onSaveClick = async () => {
     const clean = cleanName(name);
     if (!clean) { toast('Please enter a name'); return; }
-    // Frisch prüfen (existingNames kann veraltet sein) → Überschreiben-Modal.
     let names = existingNames;
     try { names = (await API.sound.list()).map((s) => s.name); } catch { /* fallback */ }
-    if (names.includes(clean)) setOverwriteAsk(true);
-    else doSave(false);
+    setConfirmSave({ clean, exists: names.includes(clean) });
+  };
+  const doSave = async () => {
+    const target = confirmSave;
+    if (!target) return;
+    setSaving(true);
+    try {
+      const mp3 = await API.soundTools.render(sourceBlob, { start: trim.start, end: trim.end, gain: gainDb, fadeIn, fadeOut });
+      const file = new File([mp3], `${target.clean}.mp3`, { type: 'audio/mpeg' });
+      if (target.exists) await API.sound.remove(target.clean).catch(() => {});
+      await API.sound.upload(file, target.clean);
+      toast(`Saved ${target.clean}.mp3`);
+      setConfirmSave(null);
+      onSaved?.();
+    } catch (e) {
+      toast(`Save failed: ${e.message}`);
+      setConfirmSave(null);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const hasSource = !!sourceBlob && !recording;
+  const fullSelected = trim.start <= 0.001 && trim.end >= duration - 0.001;
 
   return (
     <div className="content-narrow sound-editor-screen">
       <div className="page-head media-page-head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button className="btn btn-icon btn-ghost" onClick={onClose} title="Back to Sound Library">
-            <Icon name="chevron-left" size={18}/>
-          </button>
-          <div>
-            <div className="page-title">Sound Library</div>
-            <div className="page-sub">Sound Editor{sourceLabel ? ` · ${sourceLabel}` : ''}</div>
+        <div>
+          <div className="page-title">Sound Library</div>
+          <div className="sound-subline">
+            <button className="btn btn-icon btn-ghost btn-sm" onClick={onClose} title="Back to Sound Library">
+              <Icon name="chevron-left" size={16}/>
+            </button>
+            <span className="page-sub">Sound Editor{sourceLabel ? ` · ${sourceLabel}` : ''}</span>
           </div>
         </div>
       </div>
@@ -309,7 +376,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
           <Icon name="upload" size={13}/> Upload
           <input type="file" hidden accept="audio/*"
-            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) pickSource(f, f.name); }}/>
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; onUploadFile(f); }}/>
         </label>
 
         <div className="sound-source-rec">
@@ -324,8 +391,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
               <Icon name="mic" size={13}/> Record
             </button>
           ) : (
-            <button className="btn btn-danger" onClick={stopRecording}>
-              <Icon name="stop" size={13}/> Stop
+            <button className="btn" disabled>
+              <span className="rec-dot" style={{ marginRight: 4 }}>●</span> Recording…
             </button>
           )}
         </div>
@@ -367,13 +434,17 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
               <span className="sound-times">
                 {fmtTime(trim.start)} – {fmtTime(trim.end)} <span style={{ opacity: 0.5 }}>/ {fmtTime(duration)}</span>
               </span>
-              <button className="btn btn-sm" onClick={doTrim}
-                disabled={!ready || trimming || (trim.start <= 0.001 && trim.end >= duration - 0.001)}
+              <button className="btn btn-sm" onClick={doTrim} disabled={!ready || trimming || fullSelected}
                 style={{ marginLeft: 'auto' }}>
                 <Icon name="edit" size={12}/> {trimming ? 'Trimming…' : 'Trim'}
               </button>
-              <button className="btn btn-sm" onClick={resetTrim} disabled={!ready}>
-                <Icon name="rotate" size={12}/> Reset
+              {canUndo && (
+                <button className="btn btn-sm" onClick={undoTrim} disabled={!ready || trimming}>
+                  <Icon name="rotate" size={12}/> Undo
+                </button>
+              )}
+              <button className="btn btn-sm" onClick={resetTrim} disabled={!ready || fullSelected}>
+                Reset
               </button>
             </div>
           </>
@@ -410,20 +481,23 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <span className="sound-name-suffix">.mp3</span>
         </div>
         <button className="btn btn-primary" onClick={onSaveClick} disabled={!ready || saving || !cleanName(name)}>
-          <Icon name="check" size={13}/> {saving ? 'Saving…' : 'Save'}
+          <Icon name="check" size={13}/> Save
         </button>
       </div>
       <div className="sound-hint">Lowercase a–z and 0–9 only. Volume boost above 0 dB is applied on save.</div>
 
-      {overwriteAsk && (
-        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setOverwriteAsk(false); }}>
+      {confirmSave && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmSave(null); }}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-            <h3>Overwrite sound?</h3>
-            <p><strong>{cleanName(name)}.mp3</strong> already exists and will be replaced.</p>
+            <h3>{confirmSave.exists ? 'Overwrite sound?' : 'Save sound?'}</h3>
+            <p>
+              <strong>{confirmSave.clean}.mp3</strong>{' '}
+              {confirmSave.exists ? 'already exists and will be replaced.' : 'will be saved to the library.'}
+            </p>
             <div className="modal-actions">
-              <button className="btn" onClick={() => setOverwriteAsk(false)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => doSave(true)} disabled={saving}>
-                <Icon name="check" size={13}/> {saving ? 'Saving…' : 'Overwrite'}
+              <button className="btn" onClick={() => setConfirmSave(null)} disabled={saving}>Cancel</button>
+              <button className={'btn ' + (confirmSave.exists ? 'btn-danger' : 'btn-primary')} onClick={doSave} disabled={saving}>
+                <Icon name="check" size={13}/> {saving ? 'Saving…' : confirmSave.exists ? 'Overwrite' : 'Save'}
               </button>
             </div>
           </div>

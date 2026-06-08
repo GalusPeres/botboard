@@ -2886,8 +2886,8 @@ button, a, [role="button"],
 .sound-rec-canvas { width: 100%; height: 110px; display: block; }
 
 /* Kopf: groß „Sound Library", darunter ‹ Zurück + „Sound Editor". */
-.sound-subline { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.sound-subline .page-sub { margin: 0; }
+.sound-subline { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.sound-editor-label { font-size: 15px; font-weight: 600; color: var(--text-dim); }
 
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg-btn {

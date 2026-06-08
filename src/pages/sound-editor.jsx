@@ -366,7 +366,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
             <button className="btn btn-icon btn-ghost btn-sm" onClick={onClose} title="Back to Sound Library">
               <Icon name="chevron-left" size={16}/>
             </button>
-            <span className="page-sub">Sound Editor{sourceLabel ? ` · ${sourceLabel}` : ''}</span>
+            <span className="sound-editor-label">Sound Editor{sourceLabel ? ` · ${sourceLabel}` : ''}</span>
           </div>
         </div>
       </div>

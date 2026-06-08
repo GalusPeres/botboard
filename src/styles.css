@@ -3013,6 +3013,8 @@ button, a, [role="button"],
   border-radius: 12px;
 }
 .sound-ctrl { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-dim); }
+/* Label links, Wert rechts über dem Slider → nicht aneinandergeklebt. */
+.sound-ctrl > span { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .sound-ctrl strong { color: var(--text); font-family: var(--font-mono); }
 .sound-ctrl input[type="range"] { width: 100%; accent-color: var(--accent); }
 

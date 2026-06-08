@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import session from 'express-session';
 import FileStoreFactory from 'session-file-store';
 import compression from 'compression';
@@ -26,6 +27,10 @@ const FileStore = FileStoreFactory(session);
 
 const app = express();
 app.set('trust proxy', 1);
+// Sicherheits-Header (Clickjacking, MIME-Sniffing, HSTS, Referrer-Policy …).
+// CSP bewusst aus — die wird separat + getestet nachgerüstet, damit nichts
+// (Uploads, Waveform, Discord-Avatare) bricht.
+app.use(helmet({ contentSecurityPolicy: false }));
 // Skip gzip for server-sent event streams so log/status events flush to the
 // browser immediately instead of being buffered by the compressor.
 app.use(compression({

@@ -1,6 +1,6 @@
 {
   "name": "botboard",
-  "version": "0.6.38",
+  "version": "0.6.39",
   "private": true,
   "type": "module",
   "scripts": {
@@ -22,6 +22,7 @@
     "dockerode": "^4.0.2",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
+    "helmet": "^8.2.0",
     "session-file-store": "^1.5.0"
   },
   "devDependencies": {

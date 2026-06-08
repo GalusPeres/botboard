@@ -2899,8 +2899,14 @@ button, a, [role="button"],
 /* Kopf: kleiner „‹ Sound Library"-Button OBEN im freien Padding-Bereich –
    absolut platziert, damit der Titel nicht nach unten geschoben wird. */
 .sound-editor-screen { position: relative; }
-.sound-topbar { position: absolute; top: -24px; left: 0; display: flex; align-items: center; }
-.sound-topbar .btn { padding: 2px 8px; font-size: 12px; }
+.sound-topbar { position: absolute; top: -16px; left: 0; display: flex; align-items: center; }
+/* Rahmen + Füllung nur bei Hover/Klick. */
+.sound-topbar .btn {
+  padding: 2px 8px; font-size: 12px;
+  background: transparent; border-color: transparent;
+}
+.sound-topbar .btn:hover,
+.sound-topbar .btn:active { background: var(--surface); border-color: var(--border); }
 
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg-btn {
@@ -2917,8 +2923,13 @@ button, a, [role="button"],
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 16px;
+  /* Feste Höhe: Box springt nicht mehr zwischen leer / Aufnahme / Editor. */
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
 }
 .sound-wave { width: 100%; min-height: 110px; }
+.sound-wave-card .empty { flex: 1; display: flex; align-items: center; justify-content: center; }
 .sound-transport {
   display: flex;
   align-items: center;

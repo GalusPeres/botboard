@@ -56,10 +56,8 @@ export const config = {
   usersConfigPath: optional('USERS_CONFIG_PATH', './data/users.json'),
   cookieSecure: boolean('COOKIE_SECURE'),
   devAuthBypass: boolean('DEV_AUTH_BYPASS'),
-  // Schaltet die gesamte Docker-Steuerung frei (start/stop/restart). Neuer,
-  // klarerer Name; der alte DOCKER_RESTART_ENABLED wird weiter akzeptiert,
-  // damit bestehende Setups nicht brechen.
-  dockerRestartEnabled: boolean('DOCKER_CONTROL_ENABLED') || boolean('DOCKER_RESTART_ENABLED'),
+  // Schaltet die gesamte Docker-Steuerung frei (start/stop/restart).
+  dockerRestartEnabled: boolean('DOCKER_CONTROL_ENABLED'),
 
   // „Weiche" Bot-Einstellungen: env liefert den Default (auf Unraid setzbar),
   // das UI kann sie überschreiben. Kein Secret hier — der Token bleibt env-only.

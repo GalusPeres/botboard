@@ -538,11 +538,11 @@ export const FileBrowserScreen = ({
           <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {dir && (
-              <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
+              <div className="filebrowser-row filebrowser-up" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
                 {selectMode && <span/>}
-                <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
+                <Icon name="folder" size={16} style={{ flexShrink: 0 }}/>
                 <div className="filebrowser-namecell">
-                  <span className="filebrowser-name" style={{ color: 'var(--text-dim)' }}>..</span>
+                  <span className="filebrowser-name">..</span>
                   <span className="filebrowser-submeta">{' '}</span>
                 </div>
                 <span className="filebrowser-meta"/>

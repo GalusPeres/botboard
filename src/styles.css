@@ -1654,10 +1654,15 @@ ul, ol { list-style: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* „..“-Zeile (eine Ebene hoch): dezent grau, beim Hover Icon + „..“ grün. */
+.filebrowser-up .filebrowser-name,
+.filebrowser-up svg { color: var(--text-dim); }
 /* Hover nur auf echten Hover-Geräten → kein „sticky" Grün auf Touch. */
 @media (hover: hover) {
   .filebrowser-name:hover { color: var(--accent); }
   .fb-check:hover { border-color: var(--accent); }
+  .filebrowser-up:hover .filebrowser-name,
+  .filebrowser-up:hover svg { color: var(--accent); }
 }
 .filebrowser-meta {
   font-family: var(--font-mono);

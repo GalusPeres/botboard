@@ -1879,6 +1879,10 @@ ul, ol { list-style: none; }
 .media-page-head > :first-child {
   min-height: 44px;
   flex-shrink: 0;
+  /* Titel vertikal mittig im Block → liegt auf einer Linie mit dem Suchfeld. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 /* Webkit cancel-button (X) bei type=search verstecken */
 input[type="search"]::-webkit-search-decoration,

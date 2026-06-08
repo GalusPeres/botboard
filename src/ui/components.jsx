@@ -43,6 +43,7 @@ export const Icon = ({ name, size = 16, className = '', style = {} }) => {
     case 'chevron-left': return <svg {...props}><polyline points="15 6 9 12 15 18"/></svg>;
     case 'chevron-right': return <svg {...props}><polyline points="9 6 15 12 9 18"/></svg>;
     case 'menu': return <svg {...props}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
+    case 'sort': return <svg {...props}><path d="M7 4v14M3 14l4 4 4-4"/><path d="M17 20V6M13 10l4-4 4 4"/></svg>;
     case 'more': return <svg {...props}><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></svg>;
     case 'mic': return <svg {...props}><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 19v3"/></svg>;
     case 'headphones': return <svg {...props}><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 18a2 2 0 0 1-2 2h-1v-6h3zM3 18a2 2 0 0 0 2 2h1v-6H3z"/></svg>;

@@ -1588,7 +1588,13 @@ ul, ol { list-style: none; }
   white-space: nowrap;
 }
 .fb-sort:hover { color: var(--text); }
-.filebrowser-sort-mobile { display: none; }
+/* Size-Spalte rechtsbündig → Kopf steht genau über den Zahlen. */
+.fb-col-size { text-align: right; }
+.filebrowser-sort-mobile { display: none; position: relative; }
+.fb-sort-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; }
+/* Sortier-Dropdown unter dem „Sort"-Button (Look = Kontextmenü). */
+.ctx-menu.fb-sortmenu { position: absolute; top: calc(100% + 4px); left: 0; }
+.ctx-item.active { background: var(--accent-soft); color: var(--accent); }
 
 .filebrowser-row {
   display: grid;
@@ -1665,11 +1671,9 @@ ul, ol { list-style: none; }
   .filebrowser-list.selecting .filebrowser-row { grid-template-columns: 24px 22px minmax(0, 1fr) auto; }
   .filebrowser-meta { display: none; }                      /* eigene Spalten weg ... */
   .filebrowser-submeta { display: block; min-height: 15px; } /* ... Unterzeile (auch leer = gleiche Höhe) */
-  /* Kopf weg, stattdessen kleines Sortier-Dropdown. */
+  /* Mehrspaltiger Kopf weg, stattdessen dezenter „Sort"-Trigger + Dropdown. */
   .filebrowser-head { display: none; }
-  .filebrowser-sort-mobile { display: flex; align-items: center; gap: 8px; padding: 0 2px 10px; }
-  .filebrowser-sort-mobile label { font-size: 12px; color: var(--text-dim); }
-  .filebrowser-sort-mobile .select { width: auto; flex: 0 0 auto; padding: 6px 10px; }
+  .filebrowser-sort-mobile { display: flex; align-items: center; padding: 0 2px 8px; }
 }
 
 /* Rechtsklick-Kontextmenü im Filebrowser */

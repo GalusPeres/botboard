@@ -13,6 +13,14 @@ const TEXT_EXT = new Set([
   'css', 'lua', 'py', 'json5', 'list', 'cmd', 'sk',
 ]);
 const AUDIO_EXT = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus', 'webm']);
+const SORT_OPTIONS = [
+  { value: 'name-asc', label: 'Name A–Z' },
+  { value: 'name-desc', label: 'Name Z–A' },
+  { value: 'added-desc', label: 'Newest' },
+  { value: 'added-asc', label: 'Oldest' },
+  { value: 'size-desc', label: 'Largest' },
+  { value: 'size-asc', label: 'Smallest' },
+];
 const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif']);
 
 function fileExtension(name) {
@@ -117,8 +125,9 @@ export const FileBrowserScreen = ({
   const [path, setPath] = useState('');
   const { data, error, reload, loading } = useFetch(() => storage.list(path), [storage, path]);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('name');   // 'name' | 'added'
+  const [sortBy, setSortBy] = useState('name');   // 'name' | 'added' | 'size'
   const [sortDir, setSortDir] = useState('asc');   // 'asc' | 'desc'
+  const [sortMenu, setSortMenu] = useState(false); // mobiles Sortier-Dropdown
   const [editing, setEditing] = useState(null);   // { path, name }
   const [editVal, setEditVal] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -522,21 +531,29 @@ export const FileBrowserScreen = ({
             )}
             <span/>
             <button className="fb-sort" type="button" onClick={() => toggleSort('name')}>Name{sortArrow('name')}</button>
-            <button className="fb-sort" type="button" onClick={() => toggleSort('size')}>Size{sortArrow('size')}</button>
+            <button className="fb-sort fb-col-size" type="button" onClick={() => toggleSort('size')}>Size{sortArrow('size')}</button>
             <button className="fb-sort" type="button" onClick={() => toggleSort('added')}>Added{sortArrow('added')}</button>
             <span/>
           </div>
+          {/* Mobil: dezenter „Sort"-Kopf, öffnet ein Dropdown im App-Stil. */}
           <div className="filebrowser-sort-mobile">
-            <label>Sort</label>
-            <select className="select" value={`${sortBy}-${sortDir}`}
-              onChange={(e) => { const [k, d] = e.target.value.split('-'); setSortBy(k); setSortDir(d); }}>
-              <option value="name-asc">Name A–Z</option>
-              <option value="name-desc">Name Z–A</option>
-              <option value="added-desc">Newest</option>
-              <option value="added-asc">Oldest</option>
-              <option value="size-desc">Largest</option>
-              <option value="size-asc">Smallest</option>
-            </select>
+            <button className="fb-sort fb-sort-trigger" type="button" onClick={() => setSortMenu((v) => !v)}>
+              <Icon name="sort" size={13}/> Sort{sortArrow(sortBy)}
+            </button>
+            {sortMenu && (
+              <>
+                <div className="ctx-backdrop" onClick={() => setSortMenu(false)}/>
+                <div className="ctx-menu fb-sortmenu">
+                  {SORT_OPTIONS.map((o) => (
+                    <button key={o.value} type="button"
+                      className={'ctx-item' + (`${sortBy}-${sortDir}` === o.value ? ' active' : '')}
+                      onClick={() => { const [k, d] = o.value.split('-'); setSortBy(k); setSortDir(d); setSortMenu(false); }}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
@@ -581,7 +598,7 @@ export const FileBrowserScreen = ({
                     <span className="filebrowser-name" style={{ fontWeight: isDir ? 600 : 400 }} title={e.name}>{e.name}</span>
                     <span className="filebrowser-submeta">{isDir ? 'Folder' : fmtSize(e.size)}{e.mtime ? ` · ${fmtDate(e.mtime)}` : ''}</span>
                   </div>
-                  <span className="filebrowser-meta">{isDir ? '' : fmtSize(e.size)}</span>
+                  <span className="filebrowser-meta fb-col-size">{isDir ? '' : fmtSize(e.size)}</span>
                   <span className="filebrowser-meta">{fmtDate(e.mtime)}</span>
                   <div className="filebrowser-actions">
                     <button className="btn btn-icon btn-ghost btn-sm" title="Actions"

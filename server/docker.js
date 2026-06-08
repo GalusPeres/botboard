@@ -9,7 +9,24 @@ let docker = null;
 const statsStreams = new Map();
 
 function client() {
-  if (!docker) docker = new Docker({ socketPath: config.dockerSocket });
+  if (!docker) {
+    // Optionaler docker-socket-proxy: nur aktiv, wenn DOCKER_HOST gesetzt ist
+    // (z.B. tcp://socket-proxy:2375). Ohne die Variable läuft alles wie bisher
+    // über den lokalen Socket — nichts ändert sich am bestehenden Setup.
+    const host = process.env.DOCKER_HOST;
+    if (host) {
+      try {
+        const u = new URL(host);
+        docker = new Docker({ host: u.hostname, port: u.port || 2375, protocol: u.protocol === 'https:' ? 'https' : 'http' });
+        console.log(`[docker] using DOCKER_HOST proxy: ${u.hostname}:${u.port || 2375}`);
+      } catch (err) {
+        console.error('[docker] invalid DOCKER_HOST, falling back to socket:', err.message);
+        docker = new Docker({ socketPath: config.dockerSocket });
+      }
+    } else {
+      docker = new Docker({ socketPath: config.dockerSocket });
+    }
+  }
   return docker;
 }
 

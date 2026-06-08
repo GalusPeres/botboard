@@ -198,13 +198,20 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     historyRef.current.push(peak);
 
     const W = canvas.width, H = canvas.height, mid = H / 2;
-    const step = 3; // 2px Balken + 1px Lücke
+    const step = 3; // 2px Balken + 1px Lücke (wie WaveSurfer barWidth/barGap)
     const maxBars = Math.max(1, Math.floor(W / step));
     const hist = historyRef.current;
     const n = hist.length;
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#9dda4f';
-    const bar = (x, p) => { const h = Math.max(2, p * H * 0.7); ctx.fillRect(x, mid - h / 2, 2, h); };
+    // Balken wie im Editor: Amplitude (0..1) → volle Höhe, von der Mitte aus,
+    // 2px breit mit 1px Radius. Skalierung fest → sieht immer gleich aus.
+    const bar = (x, p) => {
+      const h = Math.max(2, Math.min(H, p * H));
+      const y = mid - h / 2;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, 2, h, 1); ctx.fill(); }
+      else ctx.fillRect(x, y, 2, h);
+    };
     if (n <= maxBars) {
       for (let i = 0; i < n; i++) bar(i * step, hist[i]); // links → rechts aufbauen
     } else {
@@ -362,12 +369,11 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       <div className="page-head media-page-head">
         <div>
           <div className="sound-topbar">
-            <button className="btn btn-icon btn-ghost btn-sm" onClick={onClose} title="Back to Sound Library">
-              <Icon name="chevron-left" size={16}/>
+            <button type="button" className="btn btn-sm" onClick={onClose}>
+              <Icon name="chevron-left" size={14}/> Sound Library
             </button>
-            <button type="button" className="sound-crumb" onClick={onClose}>Sound Library</button>
           </div>
-          <div className="page-title">Sound Editor{sourceLabel ? <span className="sound-title-src"> · {sourceLabel}</span> : ''}</div>
+          <div className="page-title">Sound Editor</div>
         </div>
       </div>
 

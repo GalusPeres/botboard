@@ -1545,6 +1545,8 @@ ul, ol { list-style: none; }
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* Scrollbar in eigener Spur → läuft nicht über den (sticky) Kopf/Inhalt. */
+  scrollbar-gutter: stable;
 }
 
 /* Header-Rahmen (Breadcrumb/Toolbar bzw. Select), gleiche Größe in beiden Modi. */
@@ -1574,7 +1576,7 @@ ul, ol { list-style: none; }
 /* Dezenter, sortierbarer Listenkopf (gleiches Grid wie die Zeilen). */
 .filebrowser-head {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 84px 140px 40px;
+  grid-template-columns: 22px minmax(0, 1fr) 84px 140px 28px;
   align-items: center;
   gap: 10px;
   padding: 2px 12px 6px;
@@ -1597,7 +1599,7 @@ ul, ol { list-style: none; }
 
 .filebrowser-row {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 84px 140px 40px;
+  grid-template-columns: 22px minmax(0, 1fr) 84px 140px 28px;
   align-items: center;
   gap: 10px;
   padding: 6px 12px;
@@ -1606,7 +1608,7 @@ ul, ol { list-style: none; }
 }
 /* Im Select-Modus zusätzliche Checkbox-Spalte vorne. */
 .filebrowser-list.selecting .filebrowser-row {
-  grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px 40px;
+  grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px 28px;
 }
 .filebrowser-row:last-child { border-bottom: none; }
 .filebrowser-row.selected { background: var(--accent-soft); }

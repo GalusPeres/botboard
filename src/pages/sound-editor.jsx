@@ -106,6 +106,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const [name, setName] = useState(cleanName(initialName) || '');
   const [saving, setSaving] = useState(false);
   const [confirmSave, setConfirmSave] = useState(null); // null | { clean, exists }
+  const [dirty, setDirty] = useState(false);            // ungespeicherte Änderungen
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const pickSource = useCallback((blob, label) => {
     setSourceBlob(blob); setSourceLabel(label); setLoadingSource(false);
@@ -256,7 +258,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         cleanupRecording();
         setRecording(false);
         const blob = new Blob(chunks, { type: mime });
-        if (blob.size) { undoRef.current = []; setCanUndo(false); pickSource(blob, mode === 'system' ? 'System recording' : 'Mic recording'); }
+        if (blob.size) { undoRef.current = []; setCanUndo(false); setDirty(true); pickSource(blob, mode === 'system' ? 'System recording' : 'Mic recording'); }
       };
       recorderRef.current = mr;
 
@@ -284,11 +286,14 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const loadYoutube = async () => {
     if (!ytUrl.trim()) return;
     setYtLoading(true);
-    try { undoRef.current = []; setCanUndo(false); pickSource(await API.soundTools.youtube(ytUrl.trim()), 'YouTube'); setYtUrl(''); }
+    try { undoRef.current = []; setCanUndo(false); setDirty(true); pickSource(await API.soundTools.youtube(ytUrl.trim()), 'YouTube'); setYtUrl(''); }
     catch (e) { toast(`YouTube import failed: ${e.message}`); }
     finally { setYtLoading(false); }
   };
-  const onUploadFile = (f) => { if (f) { undoRef.current = []; setCanUndo(false); pickSource(f, f.name); } };
+  const onUploadFile = (f) => { if (f) { undoRef.current = []; setCanUndo(false); setDirty(true); pickSource(f, f.name); } };
+
+  // Zurück: bei ungespeicherten Änderungen erst nachfragen.
+  const handleClose = () => { if (dirty) setConfirmClose(true); else onClose?.(); };
 
   // ── Transport ────────────────────────────────────────────────────────────────
   const playAll = () => {
@@ -318,6 +323,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       const wav = audioBufferToWav(sliceBuffer(ab, trim.start, trim.end));
       undoRef.current.push({ blob: sourceBlob, label: sourceLabel });
       setCanUndo(true);
+      setDirty(true);
       const base = sourceLabel.replace(/\s*\(trimmed\)$/, '');
       pickSource(wav, `${base} (trimmed)`);
     } catch (e) {
@@ -369,7 +375,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       <div className="page-head media-page-head">
         <div>
           <div className="sound-topbar">
-            <button type="button" className="btn btn-sm" onClick={onClose}>
+            <button type="button" className="btn btn-sm" onClick={handleClose}>
               <Icon name="chevron-left" size={14}/> Sound Library
             </button>
           </div>
@@ -464,17 +470,17 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         <label className="sound-ctrl">
           <span>Volume <strong>{gainDb > 0 ? `+${gainDb}` : gainDb} dB</strong></span>
           <input type="range" min={-20} max={12} step={1} value={gainDb}
-            onChange={(e) => setGainDb(Number(e.target.value))} disabled={!hasSource}/>
+            onChange={(e) => { setGainDb(Number(e.target.value)); setDirty(true); }} disabled={!hasSource}/>
         </label>
         <label className="sound-ctrl">
           <span>Fade in <strong>{fadeIn.toFixed(1)}s</strong></span>
           <input type="range" min={0} max={5} step={0.1} value={fadeIn}
-            onChange={(e) => setFadeIn(Number(e.target.value))} disabled={!hasSource}/>
+            onChange={(e) => { setFadeIn(Number(e.target.value)); setDirty(true); }} disabled={!hasSource}/>
         </label>
         <label className="sound-ctrl">
           <span>Fade out <strong>{fadeOut.toFixed(1)}s</strong></span>
           <input type="range" min={0} max={5} step={0.1} value={fadeOut}
-            onChange={(e) => setFadeOut(Number(e.target.value))} disabled={!hasSource}/>
+            onChange={(e) => { setFadeOut(Number(e.target.value)); setDirty(true); }} disabled={!hasSource}/>
         </label>
       </div>
 
@@ -487,7 +493,21 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <Icon name="check" size={13}/> Save
         </button>
       </div>
-      <div className="sound-hint">Lowercase a–z and 0–9 only. Volume boost above 0 dB is applied on save.</div>
+
+      {confirmClose && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmClose(false); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Discard changes?</h3>
+            <p>Your edits haven't been saved and will be lost.</p>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setConfirmClose(false)}>Keep editing</button>
+              <button className="btn btn-danger" onClick={() => { setConfirmClose(false); onClose?.(); }}>
+                <Icon name="trash" size={13}/> Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmSave && (
         <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmSave(null); }}>

@@ -109,6 +109,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const [confirmSave, setConfirmSave] = useState(null); // null | { clean, exists }
   const [dirty, setDirty] = useState(false);            // ungespeicherte Änderungen
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(null); // null | () => void
 
   const pickSource = useCallback((blob, label) => {
     setSourceBlob(blob); setSourceLabel(label); setLoadingSource(false);
@@ -297,6 +298,12 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   // Zurück: bei ungespeicherten Änderungen erst nachfragen.
   const handleClose = () => { if (dirty) setConfirmClose(true); else onClose?.(); };
 
+  // Neue Quelle (Record/Upload/YouTube) würde die aktuelle ersetzen → erst fragen.
+  const guardReplace = (action) => {
+    if (sourceBlob && !recording) setConfirmReplace(() => action);
+    else action();
+  };
+
   // ── Transport ────────────────────────────────────────────────────────────────
   const playAll = () => {
     const ws = wsRef.current; if (!ws) return;
@@ -395,7 +402,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
               onClick={() => setRecMode('system')} disabled={recording}>System</button>
           </div>
           {!recording ? (
-            <button className="btn" onClick={() => startRecording(recMode)}>
+            <button className="btn" onClick={() => guardReplace(() => startRecording(recMode))}>
               <Icon name="mic" size={13}/> Record
             </button>
           ) : (
@@ -409,7 +416,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <SearchField value={ytUrl} placeholder="YouTube link…" type="text" className="sound-yt-search"
             onChange={(e) => setYtUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') loadYoutube(); }}/>
-          <button className="btn" onClick={loadYoutube} disabled={ytLoading || !ytUrl.trim() || recording}>
+          <button className="btn" onClick={() => guardReplace(loadYoutube)} disabled={ytLoading || !ytUrl.trim() || recording}>
             {ytLoading ? 'Loading…' : 'Load'}
           </button>
         </div>
@@ -417,7 +424,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
           <Icon name="upload" size={13}/> Upload
           <input type="file" hidden accept="audio/*"
-            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; onUploadFile(f); }}/>
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) guardReplace(() => onUploadFile(f)); }}/>
         </label>
       </div>
 
@@ -499,6 +506,21 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <Icon name="check" size={13}/> Save
         </button>
       </div>
+
+      {confirmReplace && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmReplace(null); }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3>Replace current sound?</h3>
+            <p>The clip you're working on will be discarded.</p>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setConfirmReplace(null)}>Cancel</button>
+              <button className="btn btn-danger" onClick={() => { const act = confirmReplace; setConfirmReplace(null); act(); }}>
+                <Icon name="check" size={13}/> Replace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmClose && (
         <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmClose(false); }}>

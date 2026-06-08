@@ -8,7 +8,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
-import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.esm.js';
 import { Icon, SearchField } from '../ui/components.jsx';
 import * as API from '../lib/api.js';
 
@@ -136,13 +135,13 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     setReady(false);
     const ws = WaveSurfer.create({
       container: waveRef.current,
-      height: 110,
-      waveColor: '#3a4250',
+      height: 120,
+      normalize: true,           // füllt die Höhe wie die Live-Aufnahme
+      waveColor: '#9dda4f',
       progressColor: '#9dda4f',
       cursorColor: '#e6edf3',
       barWidth: 2, barGap: 1, barRadius: 2,
     });
-    ws.registerPlugin(TimelinePlugin.create({ height: 16, style: { color: '#7a8595', fontSize: '10px' } }));
     const regions = ws.registerPlugin(RegionsPlugin.create());
     wsRef.current = ws;
     regionsRef.current = regions;
@@ -271,7 +270,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       recTimerRef.current = setInterval(() => setRecSeconds((Date.now() - startedAt) / 1000), 200);
       requestAnimationFrame(() => {
         const canvas = canvasRef.current;
-        if (canvas) { canvas.width = canvas.offsetWidth; canvas.height = 110; }
+        if (canvas) { canvas.width = canvas.offsetWidth; canvas.height = 120; }
         rafRef.current = requestAnimationFrame(drawLive);
       });
     } catch (e) {

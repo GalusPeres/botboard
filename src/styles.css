@@ -2150,16 +2150,14 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
   }
   .search-btn { display: none; }
 
-  /* Content padding + page header */
-  .content { padding: 18px 14px 22px; }
+  /* Content padding + page header. Oben ~gleich viel Luft wie der Abstand zum
+     ersten Inhalt (margin-bottom) → Header sitzt mittig zwischen Topbar und
+     Inhalt. Titel + Suchfeld bleiben zusammen (zentriert) ausgerichtet. */
+  .content { padding: 22px 14px 22px; }
   .content-narrow { max-width: 100%; }
   .page-head { margin-bottom: 18px; gap: 12px; }
-  .page-title { font-size: 22px; margin-top: 16px; }
+  .page-title { font-size: 22px; }
   .page-sub { font-size: 13.5px; }
-  /* Nur der Titel rückt nach unten – das Suchfeld bleibt oben (nicht mitziehen).
-     Editor-Header (eigene Optik) bleibt unverändert. */
-  .media-page-head { align-items: flex-start; }
-  .sound-editor-screen .page-title { margin-top: 0; }
 
   /* Sound-Editor Source-Leiste mobil sauber stapeln. */
   .sound-source-bar { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -2246,7 +2244,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 /* Kein separater 400px-Breakpoint mehr nötig — Compact-Button löst das */
 
 @media (max-width: 560px) {
-  .content { padding: 14px 12px 20px; }
+  .content { padding: 20px 12px 20px; }
   .page-title { font-size: 19px; }
   /* Row mit Wrap — kein Column, sonst landen Buttons in eigener Zeile */
   .page-head { flex-direction: row; align-items: center; flex-wrap: wrap; }

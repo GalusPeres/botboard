@@ -638,7 +638,8 @@ ul, ol { list-style: none; }
      (z. B. ein Ordner im Filebrowser) mal mehr/weniger Inhalt hat. */
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
-  padding: 28px;
+  /* Etwas mehr Luft oben, damit die Überschrift nicht direkt an der Topbar klebt. */
+  padding: 38px 28px 28px;
 }
 .content-narrow { width: 100%; max-width: 1240px; min-width: 0; margin: 0 auto; }
 
@@ -2151,11 +2152,20 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
   .search-btn { display: none; }
 
   /* Content padding + page header */
-  .content { padding: 18px 14px 22px; }
+  .content { padding: 28px 14px 22px; }
   .content-narrow { max-width: 100%; }
   .page-head { margin-bottom: 18px; gap: 12px; }
   .page-title { font-size: 22px; }
   .page-sub { font-size: 13.5px; }
+
+  /* Sound-Editor Source-Leiste mobil sauber stapeln. */
+  .sound-source-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .sound-source-bar > label.btn { order: -1; justify-content: center; }
+  .sound-source-rec { width: 100%; }
+  .sound-source-rec .seg { flex: 1; }
+  .sound-source-rec .seg-btn { flex: 1; }
+  .sound-source-rec .btn { flex: 1; justify-content: center; }
+  .sound-source-yt { width: 100%; min-width: 0; }
 
   /* page-actions nimmt Restplatz nach Titel */
   .page-head .page-actions { flex: 1; min-width: 0; }

@@ -420,52 +420,45 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
         </label>
       </div>
 
-      {/* Waveform / Live-Aufnahme */}
+      {/* EINE Ansicht: Wave-Bereich (immer gleich hoch) + immer dieselbe Transport-
+          Zeile. Bei Aufnahme/ohne Quelle sind die Buttons nur ausgegraut. */}
       <div className="sound-wave-card">
         {recording ? (
           <>
             <canvas ref={canvasRef} className="sound-rec-canvas"/>
-            <div className="sound-rec-spacer"/>{/* reserviert die Timeline-Höhe → gleiche Box wie im Editor */}
-            <div className="sound-transport">
-              <span className="rec-dot">● recording…</span>
-              <span className="sound-times">{fmtTime(recSeconds)}</span>
-            </div>
+            <div className="sound-rec-spacer"/>{/* reserviert die Timeline-Höhe → gleiche Box */}
           </>
         ) : hasSource ? (
-          <>
-            <div ref={waveRef} className="sound-wave"/>
-            {!ready && <div className="empty" style={{ padding: 12 }}><div>Decoding…</div></div>}
-            <div className="sound-transport">
-              <button className="btn" onClick={playAll} disabled={!ready}>
-                <Icon name={playing ? 'pause' : 'play'} size={13}/> {playing ? 'Pause' : 'Play'}
-              </button>
-              <button className="btn" onClick={playSelection} disabled={!ready}>
-                <Icon name="play" size={13}/> Selection
-              </button>
-              <span className="sound-times">
-                {fmtTime(trim.start)} – {fmtTime(trim.end)} <span style={{ opacity: 0.5 }}>/ {fmtTime(duration)}</span>
-              </span>
-              <button className="btn btn-sm" onClick={doTrim} disabled={!ready || trimming || fullSelected}
-                style={{ marginLeft: 'auto' }}>
-                <Icon name="edit" size={12}/> {trimming ? 'Trimming…' : 'Trim'}
-              </button>
-              {canUndo && (
-                <button className="btn btn-sm" onClick={undoTrim} disabled={!ready || trimming}>
-                  <Icon name="rotate" size={12}/> Undo
-                </button>
-              )}
-              <button className="btn btn-sm" onClick={resetTrim} disabled={!ready || fullSelected}>
-                Reset
-              </button>
-            </div>
-          </>
-        ) : loadingSource ? (
-          <div className="empty"><div>Loading…</div></div>
+          <div ref={waveRef} className="sound-wave"/>
         ) : (
-          <div className="empty" style={{ padding: '28px 0', color: 'var(--text-dim)' }}>
-            <div>Pick a file, record, or load a YouTube link above to start.</div>
-          </div>
+          <div className="empty">{loadingSource ? 'Loading…' : 'Pick a file, record, or load a YouTube link above to start.'}</div>
         )}
+
+        <div className="sound-transport">
+          <button className="btn" onClick={playAll} disabled={recording || !ready}>
+            <Icon name={playing ? 'pause' : 'play'} size={13}/> {playing ? 'Pause' : 'Play'}
+          </button>
+          <button className="btn" onClick={playSelection} disabled={recording || !ready}>
+            <Icon name="play" size={13}/> Selection
+          </button>
+          <span className="sound-times">
+            {recording
+              ? <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
+              : <>{fmtTime(trim.start)} – {fmtTime(trim.end)} <span style={{ opacity: 0.5 }}>/ {fmtTime(duration)}</span></>}
+          </span>
+          <button className="btn btn-sm" onClick={doTrim} disabled={recording || !ready || trimming || fullSelected}
+            style={{ marginLeft: 'auto' }}>
+            <Icon name="edit" size={12}/> {trimming ? 'Trimming…' : 'Trim'}
+          </button>
+          {canUndo && (
+            <button className="btn btn-sm" onClick={undoTrim} disabled={recording || !ready || trimming}>
+              <Icon name="rotate" size={12}/> Undo
+            </button>
+          )}
+          <button className="btn btn-sm" onClick={resetTrim} disabled={recording || !ready || fullSelected}>
+            Reset
+          </button>
+        </div>
       </div>
 
       <div className="sound-controls">

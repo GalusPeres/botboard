@@ -2951,6 +2951,8 @@ button, a, [role="button"],
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 12px;
+  /* Gleiche Höhe wie die Button-Zeile im Editor → Box bleibt bei Aufnahme gleich hoch. */
+  min-height: 34px;
 }
 .sound-times { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
 

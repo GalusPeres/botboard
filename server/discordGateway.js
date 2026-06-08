@@ -6,7 +6,7 @@ import { Client, GatewayIntentBits, Events, ActivityType, ContainerBuilder, Text
 import { config } from './config.js';
 import { botTokenConfigured } from './discordBot.js';
 import { registrySnapshot, botConfig } from './botRegistry.js';
-import { botStatus } from './botClient.js';
+import { botStatus, botFetch } from './botClient.js';
 import { containerStatus } from './docker.js';
 import { getBotboardConfig } from './botboardConfig.js';
 import { getGuildAccess } from './accessRegistry.js';
@@ -55,16 +55,28 @@ async function ensureDots(app) {
 // Alle aktiven Module: online? + Startzeit für Uptime. Uptime wird – wenn das
 // Modul einen Container hat – aus dem Container gelesen (gilt also auch für die
 // HTTP-Bots, nicht nur für reine Gameserver).
-async function collectModuleStatuses() {
+async function collectModuleStatuses(guildId = null) {
   const bots = registrySnapshot().bots.filter((b) => b.enabled !== false);
-  return Promise.all(
+  const rows = await Promise.all(
     bots.map(async (b) => {
       const cfg = botConfig(b.id);
       const name = cfg?.name?.trim() || b.id;
+      const gameserver = isContainerModule(cfg);
+      // Pro-Server-Filter: Gameserver sind überall sichtbar; echte Bots nur in
+      // dem Server, in dem sie Mitglied sind. Bot nicht erreichbar →
+      // Mitgliedschaft unbekannt → in der Server-Ansicht weglassen.
+      if (guildId && !gameserver) {
+        try {
+          const guilds = await botFetch(b.id, '/api/guilds', { timeout: 4000 });
+          if (!Array.isArray(guilds) || !guilds.some((g) => g.id === guildId)) return null;
+        } catch {
+          return null;
+        }
+      }
       let online = false;
       let since = null;
       try {
-        if (isContainerModule(cfg)) {
+        if (gameserver) {
           const s = await containerStatus(b.id);
           online = !!s.online;
           if (online && s.startedAt) since = Date.parse(s.startedAt) || null;
@@ -86,6 +98,7 @@ async function collectModuleStatuses() {
       return { name, online, since };
     })
   );
+  return rows.filter(Boolean);
 }
 
 function fmtUptime(sinceMs) {
@@ -103,11 +116,13 @@ function fmtUptime(sinceMs) {
 export async function refreshPresence() {
   if (!client?.user) return;
   try {
-    const { statusText } = getBotboardConfig();
-    const rows = await collectModuleStatuses();
-    const onlineCount = rows.filter((r) => r.online).length;
-    const name = statusText?.trim() || `${onlineCount}/${rows.length} modules online`;
-    client.user.setPresence({ status: 'online', activities: [{ name, type: ActivityType.Watching }] });
+    // Presence ohne Modul-Zähler: nur der konfigurierte Status-Text, sonst
+    // einfach „online" (kein Text). Eine Presence ist global, nicht pro Server.
+    const text = getBotboardConfig().statusText?.trim();
+    client.user.setPresence({
+      status: 'online',
+      activities: text ? [{ name: text, type: ActivityType.Watching }] : [],
+    });
   } catch (err) {
     console.error('[gateway] presence update failed:', err.message);
   }
@@ -134,8 +149,8 @@ async function commandGate(message) {
 
 // Moderne „Components V2"-Karte: Akzentleiste = Gesamtzustand, pro Modul eine
 // eigene Zeile mit kleinem Farbpunkt + Name + Uptime, grüner Dashboard-Button.
-async function buildInfoPayload() {
-  const rows = await collectModuleStatuses();
+async function buildInfoPayload(guildId) {
+  const rows = await collectModuleStatuses(guildId);
   const url = publicUrl();
   const onlineCount = rows.filter((r) => r.online).length;
 
@@ -176,18 +191,19 @@ async function buildInfoPayload() {
 }
 
 async function handleInfo(message) {
-  const sent = await message.reply(await buildInfoPayload());
-  liveInfo.set(sent, Date.now());
+  const sent = await message.reply(await buildInfoPayload(message.guildId));
+  liveInfo.set(sent, { at: Date.now(), guildId: message.guildId });
 }
 
 // Gepostete #info-Karten regelmäßig selbst aktualisieren (kein Button nötig).
 async function refreshLiveInfo() {
   if (!liveInfo.size) return;
-  let payload = null;
-  for (const [msg, postedAt] of liveInfo) {
-    if (Date.now() - postedAt > INFO_TTL_MS) { liveInfo.delete(msg); continue; }
+  const cache = new Map(); // pro Server nur einmal bauen
+  for (const [msg, info] of liveInfo) {
+    if (Date.now() - info.at > INFO_TTL_MS) { liveInfo.delete(msg); continue; }
     try {
-      if (!payload) payload = await buildInfoPayload();
+      let payload = cache.get(info.guildId);
+      if (!payload) { payload = await buildInfoPayload(info.guildId); cache.set(info.guildId, payload); }
       await msg.edit(payload);
     } catch {
       liveInfo.delete(msg);

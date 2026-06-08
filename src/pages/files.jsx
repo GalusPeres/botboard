@@ -443,17 +443,17 @@ export const FileBrowserScreen = ({
                   <Icon name="plus" size={13}/> New sound
                 </button>
               )}
+              {canWrite && allowFolders && (
+                <button className="btn" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
+                  <Icon name="plus" size={13}/> New folder
+                </button>
+              )}
               {canWrite && (
                 <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
                   <Icon name="upload" size={13}/> {uploading ? 'Uploading...' : 'Upload'}
                   <input type="file" hidden disabled={uploading} accept={uploadAccept}
                     onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; doUpload(f); }}/>
                 </label>
-              )}
-              {canWrite && allowFolders && (
-                <button className="btn" type="button" onClick={() => { setMkdirVal(''); setMkdirOpen(true); }}>
-                  <Icon name="plus" size={13}/> New folder
-                </button>
               )}
             </div>
           </>

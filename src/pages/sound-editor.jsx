@@ -385,12 +385,6 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
 
       {/* Quellen direkt im Editor */}
       <div className="sound-source-bar">
-        <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-          <Icon name="upload" size={13}/> Upload
-          <input type="file" hidden accept="audio/*"
-            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; onUploadFile(f); }}/>
-        </label>
-
         <div className="sound-source-rec">
           <div className="seg">
             <button type="button" className={'seg-btn' + (recMode === 'mic' ? ' on' : '')}
@@ -417,6 +411,12 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
             {ytLoading ? 'Loading…' : 'Load'}
           </button>
         </div>
+
+        <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+          <Icon name="upload" size={13}/> Upload
+          <input type="file" hidden accept="audio/*"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; onUploadFile(f); }}/>
+        </label>
       </div>
 
       {/* Waveform / Live-Aufnahme */}

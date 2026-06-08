@@ -192,7 +192,11 @@ export const FileBrowserScreen = ({
   const allSelected = (data?.entries?.length || 0) > 0 && (data?.entries || []).every((e) => selected.has(e.name));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set((data?.entries || []).map((e) => e.name)));
 
-  const segments = path ? path.split('/').filter(Boolean) : [];
+  // Angezeigten Ordner aus den GELADENEN Daten ableiten (nicht aus dem sofort
+  // gesetzten path). So wechseln Breadcrumb, „..“ und Liste atomar, sobald die
+  // neuen Daten da sind — kein kurzes Blinken/Diskrepanz beim Navigieren.
+  const dir = data?.path ?? path;
+  const segments = dir ? dir.split('/').filter(Boolean) : [];
   const entries = (data?.entries || []).filter((e) => !search || e.name.toLowerCase().includes(search.toLowerCase()));
   const imageEntries = (data?.entries || []).filter((entry) => entry.type === 'file' && isImageFile(entry.name));
   const imagePreviewIndex = imagePreview
@@ -418,7 +422,7 @@ export const FileBrowserScreen = ({
         {!selectMode ? (
           <>
             <div className="fb-toolbar-line">
-              <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!path}>
+              <button className="btn btn-sm" type="button" onClick={() => goTo('')} disabled={!dir}>
                 <Icon name="home" size={13}/> root
               </button>
               {segments.map((seg, i) => (
@@ -492,7 +496,7 @@ export const FileBrowserScreen = ({
         <div className="library-table-wrap">
           <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
-            {path && (
+            {dir && (
               <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>
                 {selectMode && <span/>}
                 <Icon name="folder" size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }}/>
@@ -505,11 +509,11 @@ export const FileBrowserScreen = ({
                 <div className="filebrowser-actions"/>
               </div>
             )}
-            {entries.length === 0 && !path && (
+            {entries.length === 0 && !dir && (
               <div className="empty" style={{ color: 'var(--text-dim)', fontSize: 13, padding: '16px 0' }}>Empty folder.</div>
             )}
             {entries.map((e) => {
-              const rel = joinPath(path, e.name);
+              const rel = joinPath(dir, e.name);
               const isDir = e.type === 'dir';
               const isAudio = !isDir && isAudioFile(e.name);
               const isImage = !isDir && isImageFile(e.name);
@@ -624,7 +628,7 @@ export const FileBrowserScreen = ({
           <div className="ctx-menu" style={{ top: menu.y, left: menu.x }}>
             {menu.entry ? (() => {
               const e = menu.entry;
-              const rel = joinPath(path, e.name);
+              const rel = joinPath(dir, e.name);
               const isDir = e.type === 'dir';
               const isAudio = !isDir && isAudioFile(e.name);
               const isImage = !isDir && isImageFile(e.name);

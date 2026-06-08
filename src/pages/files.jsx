@@ -535,7 +535,7 @@ export const FileBrowserScreen = ({
               </button>
             ))}
           </div>
-          <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')} style={{ minHeight: 80 }}
+          <div className={'filebrowser-list' + (selectMode ? ' selecting' : '')}
             onContextMenu={(ev) => { if (ev.target === ev.currentTarget) openContext(ev, null); }}>
             {dir && (
               <div className="filebrowser-row" onClick={() => goTo(segments.slice(0, -1).join('/'))} style={{ cursor: 'pointer' }}>

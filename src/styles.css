@@ -1544,8 +1544,14 @@ ul, ol { list-style: none; }
 .filebrowser-screen > .library-table-wrap {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  /* Scrollbar in eigener Spur → läuft nicht über den (sticky) Kopf/Inhalt. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;            /* Kopf bleibt fix … */
+}
+.filebrowser-screen .filebrowser-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;            /* … nur die Liste scrollt → Scrollbar startet unter dem Kopf */
   scrollbar-gutter: stable;
 }
 
@@ -1579,15 +1585,11 @@ ul, ol { list-style: none; }
   grid-template-columns: 22px minmax(0, 1fr) 84px 140px 28px;
   align-items: center;
   gap: 10px;
-  padding: 2px 12px 6px;
-  /* Bleibt oben stehen, scrollt nicht mit der Liste weg. */
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--bg);
+  /* rechts +10px für die reservierte Scrollbar-Spur der Liste → bündig zu den Zeilen. */
+  padding: 2px 22px 6px 12px;
 }
 /* Im Select-Modus zusätzliche Checkbox-Spalte vorne (gleiches Grid wie die Zeilen). */
-.filebrowser-head.selecting { grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px auto; }
+.filebrowser-head.selecting { grid-template-columns: 24px 22px minmax(0, 1fr) 84px 140px 28px; }
 .fb-sort {
   background: none; border: none; padding: 0; cursor: pointer; text-align: left;
   font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
@@ -1595,6 +1597,8 @@ ul, ol { list-style: none; }
   white-space: nowrap;
 }
 .fb-sort:hover { color: var(--text); }
+/* Deaktivierte Buttons (z.B. Download/Move/Delete ohne Auswahl) klar ausgrauen. */
+.filebrowser-screen .btn:disabled { opacity: 0.4; pointer-events: none; }
 .filebrowser-sort-mobile { display: none; }
 
 .filebrowser-row {
@@ -1676,7 +1680,6 @@ ul, ol { list-style: none; }
   .filebrowser-head { display: none; }
   .filebrowser-sort-mobile {
     display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 0 8px;
-    position: sticky; top: 0; z-index: 5; background: var(--bg);
   }
 }
 

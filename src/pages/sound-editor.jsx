@@ -110,6 +110,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   const [dirty, setDirty] = useState(false);            // ungespeicherte Änderungen
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(null); // null | () => void
+  const [currentTime, setCurrentTime] = useState(0);          // aktuelle Abspielposition
 
   const pickSource = useCallback((blob, label) => {
     setSourceBlob(blob); setSourceLabel(label); setLoadingSource(false);
@@ -136,6 +137,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
   useEffect(() => {
     if (!sourceBlob || recording || !waveRef.current) return undefined;
     setReady(false);
+    setPlaying(false);   // neuer/neu geladener Clip → Button startet sauber auf „Play"
+    setCurrentTime(0);
     const ws = WaveSurfer.create({
       container: waveRef.current,
       height: 120,
@@ -168,6 +171,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     ws.on('play', () => setPlaying(true));
     ws.on('pause', () => { setPlaying(false); clearTimeout(selTimerRef.current); });
     ws.on('finish', () => setPlaying(false));
+    ws.on('timeupdate', (t) => setCurrentTime(t));
 
     ws.loadBlob(sourceBlob).catch((e) => toast(`Decode failed: ${e.message}`));
     return () => { clearTimeout(selTimerRef.current); try { ws.destroy(); } catch {} wsRef.current = null; };
@@ -320,6 +324,13 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
     // robust per Timer am Auswahl-Ende stoppen (kein Verlass auf stale timeupdate).
     selTimerRef.current = setTimeout(() => { try { ws.pause(); } catch {} }, Math.max(60, (r.end - r.start) * 1000));
   };
+  // Stop: anhalten und den Cursor (weißer Strich) auf den Anfang setzen.
+  const stopPlayback = () => {
+    const ws = wsRef.current; if (!ws) return;
+    clearTimeout(selTimerRef.current);
+    try { ws.stop(); } catch {}
+    setCurrentTime(0);
+  };
   const resetTrim = () => {
     if (regionRef.current) { regionRef.current.setOptions({ start: 0, end: duration }); setTrim({ start: 0, end: duration }); }
   };
@@ -456,13 +467,26 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <button className="btn" onClick={playAll} disabled={recording || !ready}>
             <Icon name={playing ? 'pause' : 'play'} size={13}/> {playing ? 'Pause' : 'Play'}
           </button>
+          <button className="btn" onClick={stopPlayback} disabled={recording || !ready}>
+            <Icon name="stop" size={13}/> Stop
+          </button>
           <button className="btn" onClick={playSelection} disabled={recording || !ready}>
             <Icon name="play" size={13}/> Selection
           </button>
           <span className="sound-times">
-            {recording
-              ? <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
-              : <>{fmtTime(trim.start)} – {fmtTime(trim.end)} <span style={{ opacity: 0.5 }}>/ {fmtTime(duration)}</span></>}
+            {recording ? (
+              <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
+            ) : (
+              <>
+                <strong>{fmtTime(currentTime)}</strong>
+                <span style={{ opacity: 0.5 }}> / {fmtTime(duration)}</span>
+                {!fullSelected && (
+                  <span style={{ color: 'var(--accent)', marginLeft: 8 }}>
+                    Auswahl {fmtTime(trim.start)}–{fmtTime(trim.end)}
+                  </span>
+                )}
+              </>
+            )}
           </span>
           <button className="btn btn-sm" onClick={doTrim} disabled={recording || !ready || trimming || fullSelected}
             style={{ marginLeft: 'auto' }}>

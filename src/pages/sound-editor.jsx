@@ -463,7 +463,24 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <div className="empty">{loadingSource ? 'Loading…' : 'Drop an audio file here — or pick a file, record, or load a YouTube link above.'}</div>
         )}
 
-        {/* Buttons in einer Zeile … */}
+        {/* Zeiten oben … */}
+        <div className="sound-times">
+          {recording ? (
+            <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
+          ) : (
+            <>
+              <strong>{fmtTime(currentTime)}</strong>
+              <span style={{ opacity: 0.5 }}> / {fmtTime(duration)}</span>
+              {!fullSelected && (
+                <span style={{ color: 'var(--accent)', marginLeft: 10 }}>
+                  Selection {fmtTime(trim.start)} – {fmtTime(trim.end)}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* … Buttons in einer Zeile darunter. */}
         <div className="sound-transport">
           <button className="btn" onClick={playAll} disabled={recording || !ready}>
             <Icon name={playing ? 'pause' : 'play'} size={13}/> {playing ? 'Pause' : 'Play'}
@@ -486,23 +503,6 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <button className="btn btn-sm" onClick={resetTrim} disabled={recording || !ready || fullSelected}>
             Reset
           </button>
-        </div>
-
-        {/* … Zeiten in einer eigenen Zeile darunter. */}
-        <div className="sound-times">
-          {recording ? (
-            <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
-          ) : (
-            <>
-              <strong>{fmtTime(currentTime)}</strong>
-              <span style={{ opacity: 0.5 }}> / {fmtTime(duration)}</span>
-              {!fullSelected && (
-                <span style={{ color: 'var(--accent)', marginLeft: 10 }}>
-                  Selection {fmtTime(trim.start)} – {fmtTime(trim.end)}
-                </span>
-              )}
-            </>
-          )}
         </div>
       </div>
 

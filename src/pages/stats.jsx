@@ -179,11 +179,6 @@ export const GenericStatsScreen = ({ botId, botName }) => {
         <div>
           <div className="page-title">Statistics</div>
         </div>
-        <div className="page-actions">
-          <button className="btn btn-sm" type="button" onClick={refresh} disabled={refreshing}>
-            <Icon name="refresh" size={13}/> {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </div>
       </div>
       {error && <div className="settings-notice registry-error">Stats failed: {error.message}</div>}
       {loading && !visibleStats && (

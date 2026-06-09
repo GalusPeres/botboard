@@ -499,7 +499,9 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
 
       <div className="sound-save-row">
         <div className="sound-name-field">
-          <input className="input" placeholder="sound name" value={name} onChange={(e) => setName(e.target.value)}/>
+          <input className="input" placeholder="sound name" value={name} onChange={(e) => setName(e.target.value)}
+            name="botboard-sound-name" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
+            data-1p-ignore data-lpignore="true" data-bwignore/>
           <span className="sound-name-suffix">.mp3</span>
         </div>
         <button className="btn btn-primary" onClick={onSaveClick} disabled={!ready || saving || !cleanName(name)}>

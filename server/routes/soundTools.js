@@ -91,6 +91,7 @@ export default function soundToolsRoutes() {
       logActivity(`${actor(req)} → YouTube-Audio importiert: ${url}`);
       sendAndCleanup(res, out, dir, 'youtube.mp3');
     } catch (err) {
+      console.error('[sound-tools] youtube failed:', err.message);
       await fsp.rm(dir, { recursive: true, force: true }).catch(() => {});
       res.status(502).json({ error: err.message });
     }
@@ -136,6 +137,7 @@ export default function soundToolsRoutes() {
       if (!fs.existsSync(output)) throw new Error('render produced no file');
       sendAndCleanup(res, output, dir, 'sound.mp3');
     } catch (err) {
+      console.error('[sound-tools] render failed:', err.message);
       await fsp.rm(dir, { recursive: true, force: true }).catch(() => {});
       res.status(err.status || 500).json({ error: err.message });
     }

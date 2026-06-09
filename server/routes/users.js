@@ -30,6 +30,7 @@ export default function usersRoutes() {
       }
       res.json(users.map(({ guilds, ...rest }) => rest));
     } catch (err) {
+      console.error('[users] GET / failed:', err);
       res.status(err.status || 500).json({ error: err.message });
     }
   });

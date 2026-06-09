@@ -31,6 +31,15 @@ app.set('trust proxy', 1);
 // CSP bewusst aus — die wird separat + getestet nachgerüstet, damit nichts
 // (Uploads, Waveform, Discord-Avatare) bricht.
 app.use(helmet({ contentSecurityPolicy: false }));
+// Diagnose: jeden Serverfehler (5xx) mit Methode + URL loggen — damit auch
+// intermittierende 500er nachträglich nachvollziehbar sind, ohne sie live
+// erwischen zu müssen.
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    if (res.statusCode >= 500) console.error(`[5xx] ${res.statusCode} ${req.method} ${req.originalUrl}`);
+  });
+  next();
+});
 // Skip gzip for server-sent event streams so log/status events flush to the
 // browser immediately instead of being buffered by the compressor.
 app.use(compression({

@@ -3000,7 +3000,7 @@ button, a, [role="button"],
   /* Gleiche Höhe wie die Button-Zeile im Editor → Box bleibt bei Aufnahme gleich hoch. */
   min-height: 34px;
 }
-.sound-times { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+.sound-times { font-family: var(--font-mono); font-size: 13px; color: var(--text); margin-top: 10px; }
 
 .sound-controls {
   display: grid;

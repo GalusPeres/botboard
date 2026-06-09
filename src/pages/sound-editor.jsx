@@ -463,6 +463,7 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <div className="empty">{loadingSource ? 'Loading…' : 'Drop an audio file here — or pick a file, record, or load a YouTube link above.'}</div>
         )}
 
+        {/* Buttons in einer Zeile … */}
         <div className="sound-transport">
           <button className="btn" onClick={playAll} disabled={recording || !ready}>
             <Icon name={playing ? 'pause' : 'play'} size={13}/> {playing ? 'Pause' : 'Play'}
@@ -473,21 +474,6 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <button className="btn" onClick={playSelection} disabled={recording || !ready}>
             <Icon name="play" size={13}/> Selection
           </button>
-          <span className="sound-times">
-            {recording ? (
-              <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
-            ) : (
-              <>
-                <strong>{fmtTime(currentTime)}</strong>
-                <span style={{ opacity: 0.5 }}> / {fmtTime(duration)}</span>
-                {!fullSelected && (
-                  <span style={{ color: 'var(--accent)', marginLeft: 8 }}>
-                    Auswahl {fmtTime(trim.start)}–{fmtTime(trim.end)}
-                  </span>
-                )}
-              </>
-            )}
-          </span>
           <button className="btn btn-sm" onClick={doTrim} disabled={recording || !ready || trimming || fullSelected}
             style={{ marginLeft: 'auto' }}>
             <Icon name="edit" size={12}/> {trimming ? 'Trimming…' : 'Trim'}
@@ -500,6 +486,23 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
           <button className="btn btn-sm" onClick={resetTrim} disabled={recording || !ready || fullSelected}>
             Reset
           </button>
+        </div>
+
+        {/* … Zeiten in einer eigenen Zeile darunter. */}
+        <div className="sound-times">
+          {recording ? (
+            <><span className="rec-dot">●</span> recording… {fmtTime(recSeconds)}</>
+          ) : (
+            <>
+              <strong>{fmtTime(currentTime)}</strong>
+              <span style={{ opacity: 0.5 }}> / {fmtTime(duration)}</span>
+              {!fullSelected && (
+                <span style={{ color: 'var(--accent)', marginLeft: 10 }}>
+                  Selection {fmtTime(trim.start)} – {fmtTime(trim.end)}
+                </span>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -524,8 +527,8 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       <div className="sound-save-row">
         <div className="sound-name-field">
           <input className="input" placeholder="sound name" value={name} onChange={(e) => setName(e.target.value)}
-            name="botboard-sound-name" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
-            data-1p-ignore data-lpignore="true" data-bwignore/>
+            name="bb_clip" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
+            data-form-type="other" data-1p-ignore data-lpignore="true" data-bwignore/>
           <span className="sound-name-suffix">.mp3</span>
         </div>
         <button className="btn btn-primary" onClick={onSaveClick} disabled={!ready || saving || !cleanName(name)}>

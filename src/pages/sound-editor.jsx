@@ -472,9 +472,13 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
               <strong>{fmtTime(currentTime)}</strong>
               <span style={{ opacity: 0.5 }}> / {fmtTime(duration)}</span>
               {!fullSelected && (
-                <span style={{ color: 'var(--accent)', marginLeft: 10 }}>
-                  Selection {fmtTime(trim.start)} – {fmtTime(trim.end)}
-                </span>
+                <>
+                  <span style={{ opacity: 0.3, margin: '0 12px' }}>|</span>
+                  <span style={{ color: 'var(--accent)' }}>
+                    Selection {fmtTime(trim.start)} – {fmtTime(trim.end)}
+                    <span style={{ opacity: 0.7 }}> ({fmtTime(trim.end - trim.start)})</span>
+                  </span>
+                </>
               )}
             </>
           )}
@@ -525,6 +529,12 @@ export const SoundEditorScreen = ({ initialName = null, botName, existingNames =
       </div>
 
       <div className="sound-save-row">
+        {/* Versteckte Dummy-Felder fangen Chromes Passwort-Autofill ab, damit das
+            echte Sound-Namen-Feld keine Login-Vorschläge mehr bekommt. */}
+        <input type="text" name="username" tabIndex={-1} aria-hidden="true" autoComplete="username"
+          style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}/>
+        <input type="password" name="password" tabIndex={-1} aria-hidden="true" autoComplete="current-password"
+          style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}/>
         <div className="sound-name-field">
           <input className="input" placeholder="sound name" value={name} onChange={(e) => setName(e.target.value)}
             name="bb_clip" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
